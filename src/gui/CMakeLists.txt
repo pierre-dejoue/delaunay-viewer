@@ -1,0 +1,49 @@
+#
+# Build the graphical application
+#
+
+# Dependencies
+add_subdirectory(imgui)
+include(pfd)
+
+configure_file(src/version.h.in version.h @ONLY)
+
+set(GUI_SOURCES
+    src/draw_shape.cpp
+    src/main.cpp
+    src/settings.cpp
+    src/settings_window.cpp
+    src/shape_control_window.cpp
+    src/shape_draw_window.cpp
+    src/version.cpp
+)
+
+file(GLOB GUI_HEADERS src/*.h)
+
+add_executable(delaunay_viewer ${GUI_SOURCES} ${GUI_HEADERS})
+
+if (DELAUNAY_VIEWER_IMGUI_DEMO)
+    target_compile_definitions(delaunay_viewer
+        PRIVATE
+        DELAUNAY_VIEWER_IMGUI_DEMO_FLAG
+    )
+endif()
+
+target_include_directories(delaunay_viewer
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+set_target_warnings(delaunay_viewer ON)
+
+target_link_libraries(delaunay_viewer
+    PRIVATE
+    dt
+    imgui
+    portable_file_dialogs
+    stdutils
+    svg
+)
+
+install(TARGETS delaunay_viewer)

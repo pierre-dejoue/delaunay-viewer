@@ -1,0 +1,10 @@
+#pragma once
+
+#include <string_view>
+
+#define DELAUNAY_VIEWER_VERSION_STRING "@delaunay_viewer_VERSION@"
+
+/**
+ * Get the version of the program
+ */
+std::string_view get_version_string();
