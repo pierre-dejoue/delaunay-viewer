@@ -4,7 +4,7 @@
     #include "impl_poly2tri.h"
 #endif
 #if BUILD_CDT
-    #include "impl_CDT.h"
+    #include "impl_cdt.h"
 #endif
 
 
@@ -30,10 +30,10 @@ namespace
     }
 }
 
-
 bool register_all_implementations()
 {
     static bool all_registered = static_register_all_implementations();
     return all_registered;
 }
+
 } // namespace delaunay

@@ -4,10 +4,13 @@
 #include <poly2tri/poly2tri.h>
 
 #include <cstdint>
+#include <exception>
 #include <iterator>
 #include <numeric>
 #include <sstream>
+#include <utility>
 #include <vector>
+
 
 namespace delaunay
 {
@@ -37,12 +40,21 @@ std::unique_ptr<Interface<F, I>> get_poly2tri_impl()
     return std::make_unique<Poly2triImpl<F, I>>();
 }
 
-template <typename F>
-std::vector<p2t::Point> copy_vertices(const std::vector<shapes::Point2d<F>>& points);
-
 //
 // Implementation
 //
+namespace
+{
+    template <typename F>
+    std::vector<p2t::Point> copy_p2t_vertices(const std::vector<shapes::Point2d<F>>& points)
+    {
+        std::vector<p2t::Point> result;
+        result.reserve(points.size());
+        for (const auto& p : points) { result.emplace_back(static_cast<double>(p.x), static_cast<double>(p.y)); }
+        return result;
+    }
+}
+
 template <typename F, typename I>
 Poly2triImpl<F, I>::Poly2triImpl() = default;
 
@@ -75,6 +87,11 @@ void Poly2triImpl<F, I>::add_path(const shapes::PointPath2d<F>& pp, const stduti
 template <typename F, typename I>
 void Poly2triImpl<F, I>::add_hole(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler)
 {
+    if (pp.vertices.size() < 3)
+    {
+        err_handler(stdutils::io::Severity::WARNING, "Ignored polyline with less than 3 vertices");
+        return;
+    }
     if (!pp.closed) { err_handler(stdutils::io::Severity::WARNING, "Poly2tri interpret all polylines as closed"); }
     const I begin_idx = static_cast<I>(m_points.size());
     m_points.reserve(m_points.size() + pp.vertices.size());
@@ -118,10 +135,15 @@ shapes::Triangles2d<F, I> Poly2triImpl<F, I>::triangulate(const stdutils::io::Er
         err_handler(stdutils::io::Severity::ERROR, "Missing the main polyline. The output will be empty.");
         return result;
     }
+    if (m_points.size() < 3)
+    {
+        err_handler(stdutils::io::Severity::ERROR, "Not enough points to triangulate. The output will be empty.");
+        return result;
+    }
     assert(!m_polylines_indices.empty());
     try
     {
-        std::vector<p2t::Point> p2t_points = copy_vertices(m_points);
+        std::vector<p2t::Point> p2t_points = copy_p2t_vertices(m_points);
         result.vertices = m_points;
 
         // As per poly2tri documentation:
@@ -146,12 +168,12 @@ shapes::Triangles2d<F, I> Poly2triImpl<F, I>::triangulate(const stdutils::io::Er
 
         // Triangulate
         cdt.Triangulate();
-        std::vector<p2t::Triangle*> triangulation = cdt.GetTriangles();
+        std::vector<p2t::Triangle*> p2t_triangles = cdt.GetTriangles();
 
         p2t::Point* begin_point = &p2t_points[0];
-        result.faces.reserve(triangulation.size());
+        result.faces.reserve(p2t_triangles.size());
         shapes::Triangles2d<F, I>::face arr;
-        for (const auto& triangle : triangulation)
+        for (const auto& triangle : p2t_triangles)
         {
             for (unsigned int i = 0; i < 3; i++)
                 arr[i] = std::distance(begin_point, triangle->GetPoint(i));
@@ -167,15 +189,6 @@ shapes::Triangles2d<F, I> Poly2triImpl<F, I>::triangulate(const stdutils::io::Er
         err_handler(stdutils::io::Severity::EXCPT, out.str());
     }
     assert(is_valid(result));
-    return result;
-}
-
-template <typename F>
-std::vector<p2t::Point> copy_vertices(const std::vector<shapes::Point2d<F>>& points)
-{
-    std::vector<p2t::Point> result;
-    result.reserve(points.size());
-    for (const auto& p : points) { result.emplace_back(static_cast<double>(p.x), static_cast<double>(p.y)); }
     return result;
 }
 

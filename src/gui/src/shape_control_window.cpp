@@ -246,7 +246,6 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
             stdutils::chrono::DurationMeas meas(duration);
             recompute_triangulations();
         }
-
     }
 
     for (auto& triangulation_shape_control_pair : m_triangulation_shape_controls)

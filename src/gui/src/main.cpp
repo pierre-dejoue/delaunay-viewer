@@ -121,6 +121,10 @@ int main(int argc, char *argv[])
         // Register the Delaunay triangulation implementations
         const bool registered_delaunay_impl = delaunay::register_all_implementations();
         assert(registered_delaunay_impl);
+        if (!registered_delaunay_impl)
+        {
+            std::cerr << "Error during Delaunay implementations' registration" << std::endl;
+        }
     }
 
     // Main loop

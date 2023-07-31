@@ -15,13 +15,6 @@ set(LIB_SOURCES
     src/dt_interface.cpp
 )
 
-if(DELAUNAY_VIEWER_BUILD_POLY2TRI)
-    list(APPEND LIB_SOURCES src/impl_poly2tri.cpp)
-endif()
-if(DELAUNAY_VIEWER_BUILD_CDT)
-    list(APPEND LIB_SOURCES src/impl_cdt.cpp)
-endif()
-
 file(GLOB LIB_HEADERS include/dt/*.h src/*.h)
 
 add_library(dt STATIC ${LIB_SOURCES} ${LIB_HEADERS})
@@ -44,12 +37,19 @@ if (DELAUNAY_VIEWER_BUILD_CDT)
     )
 endif()
 
+set(THIRD_PARTY_LIBS)
+if(DELAUNAY_VIEWER_BUILD_POLY2TRI)
+    list(APPEND THIRD_PARTY_LIBS poly2tri)
+endif()
+if(DELAUNAY_VIEWER_BUILD_CDT)
+    list(APPEND THIRD_PARTY_LIBS CDT::CDT)
+endif()
 
 target_link_libraries(dt
     PRIVATE
     shapes
     stdutils
-    poly2tri
+    ${THIRD_PARTY_LIBS}
 )
 
 set_property(TARGET dt PROPERTY FOLDER "libraries")
