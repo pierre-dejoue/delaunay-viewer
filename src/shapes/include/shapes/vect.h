@@ -10,6 +10,7 @@ struct Vect2d
     using scalar = F;
     Vect2d() : x(F(0)), y(F(0)) {}
     Vect2d(F x, F y) : x(x), y(y) {}
+    bool operator==(const Vect2d<F>& other) const { return x == other.x && y == other.y; }
     F x;
     F y;
 };
@@ -21,6 +22,7 @@ struct Vect3d
     using scalar = F;
     Vect3d() : x(F(0)), y(F(0)), z(F(0)) {}
     Vect3d(F x, F y, F z) : x(x), y(y), z(z) {}
+    bool operator==(const Vect3d<F>& other) const { return x == other.x && y == other.y && z == other.z; }
     F x;
     F y;
     F z;

@@ -6,7 +6,7 @@ project(delaunay_viewer
 
 option(DELAUNAY_VIEWER_BUILD_POLY2TRI "Build with the library poly2tri" ON)
 option(DELAUNAY_VIEWER_BUILD_CDT "Build with the library CDT" ON)
-
+option(DELAUNAY_VIEWER_BUILD_UTESTS "Build unit tests" OFF)
 option(DELAUNAY_VIEWER_IMGUI_DEMO "Show ImGUI demo window" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -36,6 +36,13 @@ add_subdirectory(src/svg)
 
 # GUI
 add_subdirectory(src/gui)
+
+# Tests
+if(DELAUNAY_VIEWER_BUILD_UTESTS)
+    add_subdirectory(src/tests/stdutils)
+    add_subdirectory(src/tests/shapes)
+endif()
+
 
 set(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE)
 include(CPack)

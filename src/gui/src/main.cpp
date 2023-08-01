@@ -103,21 +103,6 @@ int main(int argc, char *argv[])
     settings.open_window();
 
     {
-        // TODO move to unit tests
-        shapes::Range<double> r1; r1.add(1.0);
-        shapes::ensure_min_extent(r1);
-        std::cout << r1 << std::endl;
-
-        shapes::Range<double> r2; r2.add(123456.0);
-        shapes::ensure_min_extent(r2);
-        std::cout << r2 << std::endl;
-
-        shapes::Range<double> r3; r3.add(-73321.0);
-        shapes::ensure_min_extent(r3);
-        std::cout << r3 << std::endl;
-    }
-
-    {
         // Register the Delaunay triangulation implementations
         const bool registered_delaunay_impl = delaunay::register_all_implementations();
         assert(registered_delaunay_impl);
