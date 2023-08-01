@@ -36,6 +36,7 @@ add_subdirectory(src/dt)
 add_subdirectory(src/svg)
 
 # GUI
+add_subdirectory(src/gui/imgui)
 add_subdirectory(src/gui)
 
 # Tests

@@ -3,7 +3,6 @@
 #
 
 # Dependencies
-add_subdirectory(imgui)
 include(pfd)
 
 configure_file(src/version.h.in version.h @ONLY)
@@ -22,7 +21,7 @@ file(GLOB GUI_HEADERS src/*.h)
 
 add_executable(delaunay_viewer ${GUI_SOURCES} ${GUI_HEADERS})
 
-if (DELAUNAY_VIEWER_IMGUI_DEMO)
+if(DELAUNAY_VIEWER_IMGUI_DEMO)
     target_compile_definitions(delaunay_viewer
         PRIVATE
         DELAUNAY_VIEWER_IMGUI_DEMO_FLAG
