@@ -31,6 +31,7 @@ public:
         bool constraint_edges;
         float latest_computation_time_ms;
         shapes::AllShapes<scalar> shape;
+        ShapeControl* sampled_shape;
     };
 
     ShapeWindow(
@@ -46,8 +47,13 @@ private:
     void init_bounding_box();
     void recompute_triangulations();
     typename ShapeDrawWindow::DrawCommandLists build_draw_lists() const;
+    ShapeControl* allocate_new_sampled_shape(shapes::AllShapes<scalar>&& shape);
+    void delete_sampled_shape(ShapeControl** sc);
+    static constexpr bool ALLOW_SAMPLING = true;
+    void shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& input_has_changed);
 
     std::vector<ShapeControl> m_input_shape_controls;
+    std::vector<std::unique_ptr<ShapeControl>> m_sampled_shape_controls;
     std::vector<std::pair<std::string, ShapeControl>> m_triangulation_shape_controls;
     const std::string m_title;
     std::unique_ptr<ShapeDrawWindow> m_draw_window;

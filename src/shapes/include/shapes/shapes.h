@@ -12,6 +12,7 @@
 namespace shapes
 {
 
+// NB: The first type in the list is default constructible therefore the variant is as well
 template <typename F>
 using AllShapes = std::variant<
     shapes::PointCloud2d<F>,
@@ -104,6 +105,36 @@ std::size_t nb_faces(const AllShapes<F>& shape)
         [](const auto&) { assert(0); }
     }, shape);
     return result;
+}
+
+template <typename F>
+bool is_point_cloud(const AllShapes<F>& shape)
+{
+    return std::visit(stdutils::Overloaded {
+        [](const shapes::PointCloud2d<F>&)          { return true; },
+        [](const shapes::PointCloud3d<F>&)          { return true; },
+        [](const auto&) { return false; }
+    }, shape);
+}
+
+template <typename F>
+bool is_point_path(const AllShapes<F>& shape)
+{
+    return std::visit(stdutils::Overloaded {
+        [](const shapes::PointPath2d<F>&)           { return true; },
+        [](const shapes::PointPath3d<F>&)           { return true; },
+        [](const auto&) { return false; }
+    }, shape);
+}
+
+template <typename F>
+bool is_bezier_path(const AllShapes<F>& shape)
+{
+    return std::visit(stdutils::Overloaded {
+        [](const shapes::CubicBezierPath2d<F>&)     { return true; },
+        [](const shapes::CubicBezierPath3d<F>&)     { return true; },
+        [](const auto&) { return false; }
+    }, shape);
 }
 
 } // namespace shapes

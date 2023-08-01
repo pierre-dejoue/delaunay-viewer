@@ -4,6 +4,7 @@
 
 #include <dt/dt_interface.h>
 #include <shapes/bounding_box_algos.h>
+#include <shapes/sampling.h>
 #include <stdutils/chrono.h>
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
@@ -11,6 +12,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -37,6 +39,7 @@ ShapeWindow::ShapeControl::ShapeControl(shapes::AllShapes<scalar>&& shape)
     , constraint_edges(false)
     , latest_computation_time_ms(0.f)
     , shape(std::move(shape))
+    , sampled_shape(nullptr)
 {
 }
 
@@ -53,6 +56,7 @@ ShapeWindow::ShapeWindow(
         std::vector<shapes::AllShapes<scalar>>&& shapes,
         std::string_view name)
     : m_input_shape_controls()
+    , m_sampled_shape_controls()
     , m_title(std::string(name) + " Controls")
     , m_draw_window()
     , m_bounding_box()
@@ -94,20 +98,29 @@ void ShapeWindow::recompute_triangulations()
             auto triangulation_algo = algo.impl_factory();
             assert(triangulation_algo);
             bool first_path = true;
+            std::vector<const ShapeControl*> active_shapes;
             for (const auto& shape_control : m_input_shape_controls)
             {
                 if (shape_control.active)
-                {
-                    std::visit(stdutils::Overloaded {
-                        [&triangulation_algo, &err_handler](const shapes::PointCloud2d<scalar>& pc) { triangulation_algo->add_steiner(pc, err_handler); },
-                        [&triangulation_algo, &err_handler, &first_path](const shapes::PointPath2d<scalar>& pp) {
-                            if (first_path) { triangulation_algo->add_path(pp, err_handler); first_path = false; }
-                            else { triangulation_algo->add_hole(pp, err_handler); }
-                        },
-                        [](const shapes::CubicBezierPath2d<scalar>& cbp) { UNUSED(cbp); },
-                        [](const auto&) { assert(0); }
-                    }, shape_control.shape);
-                }
+                    active_shapes.emplace_back(&shape_control);
+            }
+            for (const auto& shape_control_ptr : m_sampled_shape_controls)
+            {
+                assert(shape_control_ptr);
+                if (shape_control_ptr->active)
+                    active_shapes.emplace_back(shape_control_ptr.get());
+            }
+            for (const auto* shape_control_ptr : active_shapes)
+            {
+                std::visit(stdutils::Overloaded {
+                    [&triangulation_algo, &err_handler](const shapes::PointCloud2d<scalar>& pc) { triangulation_algo->add_steiner(pc, err_handler); },
+                    [&triangulation_algo, &err_handler, &first_path](const shapes::PointPath2d<scalar>& pp) {
+                        if (first_path && pp.vertices.size() >= 3) { triangulation_algo->add_path(pp, err_handler); first_path = false; }
+                        else { triangulation_algo->add_hole(pp, err_handler); }
+                    },
+                    [](const shapes::CubicBezierPath2d<scalar>& cbp) { UNUSED(cbp); },
+                    [](const auto&) { assert(0); }
+                }, shape_control_ptr->shape);
             }
             // Triangulate
             m_triangulation_shape_controls.emplace_back(algo.name, triangulation_algo->triangulate(err_handler));
@@ -126,6 +139,12 @@ ShapeDrawWindow::DrawCommandLists ShapeWindow::build_draw_lists() const
             if (shape_control.active)
                 draw_command_list.emplace_back(to_draw_command(shape_control));
         }
+        for (const auto& shape_control_ptr : m_sampled_shape_controls)
+        {
+            assert(shape_control_ptr);
+            if (shape_control_ptr->active)
+                draw_command_list.emplace_back(to_draw_command(*shape_control_ptr));
+        }
     }
 
     for (const auto& triangulation_shape_control_pair : m_triangulation_shape_controls)
@@ -135,15 +154,87 @@ ShapeDrawWindow::DrawCommandLists ShapeWindow::build_draw_lists() const
         draw_command_list.emplace_back(to_draw_command(triangulation_shape_control_pair.second));
         for (const auto& shape_control : m_input_shape_controls)
         {
-            if (shape_control.active)
+            if (shape_control.active && !shapes::is_bezier_path(shape_control.shape))
             {
                 auto& draw_command = draw_command_list.emplace_back(to_draw_command(shape_control));
+                draw_command.constraint_edges = true;
+            }
+        }
+        for (const auto& shape_control_ptr : m_sampled_shape_controls)
+        {
+            if (shape_control_ptr->active)
+            {
+                assert(!shapes::is_bezier_path(shape_control_ptr->shape));
+                auto& draw_command = draw_command_list.emplace_back(to_draw_command(*shape_control_ptr));
                 draw_command.constraint_edges = true;
             }
         }
     }
     return draw_command_lists;
 }
+
+ShapeWindow::ShapeControl* ShapeWindow::allocate_new_sampled_shape(shapes::AllShapes<scalar>&& shape)
+{
+    return m_sampled_shape_controls.emplace_back(std::make_unique<ShapeControl>(std::move(shape))).get();
+}
+
+void ShapeWindow::delete_sampled_shape(ShapeControl** sc)
+{
+    const auto sc_it = std::find_if(std::begin(m_sampled_shape_controls), std::end(m_sampled_shape_controls), [sc](const auto& elt) { return elt.get() == *sc; });
+    assert(sc_it != std::end(m_sampled_shape_controls));
+    m_sampled_shape_controls.erase(sc_it);
+    *sc = nullptr;
+}
+
+void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& input_has_changed)
+{
+    std::stringstream label;
+    label << "Shape #" << idx;
+    const bool is_open = ImGui::TreeNode(label.str().c_str());
+    shape_control.highlight = ImGui::IsItemHovered();
+    if (is_open)
+    {
+        // Active button
+        std::stringstream active_button;
+        active_button << "Active#" << idx;
+        float hue = shape_control.active ? 0.3f : 0.f;
+        ImGui::PushID(active_button.str().c_str());
+        ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(hue, 0.6f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(hue, 0.7f, 0.7f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(hue, 0.8f, 0.8f));
+        ImGui::PushStyleColor(ImGuiCol_Text, shape_control.active ? ImVec4(1.f, 1.f, 1.f, 1.f) : ImVec4(0.4f, 0.4f, 0.4f, 1.f));
+        const bool pressed = ImGui::Button("Active");
+        ImGui::PopStyleColor(4);
+        ImGui::PopID();
+        if (pressed)
+        {
+            shape_control.active = !shape_control.active;
+            input_has_changed = true;
+        }
+
+        // Info
+        ImGui::Text("Nb vertices: %d, nb edges: %d", shape_control.nb_vertices, shape_control.nb_edges);
+
+        // Sampling
+        if (allow_sampling && shapes::is_bezier_path(shape_control.shape))
+        {
+            bool is_sampled = (shape_control.sampled_shape != nullptr);
+            ImGui::Checkbox("Sample", &is_sampled);
+            if (is_sampled && !shape_control.sampled_shape)
+            {
+                shape_control.sampled_shape = allocate_new_sampled_shape(shapes::AllShapes<scalar>(shapes::trivial_sampling(shape_control.shape)));
+                input_has_changed = true;
+            }
+            if (!is_sampled && shape_control.sampled_shape)
+            {
+                delete_sampled_shape(&shape_control.sampled_shape);
+                input_has_changed = true;
+            }
+        }
+        ImGui::TreePop();
+    }
+}
+
 
 void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
 {
@@ -158,6 +249,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
         return;
     }
 
+    // Global bounding box
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (ImGui::TreeNode("Input bounding box"))
     {
@@ -188,43 +280,15 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
         ImGui::TreePop();
     }
 
+    // Iterate all input/samples shapes
     bool input_has_changed = false;
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (ImGui::TreeNode("Input shapes"))
     {
-        unsigned int idx = 1;
+        unsigned int shape_idx = 1;
         for (auto& shape_control : m_input_shape_controls)
         {
-            std::stringstream label;
-            label << "Shape #" << idx;
-            const bool is_open = ImGui::TreeNode(label.str().c_str());
-            shape_control.highlight = ImGui::IsItemHovered();
-            if (is_open)
-            {
-                // Active button
-                std::stringstream active_button;
-                active_button << "Active#" << idx;
-                float hue = shape_control.active ? 0.3f : 0.f;
-                ImGui::PushID(active_button.str().c_str());
-                ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(hue, 0.6f, 0.6f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(hue, 0.7f, 0.7f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(hue, 0.8f, 0.8f));
-                ImGui::PushStyleColor(ImGuiCol_Text, shape_control.active ? ImVec4(1.f, 1.f, 1.f, 1.f) : ImVec4(0.4f, 0.4f, 0.4f, 1.f));
-                const bool pressed = ImGui::Button("Active");
-                ImGui::PopStyleColor(4);
-                ImGui::PopID();
-                if (pressed)
-                {
-                    shape_control.active = !shape_control.active;
-                    input_has_changed = true;
-                }
-
-                // Info
-                ImGui::Text("Nb vertices: %d, nb edges: %d", shape_control.nb_vertices, shape_control.nb_edges);
-
-                ImGui::TreePop();
-            }
-            idx++;
+            shape_list_menu(shape_control, shape_idx++, ALLOW_SAMPLING, input_has_changed);
         }
         ImGui::TreePop();
     }
@@ -233,6 +297,26 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
         for (auto& shape_control : m_input_shape_controls)
         {
             shape_control.highlight = false;
+        }
+    }
+
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    if (ImGui::TreeNode("Sampled shapes"))
+    {
+        unsigned int shape_idx = 1;
+        for (auto& shape_control_ptr : m_sampled_shape_controls)
+        {
+            assert(shape_control_ptr);
+            shape_list_menu(*shape_control_ptr, shape_idx++, !ALLOW_SAMPLING, input_has_changed);
+        }
+        ImGui::TreePop();
+    }
+    else
+    {
+        for (auto& shape_control_ptr : m_sampled_shape_controls)
+        {
+            assert(shape_control_ptr);
+            shape_control_ptr->highlight = false;
         }
     }
 
@@ -248,6 +332,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
         }
     }
 
+    // Triangulation shapes
     for (auto& triangulation_shape_control_pair : m_triangulation_shape_controls)
     {
         const std::string& algo_name = triangulation_shape_control_pair.first;
