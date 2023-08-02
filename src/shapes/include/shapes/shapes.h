@@ -7,6 +7,7 @@
 
 #include <cassert>
 #include <string_view>
+#include <type_traits>
 #include <variant>
 
 namespace shapes
@@ -46,29 +47,13 @@ std::string_view get_type_str(const AllShapes<F>& shape)
 template <typename F>
 int get_dimension(const AllShapes<F>& shape)
 {
-    int result = 0;
-    std::visit(stdutils::Overloaded {
-        [&result](const shapes::PointCloud2d<F>& s)      { result = 2; },
-        [&result](const shapes::PointCloud3d<F>& s)      { result = 3; },
-        [&result](const shapes::PointPath2d<F>& s)       { result = 2; },
-        [&result](const shapes::PointPath3d<F>& s)       { result = 3; },
-        [&result](const shapes::CubicBezierPath2d<F>& s) { result = 2; },
-        [&result](const shapes::CubicBezierPath3d<F>& s) { result = 3; },
-        [&result](const shapes::Triangles2d<F>&)         { result = 2; },
-        [&result](const shapes::Triangles3d<F>&)         { result = 3; },
-        [](const auto&) { assert(0); }
-    }, shape);
-    return result;
+    return std::visit([](const auto& s) { using T = std::decay_t<decltype(s)>; return T::dim; }, shape);
 }
 
 template <typename F>
 std::size_t nb_vertices(const AllShapes<F>& shape)
 {
-    std::size_t result = 0;
-    std::visit(stdutils::Overloaded {
-        [&result](const auto& s) { result = s.vertices.size(); }
-    }, shape);
-    return result;
+    return std::visit([](const auto& s) { return s.vertices.size(); }, shape);
 }
 
 template <typename F>

@@ -1,5 +1,9 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+
+
 namespace shapes
 {
 
@@ -80,6 +84,33 @@ template <typename F>
 Vect3d<F> operator*(F s, const Vect3d<F>& a)
 {
     return Vect3d<F>(s * a.x, s * a.y, s * a.z);
+}
+
+//
+// Norms
+//
+template <typename F>
+F norm(const Vect2d<F>& v)
+{
+    return std::sqrt(v.x * v.x + v.y * v.y);
+}
+
+template <typename F>
+F inf_norm(const Vect2d<F>& v)
+{
+    return std::max(std::abs(v.x), std::abs(v.y));
+}
+
+template <typename F>
+F norm(const Vect3d<F>& v)
+{
+    return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+template <typename F>
+F inf_norm(const Vect3d<F>& v)
+{
+    return std::max(std::abs(v.x), std::max(std::abs(v.y), std::abs(v.z)));
 }
 
 

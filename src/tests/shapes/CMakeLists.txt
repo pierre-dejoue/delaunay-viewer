@@ -5,6 +5,8 @@ include(catch2)
 
 set(UTESTS_SOURCES
     src/test_bounding_box.cpp
+    src/test_sampling.cpp
+    src/test_shapes.cpp
     src/test_vect.cpp
 )
 

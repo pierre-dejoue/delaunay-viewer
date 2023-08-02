@@ -118,7 +118,7 @@ void ShapeWindow::recompute_triangulations()
                         if (first_path && pp.vertices.size() >= 3) { triangulation_algo->add_path(pp, err_handler); first_path = false; }
                         else { triangulation_algo->add_hole(pp, err_handler); }
                     },
-                    [](const shapes::CubicBezierPath2d<scalar>& cbp) { UNUSED(cbp); },
+                    [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
                     [](const auto&) { assert(0); }
                 }, shape_control_ptr->shape);
             }
@@ -218,17 +218,42 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
         // Sampling
         if (allow_sampling && shapes::is_bezier_path(shape_control.shape))
         {
+            std::stringstream sample_checkbox;
+            sample_checkbox << "Sample##" << idx;
             bool is_sampled = (shape_control.sampled_shape != nullptr);
-            ImGui::Checkbox("Sample", &is_sampled);
+            ImGui::Checkbox(sample_checkbox.str().c_str(), &is_sampled);
             if (is_sampled && !shape_control.sampled_shape)
             {
                 shape_control.sampled_shape = allocate_new_sampled_shape(shapes::AllShapes<scalar>(shapes::trivial_sampling(shape_control.shape)));
+                if (std::holds_alternative<shapes::CubicBezierPath2d<scalar>>(shape_control.shape))
+                {
+                    const auto& cbp = std::get<shapes::CubicBezierPath2d<scalar>>(shape_control.shape);
+                    shape_control.sampler = std::make_unique<shapes::UniformSamplingCubicBezier2d<scalar>>(cbp, true);
+                    shape_control.sampling_length = static_cast<float>(shape_control.sampler->max_segment_length());
+                }
                 input_has_changed = true;
             }
             if (!is_sampled && shape_control.sampled_shape)
             {
+                shape_control.sampler.reset();
                 delete_sampled_shape(&shape_control.sampled_shape);
                 input_has_changed = true;
+            }
+            if (shape_control.sampler)
+            {
+                std::stringstream sampling_length_id;
+                sampling_length_id << "Sampling length##" << idx;
+                assert(is_sampled);
+                const float max = 1.05f * static_cast<float>(shape_control.sampler->max_segment_length());
+                const float min = max / 1000.f;
+                float new_sampling_length = shape_control.sampling_length;
+                ImGui::SliderFloat(sampling_length_id .str().c_str(), &new_sampling_length, min, max, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+                if (new_sampling_length != shape_control.sampling_length)
+                {
+                    shape_control.sampling_length = new_sampling_length;
+                    shape_control.sampled_shape->update(shapes::AllShapes<scalar>(shape_control.sampler->sample(new_sampling_length)));
+                    input_has_changed = true;
+                }
             }
         }
         ImGui::TreePop();

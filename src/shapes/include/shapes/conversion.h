@@ -7,8 +7,10 @@
 namespace shapes
 {
 
+static constexpr bool CLOSED_PATH = true;
+
 template <typename P>
-PointCloud<P> to_point_cloud(PointPath<F>&& pp)
+PointCloud<P> to_point_cloud(PointPath<P>&& pp)
 {
     PointCloud<P> pc;
     pc.vertices = std::move(pp.vertices);
@@ -16,7 +18,7 @@ PointCloud<P> to_point_cloud(PointPath<F>&& pp)
 }
 
 template <typename P>
-PointPath<P> to_point_path(PointCloud<F>&& pc, bool closed = true)
+PointPath<P> to_point_path(PointCloud<P>&& pc, bool closed = true)
 {
     PointPath<P> pp;
     pp.vertices = std::move(pc.vertices);

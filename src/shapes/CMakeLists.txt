@@ -25,7 +25,7 @@ target_include_directories(shapes
 set_target_warnings(shapes ON)
 
 target_link_libraries(shapes
-    PRIVATE
+    PUBLIC
     stdutils
 )
 

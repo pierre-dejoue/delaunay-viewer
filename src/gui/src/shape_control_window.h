@@ -4,6 +4,7 @@
 
 #include <dt/dt_impl.h>
 #include <shapes/bounding_box.h>
+#include <shapes/sampling.h>
 #include <shapes/shapes.h>
 
 #include <memory>
@@ -31,6 +32,8 @@ public:
         bool constraint_edges;
         float latest_computation_time_ms;
         shapes::AllShapes<scalar> shape;
+        std::unique_ptr<shapes::UniformSamplingCubicBezier2d<scalar>> sampler;
+        float sampling_length;
         ShapeControl* sampled_shape;
     };
 
