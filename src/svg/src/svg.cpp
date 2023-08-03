@@ -4,6 +4,8 @@
 #include <ssvg/ssvg.h>
 #include <stdutils/macros.h>
 
+#include <algorithm>
+#include <cassert>
 #include <cstdint>
 #include <exception>
 #include <fstream>
@@ -108,13 +110,13 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                 break;
 
             case ssvg::PathCmdType::Enum::QuadraticTo:
-                wrn_msg = "QuadraticTo is not supported";
-                can_import_path = false;
+                count_cubicto++;
                 break;
 
             case ssvg::PathCmdType::Enum::ArcTo:
-                wrn_msg = "ArcTo is not supported";
-                can_import_path = false;
+                count_cubicto++;
+                // TODO Proper conversion to cubic Bezier
+                err_handler(stdutils::io::Severity::WARNING, "Path ArcTo converted to a straight line");
                 break;
 
             case ssvg::PathCmdType::Enum::ClosePath:
@@ -155,11 +157,11 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                         static_cast<F>(cmd.m_Data[0]),
                         static_cast<F>(cmd.m_Data[1]));
                     new_cbp.vertices.emplace_back(
-                        (F(2) / F(3)) * prev_point.x + (F(1) / F(3)) * next_point.x,
-                        (F(2) / F(3)) * prev_point.y + (F(1) / F(3)) * next_point.y);
+                        (F{2} / F{3}) * prev_point.x + (F{1} / F{3}) * next_point.x,
+                        (F{2} / F{3}) * prev_point.y + (F{1} / F{3}) * next_point.y);
                     new_cbp.vertices.emplace_back(
-                        (F(1) / F(3)) * prev_point.x + (F(2) / F(3)) * next_point.x,
-                        (F(1) / F(3)) * prev_point.y + (F(2) / F(3)) * next_point.y);
+                        (F{1} / F{3}) * prev_point.x + (F{2} / F{3}) * next_point.x,
+                        (F{1} / F{3}) * prev_point.y + (F{2} / F{3}) * next_point.y);
                     new_cbp.vertices.push_back(next_point);
                     break;
                 }
@@ -177,9 +179,45 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                     break;
 
                 case ssvg::PathCmdType::Enum::QuadraticTo:  // Data: [0] = x1, [1] = y1, [2] = x, [3] = y
-                case ssvg::PathCmdType::Enum::ArcTo:        // Data: [0] = rx, [1] = ry, [2] = x-axis-rotation, [3] = large-arc-flag, [4] = sweep-flag, [5] = x, [6] = y
-                    assert(0);
+                {
+                    // Convert quad bezier to a cubic bezier
+                    assert(!new_cbp.vertices.empty());
+                    const shapes::Point2d<F> prev_point = new_cbp.vertices.back();
+                    const shapes::Point2d<F> control_point(
+                        static_cast<F>(cmd.m_Data[0]),
+                        static_cast<F>(cmd.m_Data[1]));
+                    const shapes::Point2d<F> next_point(
+                        static_cast<F>(cmd.m_Data[2]),
+                        static_cast<F>(cmd.m_Data[3]));
+                    new_cbp.vertices.emplace_back(
+                        (prev_point.x + F{2} * control_point.x) / F{3},
+                        (prev_point.y + F{2} * control_point.y) / F{3});
+                    new_cbp.vertices.emplace_back(
+                        (next_point.x + F{2} * control_point.x) / F{3},
+                        (next_point.y + F{2} * control_point.y) / F{3});
+                    new_cbp.vertices.push_back(next_point);
                     break;
+                }
+
+                case ssvg::PathCmdType::Enum::ArcTo:        // Data: [0] = rx, [1] = ry, [2] = x-axis-rotation, [3] = large-arc-flag, [4] = sweep-flag, [5] = x, [6] = y
+                {
+                    // The conversion from Arc to Cubic Bezier performed by simple-svg (with flag ssvg::ImageLoadFlags::ConvertArcToCubicBezier) has been proven broken.
+                    // It generates nan on some cases (for example with test file icons8-futurama-leela.svg).
+                    // For now we just convert arc to straight lines
+                    // TODO implement a more sensible conversion to cubic Bezier
+                    const shapes::Point2d<F> prev_point = new_cbp.vertices.back();
+                    const shapes::Point2d<F> next_point(
+                        static_cast<F>(cmd.m_Data[5]),
+                        static_cast<F>(cmd.m_Data[6]));
+                    new_cbp.vertices.emplace_back(
+                        (F{2} / F{3}) * prev_point.x + (F{1} / F{3}) * next_point.x,
+                        (F{2} / F{3}) * prev_point.y + (F{1} / F{3}) * next_point.y);
+                    new_cbp.vertices.emplace_back(
+                        (F{1} / F{3}) * prev_point.x + (F{2} / F{3}) * next_point.x,
+                        (F{1} / F{3}) * prev_point.y + (F{2} / F{3}) * next_point.y);
+                    new_cbp.vertices.push_back(next_point);
+                    break;
+                }
 
                 case ssvg::PathCmdType::Enum::ClosePath:
                     assert(!new_cbp.vertices.empty());
@@ -191,6 +229,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
             }
         }
         assert(shapes::valid_size(new_cbp));
+        assert(std::all_of(new_cbp.vertices.begin(), new_cbp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); }));
     }
     else if (can_import_path)
     {
@@ -223,6 +262,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                     break;
             }
         }
+        assert(std::all_of(new_pp.vertices.begin(), new_pp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); }));
     }
     else
     {
@@ -296,6 +336,7 @@ void parse_ssvg_image_shape(const ssvg::Shape* shape_ptr, Paths<F>& out_paths, c
                     static_cast<F>(shape_ptr->m_PointList.m_Coords[2*idx]),
                     static_cast<F>(shape_ptr->m_PointList.m_Coords[2*idx + 1]));
             }
+            assert(std::all_of(new_pp.vertices.begin(), new_pp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); }));
             break;
         }
 
@@ -344,13 +385,10 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
                 err_handler(stdutils::io::Severity::FATAL, oss.str());
             }
         }
-        constexpr std::uint32_t svg_parser_flags =
-            ssvg::ImageLoadFlags::ConvertQuadToCubicBezier |
-            ssvg::ImageLoadFlags::ConvertArcToCubicBezier;
-
-       initialize_ssvg_lib();
-       SSVGImageEncapsulate ssvg_img(ssvg::imageLoad(buf.data(), svg_parser_flags, &get_default_shape_attributes()));
-       parse_ssvg_image_shape_list(&ssvg_img.ptr->m_ShapeList, result, err_handler);
+        constexpr std::uint32_t svg_parser_flags = 0;
+        initialize_ssvg_lib();
+        SSVGImageEncapsulate ssvg_img(ssvg::imageLoad(buf.data(), svg_parser_flags, &get_default_shape_attributes()));
+        parse_ssvg_image_shape_list(&ssvg_img.ptr->m_ShapeList, result, err_handler);
     }
     catch(const std::exception& e)
     {

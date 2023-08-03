@@ -29,9 +29,23 @@ struct Vect3d
 };
 
 //
+// Sanity checks
+//
+template <typename F>
+inline bool isfinite(const Vect2d<F>& v)
+{
+    return std::isfinite(v.x) && std::isfinite(v.y);
+}
+
+template <typename F>
+inline bool isfinite(const Vect3d<F>& v)
+{
+    return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+}
+
+//
 // Standard operations
 //
-
 template <typename F>
 Vect2d<F> operator+(const Vect2d<F>& a, const Vect2d<F>& b)
 {
