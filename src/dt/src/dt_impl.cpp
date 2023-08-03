@@ -17,13 +17,15 @@ namespace
         bool success = true;
 
 #if BUILD_POLY2TRI
-        // Poly2tri
+        // Poly2tri (only supports double)
         success &= register_impl<double, std::uint32_t>("Poly2tri", &get_poly2tri_impl<double, std::uint32_t>);
 #endif
 
 #if BUILD_CDT
-        // CDT
-        success &= register_impl<double, std::uint32_t>("CDT", &get_cdt_impl<double, std::uint32_t>);
+        // CDT float
+        success &= register_impl<double, std::uint32_t>("CDT_fp32", &get_cdt_impl<float, double, std::uint32_t>);
+        // CDT double
+        success &= register_impl<double, std::uint32_t>("CDT_fp64", &get_cdt_impl<double, double, std::uint32_t>);
 #endif
 
         return success;

@@ -12,7 +12,9 @@
 
 namespace delaunay
 {
-template <typename F, typename I = std::uint32_t>
+// Fc  floating-point type used by the library (computation)
+// F   floating-point type used for the interface
+template <typename Fc, typename F, typename I = std::uint32_t>
 class CDTImpl : public Interface<F, I>
 {
 public:
@@ -30,10 +32,10 @@ private:
     std::vector<bool> m_polylines_closed;
 };
 
-template <typename F, typename I>
+template <typename Fc, typename F, typename I>
 std::unique_ptr<Interface<F, I>> get_cdt_impl()
 {
-    return std::make_unique<CDTImpl<F, I>>();
+    return std::make_unique<CDTImpl<Fc, F, I>>();
 }
 
 //
@@ -41,22 +43,23 @@ std::unique_ptr<Interface<F, I>> get_cdt_impl()
 //
 namespace
 {
-    template <typename F>
-    std::vector<CDT::V2d<F>> copy_cdt_vertices(const std::vector<shapes::Point2d<F>>& points)
+    template <typename Fc, typename F>
+    std::vector<CDT::V2d<Fc>> copy_cdt_vertices(const std::vector<shapes::Point2d<F>>& points)
     {
-        static_assert(sizeof(CDT::V2d<F>) == sizeof(shapes::Point2d<F>), "Expected CDT vertex to have the same footprint as Point2d<F>");
-        std::vector<CDT::V2d<F>> result;
+        std::vector<CDT::V2d<Fc>> result;
         result.reserve(points.size());
-        std::transform(std::cbegin(points), std::cend(points), std::back_inserter(result), [](const auto& p) { return *(reinterpret_cast<const CDT::V2d<F>*>(&p)); });
+        std::transform(std::cbegin(points), std::cend(points), std::back_inserter(result), [](const auto& p) {
+            return CDT::V2d<Fc>::make(static_cast<Fc>(p.x), static_cast<Fc>(p.y));
+        });
         return result;
     }
 }
 
-template <typename F, typename I>
-CDTImpl<F, I>::CDTImpl() = default;
+template <typename Fc, typename F, typename I>
+CDTImpl<Fc, F, I>::CDTImpl() = default;
 
-template <typename F, typename I>
-void CDTImpl<F, I>::add_path(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler)
+template <typename Fc, typename F, typename I>
+void CDTImpl<Fc, F, I>::add_path(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler)
 {
     if (pp.vertices.size() < 3)
     {
@@ -73,21 +76,21 @@ void CDTImpl<F, I>::add_path(const shapes::PointPath2d<F>& pp, const stdutils::i
     m_polylines_closed.emplace_back(pp.closed);
 }
 
-template <typename F, typename I>
-void CDTImpl<F, I>::add_hole(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler)
+template <typename Fc, typename F, typename I>
+void CDTImpl<Fc, F, I>::add_hole(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler)
 {
     add_path(pp, err_handler);
 }
 
-template <typename F, typename I>
-void CDTImpl<F, I>::add_steiner(const shapes::PointCloud2d<F>& pc, const stdutils::io::ErrorHandler& err_handler)
+template <typename Fc, typename F, typename I>
+void CDTImpl<Fc, F, I>::add_steiner(const shapes::PointCloud2d<F>& pc, const stdutils::io::ErrorHandler& err_handler)
 {
     m_points.reserve(m_points.size() + pc.vertices.size());
     m_points.insert(m_points.end(), pc.vertices.begin(), pc.vertices.end());
 }
 
-template <typename F, typename I>
-shapes::Triangles2d<F, I> CDTImpl<F, I>::triangulate(const stdutils::io::ErrorHandler& err_handler) const
+template <typename Fc, typename F, typename I>
+shapes::Triangles2d<F, I> CDTImpl<Fc, F, I>::triangulate(const stdutils::io::ErrorHandler& err_handler) const
 {
     shapes::Triangles2d<F, I> result;
     if (m_points.size() < 3)
@@ -97,9 +100,9 @@ shapes::Triangles2d<F, I> CDTImpl<F, I>::triangulate(const stdutils::io::ErrorHa
     }
     try
     {
-        CDT::Triangulation<F> cdt;
+        CDT::Triangulation<Fc> cdt;
 
-        std::vector<CDT::V2d<F>> vertices = copy_cdt_vertices(m_points);
+        std::vector<CDT::V2d<Fc>> vertices = copy_cdt_vertices<Fc, F>(m_points);
         cdt.insertVertices(vertices);
 
         CDT::EdgeVec edges;
