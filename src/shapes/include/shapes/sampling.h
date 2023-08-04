@@ -219,7 +219,7 @@ void UniformSamplingCubicBezier<F, Point2d>::one_iteration(bool trace)
             sample_v_norm_avg[idx] = F(0.5) * (sample_v_norm[idx] + sample_v_norm[idx + 1]);
         // Although the derivate of the cubic bezier can be zero, it only happens on a singular point (aka a cusp).
         // Therefore the average of the derivate between two points t0 and t1 can never be zero.
-        assert(std::all_of(std::begin(sample_v_norm_avg), std::end(sample_v_norm_avg), [](const F& v_avg) { return v_avg > F{0}; }));
+        assert(std::all_of(std::cbegin(sample_v_norm_avg), std::cend(sample_v_norm_avg), [](const F& v_avg) { return v_avg > F{0}; }));
 
         // 2. Compute sample delta length, and total length
         F& seg_length = m_segment_total_length[seg];
@@ -263,9 +263,9 @@ void UniformSamplingCubicBezier<F, Point2d>::one_iteration(bool trace)
         assert(begin_sample_t[SAMPLING_BASE_N] == 1.f);
     }
     if (trace)
-        std::copy(std::begin(m_segment_total_length), std::end(m_segment_total_length), std::back_inserter(m_trace_iterations.back().total_length));
+        std::copy(std::cbegin(m_segment_total_length), std::cend(m_segment_total_length), std::back_inserter(m_trace_iterations.back().total_length));
 
-    m_max_segment_length = *std::max_element(std::begin(m_segment_total_length), std::end(m_segment_total_length));
+    m_max_segment_length = *std::max_element(std::cbegin(m_segment_total_length), std::cend(m_segment_total_length));
 }
 
 } // namespace shapes

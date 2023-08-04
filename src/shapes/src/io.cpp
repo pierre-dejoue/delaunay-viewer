@@ -51,7 +51,7 @@ bool parse_coordinate_line(std::istringstream line_stream, ShapeBuffer<F>& buffe
         vertex[idx++] = *fp_stream++;
     if (idx > 0)
     {
-        assert(std::all_of(std::begin(vertex), std::end(vertex), [](const F& f) { return std::isfinite(f); }));
+        assert(std::all_of(std::cbegin(vertex), std::cend(vertex), [](const F& f) { return std::isfinite(f); }));
         buffer.vertices.push_back(vertex);
         buffer.dim = std::max(buffer.dim, idx);
         return true;

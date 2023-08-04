@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
         }
 
         // Shape windows (one window per input file)
-        for (auto it = std::begin(shape_windows); it != std::end(shape_windows);)
+        for (auto it = std::cbegin(shape_windows); it != std::cend(shape_windows);)
         {
             bool can_be_erased = false;
             (*it)->visit(can_be_erased, settings);

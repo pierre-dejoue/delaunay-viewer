@@ -47,7 +47,7 @@ namespace
         static_assert(sizeof(CDT::V2d<F>) == sizeof(shapes::Point2d<F>), "Expected CDT vertex to have the same footprint as Point2d<F>");
         std::vector<CDT::V2d<F>> result;
         result.reserve(points.size());
-        std::transform(std::begin(points), std::end(points), std::back_inserter(result), [](const auto& p) { return *(reinterpret_cast<const CDT::V2d<F>*>(&p)); });
+        std::transform(std::cbegin(points), std::cend(points), std::back_inserter(result), [](const auto& p) { return *(reinterpret_cast<const CDT::V2d<F>*>(&p)); });
         return result;
     }
 }

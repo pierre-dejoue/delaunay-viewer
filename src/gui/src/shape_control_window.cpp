@@ -180,8 +180,8 @@ ShapeWindow::ShapeControl* ShapeWindow::allocate_new_sampled_shape(shapes::AllSh
 
 void ShapeWindow::delete_sampled_shape(ShapeControl** sc)
 {
-    const auto sc_it = std::find_if(std::begin(m_sampled_shape_controls), std::end(m_sampled_shape_controls), [sc](const auto& elt) { return elt.get() == *sc; });
-    assert(sc_it != std::end(m_sampled_shape_controls));
+    const auto sc_it = std::find_if(std::cbegin(m_sampled_shape_controls), std::cend(m_sampled_shape_controls), [sc](const auto& elt) { return elt.get() == *sc; });
+    assert(sc_it != std::cend(m_sampled_shape_controls));
     m_sampled_shape_controls.erase(sc_it);
     *sc = nullptr;
 }

@@ -58,7 +58,7 @@ std::vector<RegisteredImpl<F, I>> get_impl_list()
 {
     std::vector<RegisteredImpl<F, I>> result;
     const auto& impl_map = get_impl_map<F, I>();
-    std::transform(std::begin(impl_map), std::end(impl_map), std::back_inserter(result), [](const auto& kvp) { return RegisteredImpl<F, I>{ kvp.first, kvp.second }; });
+    std::transform(std::cbegin(impl_map), std::cend(impl_map), std::back_inserter(result), [](const auto& kvp) { return RegisteredImpl<F, I>{ kvp.first, kvp.second }; });
     return result;
 }
 

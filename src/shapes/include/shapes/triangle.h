@@ -39,7 +39,7 @@ template <typename P, typename I>
 bool is_valid(const Triangles<P, I>& ts)
 {
     const I nb_vertices = static_cast<I>(ts.vertices.size());
-    return std::all_of(std::begin(ts.faces), std::end(ts.faces), [nb_vertices](const Triangles<P>::face& f) {
+    return std::all_of(std::cbegin(ts.faces), std::cend(ts.faces), [nb_vertices](const Triangles<P>::face& f) {
         return f[0] < nb_vertices && f[1] < nb_vertices && f[2] < nb_vertices && f[0] != f[1] && f[1] != f[2] && f[2] != f[0];
     });
 }
