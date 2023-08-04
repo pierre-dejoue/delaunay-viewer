@@ -1,11 +1,13 @@
 #pragma once
 
+#include <graphs/graph.h>
 #include <dt/dt_interface.h>
 #include <poly2tri/poly2tri.h>
 
 #include <cstdint>
 #include <exception>
 #include <iterator>
+#include <memory>
 #include <numeric>
 #include <sstream>
 #include <utility>
@@ -172,12 +174,20 @@ shapes::Triangles2d<F, I> Poly2triImpl<F, I>::triangulate(const stdutils::io::Er
 
         p2t::Point* begin_point = &p2t_points[0];
         result.faces.reserve(p2t_triangles.size());
-        shapes::Triangles2d<F, I>::face arr;
+        const I nb_vertices = static_cast<I>(result.vertices.size());
         for (const auto& triangle : p2t_triangles)
         {
+            graphs::Triangle<I> face;
+            bool valid_range = true;
             for (unsigned int i = 0; i < 3; i++)
-                arr[i] = std::distance(begin_point, triangle->GetPoint(i));
-            result.faces.emplace_back(arr);
+            {
+                face[i] = std::distance(begin_point, triangle->GetPoint(i));
+                valid_range &= (face[i] < nb_vertices);
+            }
+            if (valid_range && graphs::is_valid(face))
+                result.faces.emplace_back(std::move(face));
+            else
+                err_handler(stdutils::io::Severity::ERROR, "The triangulation (poly2tri) returned an invalid triangle");
         }
     }
     catch(const std::exception& e)

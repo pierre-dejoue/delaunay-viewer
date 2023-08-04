@@ -1,11 +1,12 @@
 #pragma once
 
+#include <graphs/index.h>
+#include <graphs/graph_algos.h>
 #include <shapes/point.h>
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <set>
 #include <vector>
 
 
@@ -20,13 +21,14 @@ namespace shapes
 template <typename P, typename I = std::uint32_t>
 struct Triangles
 {
+    static_assert(graphs::IndexTraits<I>::is_valid(), "A vertex index must be an unsigned integral type");
     static constexpr int dim = P::dim;
     using scalar = typename P::scalar;
     using index = I;
-    using face = std::array<I, 3>;
+    using face = graphs::Triangle<I>;
     Triangles() : vertices(), faces() {}
     std::vector<P> vertices;
-    std::vector<face> faces;
+    graphs::TriangleSoup<I> faces;
 };
 
 template <typename F, typename I = std::uint32_t>
@@ -36,27 +38,19 @@ template <typename F, typename I = std::uint32_t>
 using Triangles3d = Triangles<Point3d<F>, I>;
 
 template <typename P, typename I>
-bool is_valid(const Triangles<P, I>& ts)
+bool is_valid(const Triangles<P, I>& triangles)
 {
-    const I nb_vertices = static_cast<I>(ts.vertices.size());
-    return std::all_of(std::cbegin(ts.faces), std::cend(ts.faces), [nb_vertices](const Triangles<P>::face& f) {
-        return f[0] < nb_vertices && f[1] < nb_vertices && f[2] < nb_vertices && f[0] != f[1] && f[1] != f[2] && f[2] != f[0];
+    const I nb_vertices = static_cast<I>(triangles.vertices.size());
+    return std::all_of(std::cbegin(triangles.faces), std::cend(triangles.faces), [nb_vertices](const Triangles<P>::face& f) {
+        return graphs::is_valid(f) && f[0] < nb_vertices && f[1] < nb_vertices && f[2] < nb_vertices;
     });
 }
 
 template <typename P, typename I>
-std::size_t nb_edges(const Triangles<P, I>& ts)
+std::size_t nb_edges(const Triangles<P, I>& triangles)
 {
-    assert(is_valid(ts));
-    using OrderedEdge = std::pair<I, I>;
-    std::set<OrderedEdge> edges;
-    for (const auto& t : ts.faces)
-    {
-        edges.insert(std::minmax(t[0], t[1]));
-        edges.insert(std::minmax(t[1], t[2]));
-        edges.insert(std::minmax(t[2], t[0]));
-    }
-    return edges.size();
+    assert(is_valid(triangles));
+    return graphs::nb_edges(triangles.faces);
 }
 
 } // namespace shapes

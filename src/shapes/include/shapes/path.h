@@ -19,7 +19,7 @@ struct PointPath
 {
     static constexpr int dim = P::dim;
     using scalar = typename P::scalar;
-    PointPath() : closed(true), vertices() {}
+    PointPath() : closed(false), vertices() {}
     bool closed;
     std::vector<P> vertices;
 };
@@ -31,11 +31,17 @@ template <typename F>
 using PointPath3d = PointPath<Point3d<F>>;
 
 template <typename P>
-std::size_t nb_edges(const PointPath<P>& cbp)
+bool valid_size(const PointPath<P>& pp)
 {
-    assert(!cbp.vertices.empty() || cbp.closed);
-    const auto sz = cbp.vertices.size();
-    return cbp.closed ? sz : (sz == 0 ? 0 : sz - 1);
+    return !pp.closed || pp.vertices.size() > 2;
+}
+
+template <typename P>
+std::size_t nb_edges(const PointPath<P>& pp)
+{
+    assert(valid_size(pp));
+    const auto sz = pp.vertices.size();
+    return pp.closed ? (sz > 2 ? sz : 0) : (sz > 0 ? sz - 1 : 0);
 }
 
 

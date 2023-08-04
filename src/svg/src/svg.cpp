@@ -69,8 +69,8 @@ const ssvg::ShapeAttributes& get_default_shape_attributes()
 
 struct SSVGImageEncapsulate
 {
-    SSVGImageEncapsulate(ssvg::Image* img_ptr) : ptr(img_ptr) { assert(ptr); }
-    ~SSVGImageEncapsulate() { ssvg::imageDestroy(ptr); }
+    SSVGImageEncapsulate(ssvg::Image* img_ptr) : ptr(img_ptr) { }
+    ~SSVGImageEncapsulate() { if (ptr) { ssvg::imageDestroy(ptr); } }
     ssvg::Image* const ptr;
 };
 
@@ -388,7 +388,10 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
         constexpr std::uint32_t svg_parser_flags = 0;
         initialize_ssvg_lib();
         SSVGImageEncapsulate ssvg_img(ssvg::imageLoad(buf.data(), svg_parser_flags, &get_default_shape_attributes()));
-        parse_ssvg_image_shape_list(&ssvg_img.ptr->m_ShapeList, result, err_handler);
+        if (ssvg_img.ptr)
+            parse_ssvg_image_shape_list(&ssvg_img.ptr->m_ShapeList, result, err_handler);
+        else
+            err_handler(stdutils::io::Severity::ERROR, "Library simple-svg failed to parse the image");
     }
     catch(const std::exception& e)
     {

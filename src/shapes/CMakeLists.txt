@@ -5,11 +5,7 @@
 include(compiler_options)
 
 set(LIB_SOURCES
-    src/bounding_box.cpp
     src/io.cpp
-    src/path.cpp
-    src/point_cloud.cpp
-    src/point.cpp
 )
 
 add_library(shapes STATIC ${LIB_SOURCES})
@@ -26,6 +22,7 @@ set_target_warnings(shapes ON)
 
 target_link_libraries(shapes
     PUBLIC
+    graphs
     stdutils
 )
 

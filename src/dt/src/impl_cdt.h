@@ -137,12 +137,13 @@ shapes::Triangles2d<F, I> CDTImpl<Fc, F, I>::triangulate(const stdutils::io::Err
 
         result.vertices = m_points;
         result.faces.reserve(cdt_triangles.size());
-        shapes::Triangles2d<F, I>::face arr;
         for (const auto& triangle : cdt_triangles)
         {
-            for (unsigned int i = 0; i < 3; i++)
-                arr[i] = static_cast<I>(triangle.vertices[i]);
-            result.faces.emplace_back(arr);
+            result.faces.emplace_back(
+                static_cast<I>(triangle.vertices[0]),
+                static_cast<I>(triangle.vertices[1]),
+                static_cast<I>(triangle.vertices[2])
+            );
         }
     }
     catch(const std::exception& e)
