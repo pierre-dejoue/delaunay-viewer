@@ -3,6 +3,7 @@
 #include <shapes/bezier.h>
 #include <shapes/path_algos.h>
 #include <shapes/shapes.h>
+#include <stdutils/algorithm.h>
 #include <stdutils/macros.h>
 
 #include <algorithm>
@@ -14,20 +15,64 @@
 namespace shapes
 {
 
+/**
+ *  Trivial sampling just extracts the endpoints of each path
+ */
 template <typename F>
 AllShapes<F> trivial_sampling(const AllShapes<F>& shape);
 
+/**
+ * Uniform sampling generic interface
+ */
 template <typename F, template<typename> typename P>
-class UniformSamplingCubicBezier
+class UniformSamplingInterface
+{
+public:
+    UniformSamplingInterface() = default;
+    virtual ~UniformSamplingInterface() = default;
+    virtual F max_segment_length() const = 0;
+    virtual PointPath<P<F>> sample(F max_sampling_length) const = 0;
+};
+
+template <typename F>
+using UniformSamplingInterface2d = UniformSamplingInterface<F, Point2d>;
+
+/**
+ * Uniform sampling of point paths
+ */
+template <typename F, template<typename> typename P>
+class UniformSamplingPointPath : public UniformSamplingInterface<F, P>
+{
+public:
+    UniformSamplingPointPath(const PointPath<P<F>>& pp);
+    ~UniformSamplingPointPath() = default;
+    F max_segment_length() const override;
+    PointPath<P<F>> sample(F max_sampling_length) const override;
+
+private:
+    PointPath<P<F>> m_point_path;
+    std::vector<F> m_segment_length;
+    F m_max_segment_length;
+};
+
+template <typename F>
+using UniformSamplingPointPath2d = UniformSamplingPointPath<F, Point2d>;
+
+/**
+ * Uniform sampling of cubic bezier paths
+ */
+template <typename F, template<typename> typename P>
+class UniformSamplingCubicBezier : public UniformSamplingInterface<F, P>
 {};
 
 template <typename F>
-class UniformSamplingCubicBezier<F, Point2d>
+class UniformSamplingCubicBezier<F, Point2d> : public UniformSamplingInterface<F, Point2d>
 {
 public:
     UniformSamplingCubicBezier(const CubicBezierPath<Point2d<F>>& cbp, bool trace_init = false);
-    F max_segment_length() const;
-    PointPath<Point2d<F>> sample(F max_sampling_length) const;
+    ~UniformSamplingCubicBezier() = default;
+    F max_segment_length() const override;
+    PointPath<Point2d<F>> sample(F max_sampling_length) const override;
 
 private:
     static constexpr unsigned int SAMPLING_BASE_N = 100;
@@ -56,8 +101,68 @@ template <typename F>
 using UniformSamplingCubicBezier2d = UniformSamplingCubicBezier<F, Point2d>;
 
 //
+//
 // Implementation
 //
+//
+
+template <typename F, template<typename> typename P>
+UniformSamplingPointPath<F, P>::UniformSamplingPointPath(const PointPath<P<F>>& pp)
+    : m_point_path(pp)
+    , m_segment_length()
+    , m_max_segment_length(F{0})
+{
+    m_segment_length.reserve(nb_edges(pp));
+    const auto sz = pp.vertices.size();
+    for (std::size_t idx = 0; idx < sz; idx++)
+    {
+        if (!pp.closed && idx == sz - 1)
+            break;
+        const P<F>& p0 = pp.vertices[idx];
+        const P<F>& p1 = pp.vertices[(idx + 1) % sz];
+        const auto& length = m_segment_length.emplace_back(shapes::norm(p1 - p0));
+        stdutils::max_update(m_max_segment_length, length);
+    }
+}
+
+template <typename F, template<typename> typename P>
+F UniformSamplingPointPath<F, P>::max_segment_length() const
+{
+    return m_max_segment_length;
+}
+
+template <typename F, template<typename> typename P>
+PointPath<P<F>> UniformSamplingPointPath<F, P>::sample(F max_sampling_length) const
+{
+    PointPath<P<F>> result;
+    result.closed = m_point_path.closed;
+
+    // TODO result.vertices.reserve( ? );
+    const auto sz = m_point_path.vertices.size();
+    for (std::size_t idx = 0; idx < sz; idx++)
+    {
+        if (!m_point_path.closed && idx == sz - 1)
+            break;
+        const P<F>& p0 = m_point_path.vertices[idx];
+        const P<F>& p1 = m_point_path.vertices[(idx + 1) % sz];
+        const F seg_length = m_segment_length[idx];
+        const unsigned int nb_sampling_edges = static_cast<unsigned int>(std::ceil(seg_length / max_sampling_length)) ;    // excluding sample t = 1.f
+        const F dt = F{1} / static_cast<F>(nb_sampling_edges);
+        F t{0};
+        for (std::size_t s = 0; s < nb_sampling_edges; s++, t += dt)
+        {
+            result.vertices.emplace_back((1.f - t) * p0 + t * p1);
+        }
+    }
+    if (!m_point_path.closed)
+    {
+        // If the curve is not a closed one, we need to copy the last control point
+        result.vertices.emplace_back(m_point_path.vertices.back());
+    }
+
+    return result;
+}
+
 template <typename F>
 AllShapes<F> trivial_sampling(const AllShapes<F>& shape)
 {
@@ -83,7 +188,7 @@ UniformSamplingCubicBezier<F, Point2d>::UniformSamplingCubicBezier(const CubicBe
     , m_derivate_control_points()
     , m_sample_t()
     , m_segment_total_length()
-    , m_max_segment_length(1)
+    , m_max_segment_length(F{1})
     , m_trace_iterations()
 {
     assert(valid_size(cbp));
@@ -141,7 +246,7 @@ PointPath<Point2d<F>> UniformSamplingCubicBezier<F, Point2d>::sample(F max_sampl
 
     const std::size_t nb_segs = m_derivate_control_points.size() / 6;
 
-    result.vertices.reserve(SAMPLING_BASE_N * nb_segs + 1);
+    // TODO result.vertices.reserve( ? );
 
     for (std::size_t seg = 0; seg < nb_segs; seg++)
     {

@@ -35,6 +35,7 @@ ShapeWindow::ShapeControl::ShapeControl(shapes::AllShapes<scalar>&& shape)
     , nb_edges(shapes::nb_edges(shape))
     , nb_faces(shapes::nb_faces(shape))
     , active(true)
+    , force_inactive(false)
     , highlight(false)
     , constraint_edges(false)
     , latest_computation_time_ms(0.f)
@@ -206,7 +207,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
         const bool pressed = ImGui::Button("Active");
         ImGui::PopStyleColor(4);
         ImGui::PopID();
-        if (pressed)
+        if (pressed && !shape_control.force_inactive)
         {
             shape_control.active = !shape_control.active;
             input_has_changed = true;
@@ -216,7 +217,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
         ImGui::Text("Nb vertices: %d, nb edges: %d", shape_control.nb_vertices, shape_control.nb_edges);
 
         // Sampling
-        if (allow_sampling && shapes::is_bezier_path(shape_control.shape))
+        if (allow_sampling && (shapes::is_bezier_path(shape_control.shape) || shapes::is_point_path(shape_control.shape)))
         {
             std::stringstream sample_checkbox;
             sample_checkbox << "Sample##" << idx;
@@ -228,7 +229,15 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
                 if (std::holds_alternative<shapes::CubicBezierPath2d<scalar>>(shape_control.shape))
                 {
                     const auto& cbp = std::get<shapes::CubicBezierPath2d<scalar>>(shape_control.shape);
-                    shape_control.sampler = std::make_unique<shapes::UniformSamplingCubicBezier2d<scalar>>(cbp, true);
+                    shape_control.sampler = std::make_unique<shapes::UniformSamplingCubicBezier2d<scalar>>(cbp);
+                    shape_control.sampling_length = static_cast<float>(shape_control.sampler->max_segment_length());
+                }
+                else if (std::holds_alternative<shapes::PointPath2d<scalar>>(shape_control.shape))
+                {
+                    const auto& pp = std::get<shapes::PointPath2d<scalar>>(shape_control.shape);
+                    shape_control.active = false;
+                    shape_control.force_inactive = true;
+                    shape_control.sampler = std::make_unique<shapes::UniformSamplingPointPath2d<scalar>>(pp);
                     shape_control.sampling_length = static_cast<float>(shape_control.sampler->max_segment_length());
                 }
                 input_has_changed = true;
@@ -237,6 +246,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
             {
                 shape_control.sampler.reset();
                 delete_sampled_shape(&shape_control.sampled_shape);
+                shape_control.force_inactive = false;
                 input_has_changed = true;
             }
             if (shape_control.sampler)

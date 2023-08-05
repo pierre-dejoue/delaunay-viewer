@@ -28,11 +28,12 @@ public:
         std::size_t nb_edges;
         std::size_t nb_faces;
         bool active;
+        bool force_inactive;
         bool highlight;
         bool constraint_edges;
         float latest_computation_time_ms;
         shapes::AllShapes<scalar> shape;
-        std::unique_ptr<shapes::UniformSamplingCubicBezier2d<scalar>> sampler;
+        std::unique_ptr<shapes::UniformSamplingInterface2d<scalar>> sampler;
         float sampling_length;
         ShapeControl* sampled_shape;
     };
