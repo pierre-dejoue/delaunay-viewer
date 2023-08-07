@@ -1,6 +1,7 @@
 #pragma once
 
 #include <graphs/index.h>
+#include <graphs/graph.h>
 #include <graphs/graph_algos.h>
 #include <shapes/point.h>
 
@@ -21,12 +22,11 @@ namespace shapes
 template <typename P, typename I = std::uint32_t>
 struct Triangles
 {
-    static_assert(graphs::IndexTraits<I>::is_valid(), "A vertex index must be an unsigned integral type");
+    static_assert(graphs::IndexTraits<I>::is_valid());
     static constexpr int dim = P::dim;
     using scalar = typename P::scalar;
     using index = I;
     using face = graphs::Triangle<I>;
-    Triangles() : vertices(), faces() {}
     std::vector<P> vertices;
     graphs::TriangleSoup<I> faces;
 };

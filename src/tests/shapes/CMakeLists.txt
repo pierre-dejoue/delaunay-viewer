@@ -12,6 +12,8 @@ set(UTESTS_SOURCES
 
 add_executable(utests_shapes ${UTESTS_SOURCES})
 
+set_target_warnings(utests_shapes ON)
+
 target_link_libraries(utests_shapes
     PRIVATE
     Catch2::Catch2WithMain

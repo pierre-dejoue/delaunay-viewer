@@ -16,7 +16,6 @@ struct PointCloud
 {
     static constexpr int dim = P::dim;
     using scalar = typename P::scalar;
-    PointCloud() : vertices() {}
     std::vector<P> vertices;
 };
 

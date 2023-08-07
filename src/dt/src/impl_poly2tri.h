@@ -65,15 +65,15 @@ void Poly2triImpl<F, I>::add_path(const shapes::PointPath2d<F>& pp, const stduti
 {
     if (has_main_path)
     {
-        err_handler(stdutils::io::Severity::ERROR, "Poly2tri only supports one polyline. Ignoring this one");
+        err_handler(stdutils::io::Severity::ERR, "Poly2tri only supports one polyline. Ignoring this one");
         return;
     }
     if (pp.vertices.size() < 3)
     {
-        err_handler(stdutils::io::Severity::WARNING, "Ignored polyline with less than 3 vertices");
+        err_handler(stdutils::io::Severity::WARN, "Ignored polyline with less than 3 vertices");
         return;
     }
-    if (!pp.closed) { err_handler(stdutils::io::Severity::WARNING, "Poly2tri interpret all polylines as closed"); }
+    if (!pp.closed) { err_handler(stdutils::io::Severity::WARN, "Poly2tri interpret all polylines as closed"); }
 
     const I begin_idx = static_cast<I>(m_points.size());
     m_points.reserve(m_points.size() + pp.vertices.size());
@@ -91,10 +91,10 @@ void Poly2triImpl<F, I>::add_hole(const shapes::PointPath2d<F>& pp, const stduti
 {
     if (pp.vertices.size() < 3)
     {
-        err_handler(stdutils::io::Severity::WARNING, "Ignored polyline with less than 3 vertices");
+        err_handler(stdutils::io::Severity::WARN, "Ignored polyline with less than 3 vertices");
         return;
     }
-    if (!pp.closed) { err_handler(stdutils::io::Severity::WARNING, "Poly2tri interpret all polylines as closed"); }
+    if (!pp.closed) { err_handler(stdutils::io::Severity::WARN, "Poly2tri interpret all polylines as closed"); }
     const I begin_idx = static_cast<I>(m_points.size());
     m_points.reserve(m_points.size() + pp.vertices.size());
     m_points.insert(m_points.end(), pp.vertices.begin(), pp.vertices.end());
@@ -134,12 +134,12 @@ shapes::Triangles2d<F, I> Poly2triImpl<F, I>::triangulate(const stdutils::io::Er
     shapes::Triangles2d<F, I> result;
     if (!has_main_path)
     {
-        err_handler(stdutils::io::Severity::ERROR, "Missing the main polyline. The output will be empty.");
+        err_handler(stdutils::io::Severity::ERR, "Missing the main polyline. The output will be empty.");
         return result;
     }
     if (m_points.size() < 3)
     {
-        err_handler(stdutils::io::Severity::ERROR, "Not enough points to triangulate. The output will be empty.");
+        err_handler(stdutils::io::Severity::ERR, "Not enough points to triangulate. The output will be empty.");
         return result;
     }
     assert(!m_polylines_indices.empty());
@@ -187,7 +187,7 @@ shapes::Triangles2d<F, I> Poly2triImpl<F, I>::triangulate(const stdutils::io::Er
             if (valid_range && graphs::is_valid(face))
                 result.faces.emplace_back(std::move(face));
             else
-                err_handler(stdutils::io::Severity::ERROR, "The triangulation (poly2tri) returned an invalid triangle");
+                err_handler(stdutils::io::Severity::ERR, "The triangulation (poly2tri) returned an invalid triangle");
         }
     }
     catch(const std::exception& e)

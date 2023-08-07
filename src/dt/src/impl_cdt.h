@@ -63,7 +63,7 @@ void CDTImpl<Fc, F, I>::add_path(const shapes::PointPath2d<F>& pp, const stdutil
 {
     if (pp.vertices.size() < 3)
     {
-        err_handler(stdutils::io::Severity::WARNING, "Ignored polyline with less than 3 vertices");
+        err_handler(stdutils::io::Severity::WARN, "Ignored polyline with less than 3 vertices");
         return;
     }
 
@@ -95,7 +95,7 @@ shapes::Triangles2d<F, I> CDTImpl<Fc, F, I>::triangulate(const stdutils::io::Err
     shapes::Triangles2d<F, I> result;
     if (m_points.size() < 3)
     {
-        err_handler(stdutils::io::Severity::ERROR, "Not enough points to triangulate. The output will be empty.");
+        err_handler(stdutils::io::Severity::ERR, "Not enough points to triangulate. The output will be empty.");
         return result;
     }
     try

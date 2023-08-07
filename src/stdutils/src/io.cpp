@@ -19,11 +19,11 @@ std::string_view str_severity_code(SeverityCode code)
     {
         return "EXCPT";
     }
-    else if (code == Severity::WARNING)
+    else if (code == Severity::WARN)
     {
         return "WARNING";
     }
-    else if (code == Severity::ERROR)
+    else if (code == Severity::ERR)
     {
         return "ERROR";
     }

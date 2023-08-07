@@ -70,7 +70,7 @@ Triangles2d<F> test_triangles_2d()
     out.vertices.emplace_back(F{1}, F{2});
     out.vertices.emplace_back(F{3}, F{0});
     out.vertices.emplace_back(F{4}, F{1});
-    out.faces.emplace_back(Triangles2d<F>::face {0, 1, 2});
+    out.faces.emplace_back(Triangles2d<F>::face(0, 1, 2));
     return out;
 }
 
@@ -81,7 +81,7 @@ Triangles3d<F> test_triangles_3d()
     out.vertices.emplace_back(F{1}, F{2}, F{1});
     out.vertices.emplace_back(F{3}, F{0}, F{-1});
     out.vertices.emplace_back(F{4}, F{1}, F{-2});
-    out.faces.emplace_back(Triangles3d<F>::face {0, 1, 2});
+    out.faces.emplace_back(Triangles3d<F>::face(0, 1, 2));
     return out;
 }
 

@@ -15,6 +15,7 @@
 #include <shapes/bounding_box_algos.h>
 #include <shapes/io.h>
 #include <svg/svg.h>
+#include <stdutils/io.h>
 #include <stdutils/macros.h>
 
 #include <portable-file-dialogs.h>      // Include before glfw3.h
@@ -136,9 +137,51 @@ int main(int argc, char *argv[])
         // Main menu
         if (ImGui::BeginMainMenuBar())
         {
-            stdutils::io::ErrorHandler io_err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
+            const stdutils::io::ErrorHandler io_err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
             if (ImGui::BeginMenu("File"))
             {
+                if (ImGui::MenuItem("Open CDT"))
+                {
+                    const auto paths = pfd::open_file("Select a CDT file", "",
+                        { "CDT file", "*.cdt", "All files", "*.*" }).result();
+                    for (const auto& path : paths)
+                    {
+                        std::cout << "User selected CDT file " << path << std::endl;
+                        if (shapes::io::cdt::peek_point_dimension(path, io_err_handler) == 2)
+                        {
+                            auto cdt_shapes = shapes::io::cdt::parse_2d_shapes_from_file(path, io_err_handler);
+                            const std::string filename = std::filesystem::path(path).filename().string();
+                            shapes::io::ShapeAggregate<double> shapes;
+                            if (!cdt_shapes.point_cloud.vertices.empty())
+                            {
+                                shapes.emplace_back(std::move(cdt_shapes.point_cloud));
+                            }
+                            if (!cdt_shapes.edges.vertices.empty())
+                            {
+                                auto point_paths = shapes::extract_paths(cdt_shapes.edges);
+                                for (auto& pp: point_paths) { shapes.emplace_back(std::move(pp)); }
+                            }
+                            // Ignore Triangles2d
+                            shape_windows.emplace_back(std::make_unique<ShapeWindow>(std::move(shapes), filename));
+                        }
+                        else
+                        {
+                            io_err_handler(stdutils::io::Severity::ERR, "Only support 2D points");
+                        }
+                    }
+                }
+                if (ImGui::MenuItem("Open DAT"))
+                {
+                    const auto paths = pfd::open_file("Select a DAT file", "",
+                        { "DAT file", "*.dat", "All files", "*.*" }).result();
+                    for (const auto& path : paths)
+                    {
+                        std::cout << "User selected DAT file " << path << std::endl;
+                        auto shapes = shapes::io::dat::parse_shapes_from_file(path, io_err_handler);
+                        const std::string filename = std::filesystem::path(path).filename().string();
+                        shape_windows.emplace_back(std::make_unique<ShapeWindow>(std::move(shapes), filename));
+                    }
+                }
                 if (ImGui::MenuItem("Open SVG"))
                 {
                     const auto paths = pfd::open_file("Select a SVG file", "",
@@ -155,18 +198,6 @@ int main(int argc, char *argv[])
                             shapes.emplace_back(std::move(pp));
                         for (const auto& cbp : file_paths.cubic_bezier_paths)
                             shapes.emplace_back(std::move(cbp));
-                        shape_windows.emplace_back(std::make_unique<ShapeWindow>(std::move(shapes), filename));
-                    }
-                }
-                if (ImGui::MenuItem("Open DAT"))
-                {
-                    const auto paths = pfd::open_file("Select a DAT file", "",
-                        { "DAT file", "*.dat", "All files", "*.*" }).result();
-                    for (const auto& path : paths)
-                    {
-                        std::cout << "User selected DAT file " << path << std::endl;
-                        auto shapes = shapes::io::parse_shapes_dat_file(path, io_err_handler);
-                        const std::string filename = std::filesystem::path(path).filename().string();
                         shape_windows.emplace_back(std::make_unique<ShapeWindow>(std::move(shapes), filename));
                     }
                 }

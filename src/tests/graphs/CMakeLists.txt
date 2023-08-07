@@ -9,6 +9,8 @@ set(UTESTS_SOURCES
 
 add_executable(utests_graphs ${UTESTS_SOURCES})
 
+set_target_warnings(utests_graphs ON)
+
 target_link_libraries(utests_graphs
     PRIVATE
     Catch2::Catch2WithMain

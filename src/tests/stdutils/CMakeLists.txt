@@ -9,6 +9,8 @@ set(UTESTS_SOURCES
 
 add_executable(utests_stdutils ${UTESTS_SOURCES})
 
+set_target_warnings(utests_stdutils ON)
+
 target_link_libraries(utests_stdutils
     PRIVATE
     Catch2::Catch2WithMain

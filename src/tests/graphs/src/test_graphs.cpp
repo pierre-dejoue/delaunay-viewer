@@ -17,9 +17,9 @@ Path<I> test_open_path()
 {
     Path<I> out;
     out.closed = false;
-    out.vertices.emplace_back(1);
-    out.vertices.emplace_back(2);
-    out.vertices.emplace_back(4);
+    out.vertices.push_back(1);
+    out.vertices.push_back(2);
+    out.vertices.push_back(4);
     return out;
 }
 
@@ -28,9 +28,9 @@ Path<I> test_closed_path()
 {
     Path<I> out;
     out.closed = true;
-    out.vertices.emplace_back(2);
-    out.vertices.emplace_back(3);
-    out.vertices.emplace_back(6);
+    out.vertices.push_back(2);
+    out.vertices.push_back(3);
+    out.vertices.push_back(6);
     return out;
 }
 
@@ -39,8 +39,8 @@ EdgeSoup<I> test_edge_soup_open_path()
 {
     // Derived from the test open path above
     EdgeSoup<I> out;
-    out.emplace_back(1, 2);
-    out.emplace_back(2, 4);
+    out.push_back(std::make_pair<I, I>(1, 2));
+    out.push_back(std::make_pair<I, I>(2, 4));
     return out;
 }
 
@@ -49,9 +49,9 @@ EdgeSoup<I> test_edge_soup_closed_path()
 {
     // Derived from the test closed path above
     EdgeSoup<I> out;
-    out.emplace_back(2, 3);
-    out.emplace_back(3, 6);
-    out.emplace_back(6, 2);
+    out.push_back(std::make_pair<I, I>(2, 3));
+    out.push_back(std::make_pair<I, I>(3, 6));
+    out.push_back(std::make_pair<I, I>(6, 2));
     return out;
 }
 
@@ -60,12 +60,12 @@ EdgeSoup<I> test_edge_soup_non_manifold_letter_a()
 {
     // Shaped like the capital letter A
     EdgeSoup<I> out;
-    out.emplace_back(0, 1);
-    out.emplace_back(0, 3);
-    out.emplace_back(1, 2);
-    out.emplace_back(2, 3);
-    out.emplace_back(1, 4);
-    out.emplace_back(3, 5);
+    out.push_back(std::make_pair<I, I>(0, 1));
+    out.push_back(std::make_pair<I, I>(0, 3));
+    out.push_back(std::make_pair<I, I>(1, 2));
+    out.push_back(std::make_pair<I, I>(2, 3));
+    out.push_back(std::make_pair<I, I>(1, 4));
+    out.push_back(std::make_pair<I, I>(3, 5));
     return out;
 }
 
@@ -80,12 +80,12 @@ EdgeSoup<I> test_edge_soup_non_manifold_lollipop()
     //                3
     //
     EdgeSoup<I> out;
-    out.emplace_back(0, 1);
-    out.emplace_back(1, 2);
-    out.emplace_back(2, 3);
-    out.emplace_back(3, 4);
-    out.emplace_back(4, 5);
-    out.emplace_back(5, 2);
+    out.push_back(std::make_pair<I, I>(0, 1));
+    out.push_back(std::make_pair<I, I>(1, 2));
+    out.push_back(std::make_pair<I, I>(2, 3));
+    out.push_back(std::make_pair<I, I>(3, 4));
+    out.push_back(std::make_pair<I, I>(4, 5));
+    out.push_back(std::make_pair<I, I>(5, 2));
     return out;
 }
 
@@ -94,10 +94,10 @@ EdgeSoup<I> test_edge_soup_non_manifold_plus_sign()
 {
     // One vertex of degree 4
     EdgeSoup<I> out;
-    out.emplace_back(2, 3);
-    out.emplace_back(2, 5);
-    out.emplace_back(2, 7);
-    out.emplace_back(2, 9);
+    out.push_back(std::make_pair<I, I>(2, 3));
+    out.push_back(std::make_pair<I, I>(2, 5));
+    out.push_back(std::make_pair<I, I>(2, 7));
+    out.push_back(std::make_pair<I, I>(2, 9));
     return out;
 }
 
@@ -106,11 +106,11 @@ EdgeSoup<I> test_edge_soup_non_manifold_five_star()
 {
     // One vertex of degree 5
     EdgeSoup<I> out;
-    out.emplace_back(0, 5);
-    out.emplace_back(1, 5);
-    out.emplace_back(2, 5);
-    out.emplace_back(3, 5);
-    out.emplace_back(4, 5);
+    out.push_back(std::make_pair<I, I>(0, 5));
+    out.push_back(std::make_pair<I, I>(1, 5));
+    out.push_back(std::make_pair<I, I>(2, 5));
+    out.push_back(std::make_pair<I, I>(3, 5));
+    out.push_back(std::make_pair<I, I>(4, 5));
     return out;
 }
 
@@ -229,12 +229,12 @@ TEST_CASE("EdgeSoup: minmax_indices", "[graphs]")
     };
 
     std::vector<TestCase> test_cases;
-    test_cases.emplace_back(TestCase{ std::pair<I, I>{1, 4}, test_edge_soup_open_path<I>() });
-    test_cases.emplace_back(TestCase{ std::pair<I, I>{2, 6}, test_edge_soup_closed_path<I>() });
-    test_cases.emplace_back(TestCase{ std::pair<I, I>{0, 5}, test_edge_soup_non_manifold_letter_a<I>() });
-    test_cases.emplace_back(TestCase{ std::pair<I, I>{0, 5}, test_edge_soup_non_manifold_lollipop<I>() });
-    test_cases.emplace_back(TestCase{ std::pair<I, I>{2, 9}, test_edge_soup_non_manifold_plus_sign<I>() });
-    test_cases.emplace_back(TestCase{ std::pair<I, I>{0, 5}, test_edge_soup_non_manifold_five_star<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(1, 4), test_edge_soup_open_path<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(2, 6), test_edge_soup_closed_path<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), test_edge_soup_non_manifold_letter_a<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), test_edge_soup_non_manifold_lollipop<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(2, 9), test_edge_soup_non_manifold_plus_sign<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), test_edge_soup_non_manifold_five_star<I>() });
 
     unsigned int test_loop_idx = 0;
     for (const auto& test : test_cases)
@@ -247,6 +247,38 @@ TEST_CASE("EdgeSoup: minmax_indices", "[graphs]")
         test_loop_idx++;
     }
 }
+
+TEST_CASE("EdgeSoup: nb_vertices and remap indices", "[graphs]")
+{
+    using I = std::uint16_t;
+    struct TestCase
+    {
+        I expected_nb_vertices;
+        EdgeSoup<I> edge_soup;
+    };
+
+    std::vector<TestCase> test_cases;
+    test_cases.emplace_back(TestCase{ 3, test_edge_soup_open_path<I>() });
+    test_cases.emplace_back(TestCase{ 3, test_edge_soup_closed_path<I>() });
+    test_cases.emplace_back(TestCase{ 6, test_edge_soup_non_manifold_letter_a<I>() });
+    test_cases.emplace_back(TestCase{ 6, test_edge_soup_non_manifold_lollipop<I>() });
+    test_cases.emplace_back(TestCase{ 5, test_edge_soup_non_manifold_plus_sign<I>() });
+    test_cases.emplace_back(TestCase{ 6, test_edge_soup_non_manifold_five_star<I>() });
+
+    unsigned int test_loop_idx = 0;
+    for (auto& test : test_cases)
+    {
+        CAPTURE(test_loop_idx);
+        REQUIRE(is_valid(test.edge_soup) == true);
+        CHECK(nb_vertices(test.edge_soup) == test.expected_nb_vertices);
+        remap_indices(test.edge_soup);
+        const auto min_max = minmax_indices(test.edge_soup);
+        CHECK(min_max.first == 0);
+        CHECK(min_max.second + 1 == test.expected_nb_vertices);
+        test_loop_idx++;
+    }
+}
+
 
 TEST_CASE("Algo: Extract paths from edge soup", "[graphs]")
 {

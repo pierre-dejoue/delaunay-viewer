@@ -18,11 +18,11 @@ namespace graphs
 
 // Validate (exclude loop edges, duplicate edges, invalid triangles, improper size, etc.)
 template <typename I>
-bool has_loop_edge(const EdgeSoup<I>& edges);
-template <typename I>
 bool has_duplicates(const EdgeSoup<I>& edges);
 template <typename I>
 bool has_duplicates(const Path<I>& path);
+template <typename I>
+bool is_valid(const Edge<I>& edge);
 template <typename I>
 bool is_valid(const EdgeSoup<I>& path);
 template <typename I>
@@ -70,6 +70,14 @@ std::pair<I, I> minmax_indices(const Path<I>& path);
 template <typename I>
 std::pair<I, I> minmax_indices(const TriangleSoup<I>& triangles);
 
+// Reindex to interval [0; n-1]. Preserve vertex order
+template <typename I>
+void remap_indices(EdgeSoup<I>& edges);
+template <typename I>
+void remap_indices(Path<I>& path);
+template <typename I>
+void remap_indices(TriangleSoup<I>& triangles);
+
 // Conversions. The otput is_valid providing the input is.
 template <typename I>
 VertexSet<I> to_vertex_set(const EdgeSoup<I>& edges);
@@ -107,13 +115,6 @@ std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges);
 //
 //
 
-// TODO constexpr function in C++20
-template <typename I>
-bool has_loop_edge(const EdgeSoup<I>& edges)
-{
-    return std::any_of(std::cbegin(edges), std::cend(edges), [](const auto& e) { return is_loop(e); });
-}
-
 template <typename I>
 bool has_duplicates(const EdgeSoup<I>& edges)
 {
@@ -131,16 +132,24 @@ bool has_duplicates(const Path<I>& path)
 }
 
 template <typename I>
+bool is_valid(const Edge<I>& edge)
+{
+    static_assert(IndexTraits<I>::is_valid());
+    return is_defined(edge) && !is_loop(edge);
+}
+
+template <typename I>
 bool is_valid(const EdgeSoup<I>& edges)
 {
-    static_assert(IndexTraits<I>::is_valid(), "A vertex index must be an unsigned integral type");
-    return !has_loop_edge(edges) && !has_duplicates(edges);
+    static_assert(IndexTraits<I>::is_valid());
+    const bool all_valid = std::all_of(std::cbegin(edges), std::cend(edges), [](const auto&e) { return is_valid(e); });
+    return all_valid && !has_duplicates(edges);
 }
 
 template <typename I>
 bool is_valid(const Path<I>& path)
 {
-    static_assert(IndexTraits<I>::is_valid(), "A vertex index must be an unsigned integral type");
+    static_assert(IndexTraits<I>::is_valid());
     return !has_duplicates(path) && (!path.closed || path.vertices.size() > 2);
 }
 
@@ -154,7 +163,7 @@ bool is_valid(const Triangle<I>& t)
 template <typename I>
 bool is_valid(const TriangleSoup<I>& triangles)
 {
-    static_assert(IndexTraits<I>::is_valid(), "A vertex index must be an unsigned integral type");
+    static_assert(IndexTraits<I>::is_valid());
     return std::all_of(std::cbegin(triangles), std::cend(triangles), [](const auto& t) { return is_valid(t); });
 }
 
@@ -274,20 +283,109 @@ std::pair<I, I> minmax_indices(const TriangleSoup<I>& triangles)
 {
     assert(!triangles.empty());
     auto it_triangle = std::cbegin(triangles);
-    std::pair<I, I> result(std::numeric_limits<I>::max(), std::numeric_limits<I>::min());
-    I& min = result.first;
-    I& max = result.second;
-    const auto comp = [&min, &max](I val) {
-        if      (val < min) { min = val; }
-        else if (val > max) { max = val; }
-    };
+    std::pair<I, I> result(*it_triangle[0], *it_triangle[0]);
     while(++it_triangle != std::cend(triangles))
     {
-        comp(*it_triangle[0]);
-        comp(*it_triangle[1]);
-        comp(*it_triangle[2]);
+        stdutils::minmax_update(result, *it_triangle[0]);
+        stdutils::minmax_update(result, *it_triangle[1]);
+        stdutils::minmax_update(result, *it_triangle[2]);
     }
     return result;
+}
+
+namespace details
+{
+    template <typename I>
+    class RemapIndices
+    {
+    public:
+        RemapIndices(const std::pair<I, I>& minmax)
+            : min_idx(minmax.first)
+            , max_idx(minmax.second)
+            , idx_map(2 + max_idx - min_idx, 0)
+        {
+            assert(min_idx <= max_idx);
+        }
+
+        void visit(I idx)
+        {
+            assert(min_idx <= idx && idx <= max_idx);
+            idx_map[1 + idx - min_idx] = 1;     // Notice the +1 extra offset
+        }
+
+        void remap()
+        {
+            std::partial_sum(idx_map.cbegin(), idx_map.cend(), idx_map.begin(), [](I a, I b) -> I { return a + b; });
+            assert(idx_map.front() == 0);
+        }
+
+        // Call remap() first
+        I nb_vertices()
+        {
+            return idx_map.back();
+        }
+
+        // Call remap() first
+        I operator[](I idx)
+        {
+            assert(min_idx <= idx && idx <= max_idx);
+            return idx_map[idx - min_idx];
+        }
+    private:
+        I min_idx;
+        I max_idx;
+        std::vector<I> idx_map;
+    };
+}
+
+template <typename I>
+void remap_indices(EdgeSoup<I>& edges)
+{
+    details::RemapIndices<I> idx_map(minmax_indices(edges));
+    for (const auto& e : edges)
+    {
+        idx_map.visit(e.first);
+        idx_map.visit(e.second);
+    }
+    idx_map.remap();
+    for (auto& e : edges)
+    {
+        e.first = idx_map[e.first];
+        e.second = idx_map[e.second];
+    }
+    assert(nb_vertices(edges) == idx_map.nb_vertices());
+}
+
+template <typename I>
+void remap_indices(Path<I>& path)
+{
+    details::RemapIndices<I> idx_map(minmax_indices(path));
+    for (const auto& v : path.vertices)
+        idx_map.visit(v);
+    idx_map.remap();
+    for (auto& v : path.vertices)
+        v = idx_map[v];
+    assert(nb_vertices(path) == idx_map.nb_vertices());
+}
+
+template <typename I>
+void remap_indices(TriangleSoup<I>& triangles)
+{
+    details::RemapIndices<I> idx_map(minmax_indices(triangles));
+    for (const auto& t : triangles)
+    {
+        idx_map.visit(t[0]);
+        idx_map.visit(t[1]);
+        idx_map.visit(t[2]);
+    }
+    idx_map.remap();
+    for (auto& t : triangles)
+    {
+        t[0] = idx_map[t[0]];
+        t[1] = idx_map[t[1]];
+        t[2] = idx_map[t[2]];
+    }
+    assert(nb_vertices(triangles) == idx_map.nb_vertices());
 }
 
 template <typename I>
@@ -360,13 +458,14 @@ EdgeSoup<I> to_edge_soup(const TriangleSoup<I>& triangles)
 
 namespace details
 {
+    // Return a vector of pairs <I index, std::size_t vertex_degree>
     template <typename I>
     std::vector<std::pair<I, std::size_t>> vertex_degree(const EdgeSoup<I>& edges)
     {
         assert(is_valid(edges));
         const auto [min_idx, max_idx] = minmax_indices(edges);
         std::vector<std::pair<I, std::size_t>> result(1 + max_idx - min_idx, std::pair<I, std::size_t>(0, 0));
-        std::size_t idx = min_idx;
+        I idx = static_cast<I>(min_idx);
         std::for_each(result.begin(), result.end(), [&idx](auto& pair) { pair.first = idx++; });
         for (const auto& e : edges)
         {
@@ -514,7 +613,6 @@ std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges)
 {
     assert(is_valid(edges));
     std::vector<Path<I>> result;
-    constexpr I undef = IndexTraits<I>::undef();
     std::vector<std::pair<I, std::size_t>> degrees = details::vertex_degree(edges);
     const auto max_deg = std::max_element(std::cbegin(degrees), std::cend(degrees), [](const auto& a, const auto& b) { return a.second < b.second; })->second;
 

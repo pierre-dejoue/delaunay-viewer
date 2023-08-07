@@ -87,13 +87,13 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
     bool can_import_path = true;
     unsigned int count_lineto = 0;
     unsigned int count_cubicto = 0;
-    std::string wrn_msg = "";
+    std::string WARN_msg = "";
     for (unsigned int idx = idx_start; idx < idx_end; idx++)
     {
         const auto cmd_type = path.m_Commands[idx].m_Type;
         if (idx == idx_start && cmd_type != ssvg::PathCmdType::Enum::MoveTo)
         {
-            wrn_msg = "Path should start with a MoveTo command";
+            WARN_msg = "Path should start with a MoveTo command";
             can_import_path = false;
         }
         switch (cmd_type)
@@ -116,7 +116,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
             case ssvg::PathCmdType::Enum::ArcTo:
                 count_cubicto++;
                 // TODO Proper conversion to cubic Bezier
-                err_handler(stdutils::io::Severity::WARNING, "Path ArcTo converted to a straight line");
+                err_handler(stdutils::io::Severity::WARN, "Path ArcTo converted to a straight line");
                 break;
 
             case ssvg::PathCmdType::Enum::ClosePath:
@@ -125,7 +125,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
 
             default:
                 assert(0);
-                wrn_msg = "Unknown ssvg::PathCmdType::Enum";
+                WARN_msg = "Unknown ssvg::PathCmdType::Enum";
                 can_import_path = false;
                 break;
         }
@@ -267,10 +267,10 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
     else
     {
         assert(!can_import_path);
-        assert(!wrn_msg.empty());
+        assert(!WARN_msg.empty());
         std::ostringstream oss;
-        oss << "Could not import SVG shape of type Path: " << wrn_msg;
-        err_handler(stdutils::io::Severity::WARNING, oss.str());
+        oss << "Could not import SVG shape of type Path: " << WARN_msg;
+        err_handler(stdutils::io::Severity::WARN, oss.str());
     }
 }
 
@@ -301,15 +301,15 @@ void parse_ssvg_image_shape(const ssvg::Shape* shape_ptr, Paths<F>& out_paths, c
             break;
 
         case ssvg::ShapeType::Enum::Rect:
-            err_handler(stdutils::io::Severity::WARNING, "Ignored a SVG shape of type Rect");
+            err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Rect");
             break;
 
         case ssvg::ShapeType::Enum::Circle:
-            err_handler(stdutils::io::Severity::WARNING, "Ignored a SVG shape of type Circle");
+            err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Circle");
             break;
 
         case ssvg::ShapeType::Enum::Ellipse:
-            err_handler(stdutils::io::Severity::WARNING, "Ignored a SVG shape of type Ellipse");
+            err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Ellipse");
             break;
 
         case ssvg::ShapeType::Enum::Line:
@@ -345,12 +345,12 @@ void parse_ssvg_image_shape(const ssvg::Shape* shape_ptr, Paths<F>& out_paths, c
             break;
 
         case ssvg::ShapeType::Enum::Text:
-            err_handler(stdutils::io::Severity::WARNING, "Ignored a SVG shape of type Text");
+            err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Text");
             break;
 
         default:
             assert(0);
-            err_handler(stdutils::io::Severity::ERROR, "Unknown ssvg::ShapeType::Enum");
+            err_handler(stdutils::io::Severity::ERR, "Unknown ssvg::ShapeType::Enum");
             break;
     }
 }
@@ -391,7 +391,7 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
         if (ssvg_img.ptr)
             parse_ssvg_image_shape_list(&ssvg_img.ptr->m_ShapeList, result, err_handler);
         else
-            err_handler(stdutils::io::Severity::ERROR, "Library simple-svg failed to parse the image");
+            err_handler(stdutils::io::Severity::ERR, "Library simple-svg failed to parse the image");
     }
     catch(const std::exception& e)
     {
