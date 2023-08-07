@@ -23,16 +23,18 @@ public:
         : tl_corner(0.f, 0.f)
         , size(1.f, 1.f)
         , bb_corner(0.f, 0.f)
+        , flip_y(true)
         , bb()
         , scale(0)
     {
         // NB: The default Canvas is invalid
     }
 
-    Canvas(ImVec2 tl_corner, ImVec2 size, shapes::BoundingBox2d<F> bb)
+    Canvas(ImVec2 tl_corner, ImVec2 size, bool flip_y, shapes::BoundingBox2d<F> bb)
         : tl_corner(tl_corner)
         , size(size)
         , bb_corner()
+        , flip_y(flip_y)
         , bb(bb)
         , scale(0)
     {
@@ -79,24 +81,27 @@ public:
         //assert "is inside bb"
         return ImVec2(
             bb_corner.x + static_cast<float>(scale * (p.x - bb.rx.min)),
-            bb_corner.y + static_cast<float>(scale * (p.y - bb.ry.min))
+            bb_corner.y + static_cast<float>(scale * (flip_y ? (bb.ry.max - p.y) : (p.y - bb.ry.min)))
         );
     }
 
     shapes::Point2d<F> to_world(const ImVec2& p) const
     {
         assert(scale > F{0});
-        return shapes::Point2d<F>(
-            bb.rx.min + static_cast<F>(p.x - bb_corner.x) / scale,
-            bb.ry.min + static_cast<F>(p.y - bb_corner.y) / scale
-        );
+        return flip_y ?
+            shapes::Point2d<F>(
+                bb.rx.min + static_cast<F>(p.x - bb_corner.x) / scale,
+                bb.ry.max - static_cast<F>(p.y - bb_corner.y) / scale) :
+            shapes::Point2d<F>(
+                bb.rx.min + static_cast<F>(p.x - bb_corner.x) / scale,
+                bb.ry.min + static_cast<F>(p.y - bb_corner.y) / scale);
     }
 
     ImVec2 to_screen_vector(const shapes::Vect2d<F>& v) const
     {
         assert(scale > F{0});
         const auto sv = scale * v;
-        return ImVec2(static_cast<float>(sv.x), static_cast<float>(sv.y));
+        return ImVec2(static_cast<float>(sv.x), (flip_y ? -1.f : 1.f) * static_cast<float>(sv.y));
     }
 
     shapes::Vect2d<F> to_world_vector(const ImVec2& v) const
@@ -104,7 +109,7 @@ public:
         assert(scale > F{0});
         return shapes::Vect2d<F>(
             static_cast<F>(v.x) / scale,
-            static_cast<F>(v.y) / scale
+            static_cast<F>((flip_y ? -1.f : 1.f) * v.y) / scale
         );
     }
 
@@ -123,6 +128,7 @@ private:
     ImVec2 tl_corner;
     ImVec2 size;
     ImVec2 bb_corner;       // /!\ Not the br_corner
+    bool flip_y;
 
     // Geometrical region
     shapes::BoundingBox2d<F> bb;

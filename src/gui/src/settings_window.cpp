@@ -28,6 +28,17 @@ void SettingsWindow::visit(bool& can_be_erased)
         return;
     }
 
+    Settings::General* general_settings = m_settings.get_general_settings();
+    if (general_settings)
+    {
+        //const auto& limits = m_settings.read_general_limits();
+
+        ImGui::BulletText("General");
+        ImGui::Indent();
+        ImGui::Checkbox("Flip Y-axis", &(general_settings->flip_y));
+        ImGui::Unindent();
+    }
+
     Settings::Point* point_settings = m_settings.get_point_settings();
     if (point_settings)
     {

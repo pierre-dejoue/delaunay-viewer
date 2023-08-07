@@ -59,6 +59,7 @@ void ShapeDrawWindow::pan(const shapes::Vect2d<scalar>& dir)
 void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const DrawCommandLists& draw_command_lists)
 {
     DrawingOptions options;
+    const bool flip_y_axis = settings.read_general_settings().flip_y;
     options.point_settings = settings.read_point_settings();
     options.path_settings = settings.read_path_settings();
     options.surface_settings = settings.read_surface_settings();
@@ -143,7 +144,7 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
                 ImVec2 br_corner = ImVec2(tl_corner.x + canvas_sz.x, tl_corner.y + canvas_sz.y);
 
                 // Canvas
-                Canvas canvas(tl_corner, canvas_sz, m_canvas_box);
+                Canvas canvas(tl_corner, canvas_sz, flip_y_axis, m_canvas_box);
                 MouseInCanvas mouse_in_canvas(canvas);
                 ImGuiIO& io = ImGui::GetIO();
                 ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);

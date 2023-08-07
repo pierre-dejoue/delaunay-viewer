@@ -8,6 +8,14 @@
 class Settings
 {
 public:
+    struct GeneralLimits
+    {
+        Parameter::Limits<bool> flip_y;
+    };
+    struct General
+    {
+        bool flip_y;
+    };
     struct PointLimits
     {
         Parameter::Limits<bool> show;
@@ -42,6 +50,11 @@ public:
 public:
     Settings();
 
+    // General settings
+    General* get_general_settings();
+    const General& read_general_settings() const;
+    static const GeneralLimits& read_general_limits();
+
     // Point settings
     Point* get_point_settings();
     const Point& read_point_settings() const;
@@ -64,6 +77,7 @@ private:
     SettingsWindow& get_settings_window();
 
 private:
+    mutable std::unique_ptr<General> general_settings;
     mutable std::unique_ptr<Point> point_settings;
     mutable std::unique_ptr<Path> path_settings;
     mutable std::unique_ptr<Surface> surface_settings;

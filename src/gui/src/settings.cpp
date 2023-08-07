@@ -6,6 +6,15 @@
 namespace
 {
 
+    Settings::GeneralLimits general_settings_limits()
+    {
+        Settings::GeneralLimits result;
+
+        result.flip_y = Parameter::limits_false;
+
+        return result;
+    }
+
     Settings::PointLimits point_settings_limits()
     {
         Settings::PointLimits result;
@@ -48,10 +57,34 @@ namespace
 } // Anonymous namespace
 
 Settings::Settings()
-    : point_settings()
+    : general_settings()
+    , point_settings()
     , path_settings()
     , surface_settings()
 {
+}
+
+Settings::General* Settings::get_general_settings()
+{
+    return general_settings.get();
+}
+
+const Settings::General& Settings::read_general_settings() const
+{
+    // Create if not existing
+    if (!general_settings)
+    {
+        general_settings = std::make_unique<General>();
+        general_settings->flip_y = read_general_limits().flip_y.def;
+    }
+    assert(general_settings);
+    return *general_settings;
+}
+
+const Settings::GeneralLimits& Settings::read_general_limits()
+{
+    static Settings::GeneralLimits result = general_settings_limits();
+    return result;
 }
 
 Settings::Point* Settings::get_point_settings()
@@ -130,6 +163,7 @@ void Settings::open_window()
 {
     get_settings_window();
 
+    read_general_settings();
     read_point_settings();
     read_surface_settings();
     read_surface_settings();
@@ -138,7 +172,7 @@ void Settings::open_window()
 void Settings::visit_window(bool& can_be_erased)
 {
     can_be_erased = false;
-    if (point_settings || path_settings || surface_settings || settings_window)
+    if (general_settings || point_settings || path_settings || surface_settings || settings_window)
     {
         auto& settings_window_ref = get_settings_window();
         bool window_can_be_erased = false;
