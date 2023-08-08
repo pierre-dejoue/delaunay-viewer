@@ -41,7 +41,6 @@ add_subdirectory(src/gui)
 # Tests
 if(DELAUNAY_VIEWER_BUILD_UTESTS)
     add_subdirectory(src/tests/stdutils)
-    add_subdirectory(src/tests/graphs)
     add_subdirectory(src/tests/shapes)
 endif()
 

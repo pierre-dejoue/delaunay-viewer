@@ -1,10 +1,11 @@
 #
-# Unit tests
+# Unit tests for shapes and graphs
 #
 include(catch2)
 
 set(UTESTS_SOURCES
     src/test_bounding_box.cpp
+    src/test_graphs.cpp
     src/test_sampling.cpp
     src/test_shapes.cpp
     src/test_vect.cpp
@@ -17,6 +18,7 @@ set_target_warnings(utests_shapes ON)
 target_link_libraries(utests_shapes
     PRIVATE
     Catch2::Catch2WithMain
+    graphs
     shapes
 )
 

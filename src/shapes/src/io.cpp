@@ -87,6 +87,7 @@ struct ShapeBuffer
     NumericLineBuffer<F, MAX_DIM> vertices;
     bool closed = true;
     ShapeType type = ShapeType::POINT_CLOUD;
+    std::size_t line_nb_start;
 };
 
 template <typename F, std::size_t MAX_DIM>
@@ -107,6 +108,26 @@ void append_vertices(std::vector<Point3d<F>>& target, const NumericLineBuffer<F,
 
 } // Anonymous namespace
 
+
+/**
+ * DAT format description
+ *
+ * The file is in text format, read line by line as follows.
+ *
+ * - Empty lines anywhere in the file are ignored.
+ * - Lines starting with '#' are comment lines, and they are also ignored.
+ * - The other lines fall into two categories:
+ *      - point lines (e.g  "1.000 2.000" or "1.000 2.000 3.000") representing the coordinates of a 2D or 3D point
+ *      - control lines (e.g. "LINE_PATH" or "CUBIC_BEZIER_PATH OPEN") describing the type of the next point series
+ * - Point series are a sequence of point lines uninterrupted by a control line.
+ * - A control lines comprises of two tokens: <shape_type> <shape_topology>, where:
+ *      - <shape_type> can be (the case is ignored): "POINT_CLOUD", "POINT_PATH", "CUBIC_BEZIER_PATH"
+ *      - <shape_topology> is optional, it can be (the case is ignored): "OPEN", "CLOSED" (the default).
+ * - Any line in the file that is not a well-formed control line, a comment or a blank line is considered a separation
+ *   between point series. In the case of a malformed control line, the next series is considered to be a POINT_CLOUD.
+ * - Control lines are optional. In the absence of any control line, the file consists of a single point series
+ *   considered to be a POINT_CLOUD.
+ */
 namespace dat
 {
 namespace
@@ -139,9 +160,15 @@ void append_new_shape(const ShapeBuffer<F, MAX_DIM>& buffer, ShapeAggregate<F>& 
             cbp.closed = buffer.closed;
             append_vertices(cbp.vertices, buffer.vertices);
             if (shapes::valid_size(cbp))
+            {
                 shapes.emplace_back(std::move(cbp));
+            }
             else
-                err_handler(stdutils::io::Severity::WARN, "Ignored a cubic bezier path with invalid size");
+            {
+                std::stringstream out;
+                out << "Ignored a cubic bezier path (started line " << buffer.line_nb_start << ") with invalid size " << cbp.vertices.size();
+                err_handler(stdutils::io::Severity::WARN, out.str());
+            }
             break;
         }
     }
@@ -151,36 +178,37 @@ template <typename F>
 ShapeAggregate<F> parse_shapes_from_stream_gen(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler)
 {
     ShapeAggregate<F> result;
-    std::string line_buf;
+    std::string line;
     ShapeBuffer<F, 3> buffer;
-    while (inputstream.good())
+    auto linestream = stdutils::io::SkipLineStream(inputstream).skip_blank_lines().skip_comment_lines("#");
+    while (linestream.stream().good())
     {
-        while (std::getline(inputstream, line_buf) && parse_numeric_line(line_buf, buffer.vertices)) {}
-        TokenIterator token_iterator(line_buf);
-        const std::string first_token = token_iterator.next_token();
-        const bool not_a_comment = first_token.substr(0, 1) != "#";
-        if (not_a_comment || inputstream.eof())
+        // Read point series
+        while (linestream.getline(line) && parse_numeric_line(line, buffer.vertices)) {}
+
+        // Control line, or EOF
+        // 1. Store the previous shape
+        if (!buffer.vertices.lines.empty())
         {
-            // 1. Store the previous shape
-            if (!buffer.vertices.lines.empty())
-            {
-                assert(buffer.vertices.dim > 0);
-                if (buffer.vertices.dim == 3)
-                    append_new_shape<F, 3>(buffer, result, err_handler);
-                else
-                    append_new_shape<F, 2>(buffer, result, err_handler);
-            }
-            // 2. Reset shape buffer
-            buffer = ShapeBuffer<F, 3>();
-            // 3. Type of the next shape
-            const auto type_str = stdutils::string::tolower(first_token);
-            if (type_str == "point_path") { buffer.type = ShapeType::POINT_PATH; }
-            else if (type_str == "cubic_bezier_path") { buffer.type = ShapeType::CUBIC_BEZIER_PATH; }
-            else { buffer.type = ShapeType::POINT_CLOUD; }
-            // 4. Topology of the next shape
-            const auto topo_str = stdutils::string::tolower(token_iterator.next_token());
-            buffer.closed = (topo_str != "open");
+            assert(buffer.vertices.dim > 0);
+            if (buffer.vertices.dim == 3)
+                append_new_shape<F, 3>(buffer, result, err_handler);
+            else
+                append_new_shape<F, 2>(buffer, result, err_handler);
         }
+        // 2. Reset shape buffer
+        buffer = ShapeBuffer<F, 3>();
+        buffer.line_nb_start = linestream.line_nb();
+        // 3. Type of the next shape
+        TokenIterator token_iterator(line);
+        const std::string first_token = token_iterator.next_token();
+        const auto type_str = stdutils::string::tolower(first_token);
+        if (type_str == "point_path") { buffer.type = ShapeType::POINT_PATH; }
+        else if (type_str == "cubic_bezier_path") { buffer.type = ShapeType::CUBIC_BEZIER_PATH; }
+        else { buffer.type = ShapeType::POINT_CLOUD; }
+        // 4. Topology of the next shape
+        const auto topo_str = stdutils::string::tolower(token_iterator.next_token());
+        buffer.closed = (topo_str != "open");
     }
     return result;
 }
@@ -204,10 +232,34 @@ ShapeAggregate<double> parse_shapes_from_stream(std::istream& inputstream, const
 
 ShapeAggregate<double> parse_shapes_from_file(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
-    return stdutils::io::parse_file_generic<ShapeAggregate<double>, char>(parse_shapes_from_stream_gen<double>, filepath, err_handler);
+    return stdutils::io::open_and_parse_file<ShapeAggregate<double>, char>(filepath, parse_shapes_from_stream_gen<double>, err_handler);
 }
 } // namespace dat
 
+/**
+ * CDT format description
+ *
+ * The CDT format describes a geometry composed of one point cloud, one edge soup and one triangle soup. (Each of which can be empty.)
+ *
+ * The file is in text format, read line by line as follows.
+ *
+ * - Empty lines anywhere in the file are ignored.
+ * - Lines starting with '#' are comment lines, and they are also ignored.
+ * - The geometry description comprises of four consecutive sections:
+ *      - A HEADER section (one line) indicating the expected number of vertices, edges and triangles.
+ *      - A VERTEX section with one vertex per line (e.g  "1.000 2.000" or "1.000 2.000 3.000").
+ *      - A EDGE section with one pair of vertex indices per line (e.g. "1 2").
+ *      - A TRIANGLE section with one triplet of vertex indices per line (e.g "1 0 2").
+ * - The EDGE and TRIANGLE indices refer to the vertices of the VERTEX section, starting with index 0.
+ * - A vertex can be referenced by several edges and triangles.
+ * - Any vertex that is not referenced by either an edge or a triangle is considered to be part of the point cloud.
+ * - The HEADER has the following format: <nb_vertices> <nb_edges> <nb_triangles>. Only the nb of vertices is mandatory, others default to 0.
+ *      - E.g. "5 3" for 5 vertices, 3 edges and no triangles
+ *      - E.g. "5 1 2" for 5 vertices, 1 edge and 2 triangles
+ *      - E.g. "6" for 6 vertices, no edges and no triangles (the geometry is simply a point cloud)
+ * - The number of lines of the VERTEX section is expected to be exactly equal to <nb_vertices>.
+ * - The number of lines of the EDGE (resp. TRIANGLE) section is expected to be exactly equal to <nb_edges> (resp. <nb_triangles>).
+ */
 namespace cdt
 {
 namespace
@@ -225,6 +277,22 @@ bool check_expected_size(std::string_view id, std::size_t sz0, std::size_t sz1, 
     return true;
 }
 
+template <typename I>
+void warn_eliminated_edge(const graphs::Edge<I>& edge, std::string_view reason, const stdutils::io::ErrorHandler& err_handler)
+{
+    std::stringstream out;
+    out << "Eliminated invalid edge [ " << edge.first << ", " << edge.second << " ]: " << reason;
+    err_handler(stdutils::io::Severity::WARN, out.str());
+}
+
+template <typename I>
+void warn_eliminated_triangle(const graphs::Triangle<I>& tri, std::string_view reason, const stdutils::io::ErrorHandler& err_handler)
+{
+    std::stringstream out;
+    out << "Eliminated invalid triangle [ " << tri[0] << ", " << tri[1] << ", " << tri[2] << " ]: " << reason;
+    err_handler(stdutils::io::Severity::WARN, out.str());
+}
+
 enum class CDT_State
 {
     HeaderLine,
@@ -234,12 +302,71 @@ enum class CDT_State
     Done
 };
 
+template <typename F, typename I>
+int peek_point_dimension_gen(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler)
+{
+    int result = 0;
+    CDT_State cdt_state = CDT_State::HeaderLine;
+    auto linestream = stdutils::io::SkipLineStream(inputstream).skip_blank_lines().skip_comment_lines("#");
+    while (linestream.stream().good() && cdt_state != CDT_State::Done)
+    {
+        std::string line;
+        switch (cdt_state)
+        {
+            case CDT_State::HeaderLine:
+            {
+                NumericLineBuffer<I, 3> count_buffer;
+                while (linestream.getline(line) && !parse_numeric_line(line, count_buffer))
+                {
+                    std::stringstream out;
+                    out << "CDT_State: HeaderLine. Invalid line (" << linestream.line_nb() << ") was skipped.";
+                    err_handler(stdutils::io::Severity::WARN, out.str());
+                }
+                if (count_buffer.lines.size() == 1)
+                {
+                    cdt_state = CDT_State::ParseVertices;
+                }
+                else
+                {
+                    err_handler(stdutils::io::Severity::ERR, "CDT_State: HeaderLine. Could not find the header line.");
+                    cdt_state = CDT_State::Done;
+                }
+                break;
+            }
+            case CDT_State::ParseVertices:
+            {
+                NumericLineBuffer<F, 3> vertex_buffer;
+                while (vertex_buffer.lines.size() < 1 && linestream.getline(line) && parse_numeric_line(line, vertex_buffer)) { }
+                result = vertex_buffer.dim;
+                cdt_state = CDT_State::Done;
+                break;
+            }
+            case CDT_State::ParseEdgeIndices:
+            case CDT_State::ParseTriangleIndices:
+            case CDT_State::Done:
+            default:
+                assert(0);
+                break;
+        }
+    }
+    if (result == 0)
+    {
+        err_handler(stdutils::io::Severity::ERR, "Could not deduce the point dimension");
+    }
+    if (result != 2 && result != 3)
+    {
+        std::stringstream out;
+        out << "Invalid point dimension: " << result;
+        err_handler(stdutils::io::Severity::ERR, out.str());
+    }
+    return result;
+}
+
 template <typename P, typename I, int DIM>
 shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler)
 {
     using F = typename P::scalar;
     shapes::Soup<P, I> result;
-    std::string line_buf;
     CDT_State cdt_state = CDT_State::HeaderLine;
     I nb_vertices = 0;
     I nb_edges = 0;
@@ -248,24 +375,20 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
     graphs::EdgeSoup<I> edges;
     graphs::TriangleSoup<I> triangles;
     constexpr I undef = graphs::IndexTraits<I>::undef();
-    std::size_t line_idx = 0;
-    while (inputstream.good() && cdt_state != CDT_State::Done)
+    auto linestream = stdutils::io::SkipLineStream(inputstream).skip_blank_lines().skip_comment_lines("#");
+    while (linestream.stream().good() && cdt_state != CDT_State::Done)
     {
+        std::string line;
         switch (cdt_state)
         {
             case CDT_State::HeaderLine:
             {
                 NumericLineBuffer<I, 3> count_buffer;
-                while (std::getline(inputstream, line_buf) && !parse_numeric_line(line_buf, count_buffer))
+                while (linestream.getline(line) && !parse_numeric_line(line, count_buffer))
                 {
-                    TokenIterator token_iterator(line_buf);
-                    const bool not_a_comment = token_iterator.next_token().substr(0, 1) != "#";
-                    if (not_a_comment)
-                    {
-                        std::stringstream out;
-                        out << "CDT_State: HeaderLine. Invalid line #" << line_idx;
-                        err_handler(stdutils::io::Severity::ERR, out.str());
-                    }
+                    std::stringstream out;
+                    out << "CDT_State: HeaderLine. Invalid line (" << linestream.line_nb() << ") was skipped.";
+                    err_handler(stdutils::io::Severity::WARN, out.str());
                 }
                 if (count_buffer.lines.size() == 1)
                 {
@@ -279,13 +402,12 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
                     err_handler(stdutils::io::Severity::ERR, "CDT_State: HeaderLine. Could not find the header line.");
                     cdt_state = CDT_State::Done;
                 }
-                line_idx++;
                 break;
             }
             case CDT_State::ParseVertices:
             {
                 NumericLineBuffer<F, DIM> vertex_buffer;
-                while (vertex_buffer.lines.size() < nb_vertices && std::getline(inputstream, line_buf) && parse_numeric_line(line_buf, vertex_buffer)) { line_idx++; }
+                while (vertex_buffer.lines.size() < nb_vertices && linestream.getline(line) && parse_numeric_line(line, vertex_buffer)) { }
                 append_vertices(vertices, vertex_buffer);
                 cdt_state = CDT_State::ParseEdgeIndices;
                 break;
@@ -293,7 +415,7 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
             case CDT_State::ParseEdgeIndices:
             {
                 NumericLineBuffer<I, 2> edge_buffer;
-                while (edge_buffer.lines.size() < nb_edges && std::getline(inputstream, line_buf) && parse_numeric_line(line_buf, edge_buffer, undef)) { line_idx++; }
+                while (edge_buffer.lines.size() < nb_edges && linestream.getline(line) && parse_numeric_line(line, edge_buffer, undef)) { }
                 edges.reserve(nb_edges);
                 for (const auto& arr : edge_buffer.lines) { edges.emplace_back(arr[0], arr[1]); }
                 cdt_state = CDT_State::ParseTriangleIndices;
@@ -302,7 +424,7 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
             case CDT_State::ParseTriangleIndices:
             {
                 NumericLineBuffer<I, 3> triangle_buffer;
-                while (triangle_buffer.lines.size() < nb_triangles && std::getline(inputstream, line_buf) && parse_numeric_line(line_buf, triangle_buffer, undef)) { line_idx++; }
+                while (triangle_buffer.lines.size() < nb_triangles && linestream.getline(line) && parse_numeric_line(line, triangle_buffer, undef)) { }
                 triangles.reserve(nb_triangles);
                 for (const auto& arr : triangle_buffer.lines) { triangles.emplace_back(arr[0], arr[1], arr[2]); }
                 cdt_state = CDT_State::Done;
@@ -324,9 +446,9 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
         result.edges.indices.reserve(edges.size());
         std::set<graphs::Edge<I>> ordered_edges;
         std::copy_if(edges.cbegin(), edges.cend(), std::back_inserter(result.edges.indices), [&err_handler, &ordered_edges, nb_vertices](const auto& e) {
-            if (e.first == e.second) { err_handler(stdutils::io::Severity::WARN, "Eliminated a loop edge"); return false; }
-            if (e.first >= nb_vertices || e.second >= nb_vertices) { err_handler(stdutils::io::Severity::WARN, "Eliminated an edge with out of bound indices"); return false; }
-            if (!ordered_edges.insert(graphs::ordered_edge(e)).second) { err_handler(stdutils::io::Severity::WARN, "Eliminated a duplicated edge"); return false; }
+            if (e.first == e.second) { warn_eliminated_edge(e, "loop edge", err_handler); return false; }
+            if (e.first >= nb_vertices || e.second >= nb_vertices) { warn_eliminated_edge(e, "out of bound index", err_handler); return false; }
+            if (!ordered_edges.insert(graphs::ordered_edge(e)).second) { warn_eliminated_edge(e, "duplicated edge", err_handler); return false; }
             return true;
         });
         assert(graphs::is_valid(result.edges.indices));
@@ -334,8 +456,8 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
     {
         result.triangles.faces.reserve(triangles.size());
         std::copy_if(triangles.cbegin(), triangles.cend(), std::back_inserter(result.triangles.faces), [&err_handler, nb_vertices](const auto& t) {
-            if (!graphs::is_valid(t)) { err_handler(stdutils::io::Severity::WARN, "Eliminated an invalid triangle"); return false; }
-            if (t[0] >= nb_vertices || t[1] >= nb_vertices || t[2] >= nb_vertices) { err_handler(stdutils::io::Severity::WARN, "Eliminated a triangle with out of bound indices"); return false; }
+            if (!graphs::is_valid(t)) { warn_eliminated_triangle(t, "repeat index", err_handler); return false; }
+            if (t[0] >= nb_vertices || t[1] >= nb_vertices || t[2] >= nb_vertices) { warn_eliminated_triangle(t, "out of bound index", err_handler); return false; }
             return true;
         });
         assert(graphs::is_valid(result.triangles.faces));
@@ -387,14 +509,26 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
     return result;
 }
 
+} // Anonymous namespace
+
+int peek_point_dimension(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
+{
+    try
+    {
+        return peek_point_dimension_gen<double, std::uint32_t>(inputstream, err_handler);
+    }
+    catch (const std::exception& e)
+    {
+        std::stringstream oss;
+        oss << "Exception: " << e.what();
+        err_handler(stdutils::io::Severity::EXCPT, oss.str());
+    }
+    return 0;
 }
 
 int peek_point_dimension(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
-    // TODO implement!
-    UNUSED(filepath);
-    UNUSED(err_handler);
-    return 2;
+    return stdutils::io::open_and_parse_file<int, char>(filepath, peek_point_dimension_gen<double, std::uint32_t>, err_handler);
 }
 
 shapes::Soup2d<double> parse_2d_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
@@ -418,7 +552,8 @@ shapes::Soup2d<double> parse_2d_shapes_from_file(std::filesystem::path filepath,
 {
     using P = shapes::Point2d<double>;
     using I = std::uint32_t;
-    return stdutils::io::parse_file_generic<shapes::Soup<P,I>, char>(parse_shapes_from_stream_gen<P, I, 2>, filepath, err_handler);}
+    return stdutils::io::open_and_parse_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I, 2>, err_handler);
+}
 
 shapes::Soup3d<double> parse_3d_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
@@ -441,7 +576,7 @@ shapes::Soup3d<double> parse_3d_shapes_from_file(std::filesystem::path filepath,
 {
     using P = shapes::Point3d<double>;
     using I = std::uint32_t;
-    return stdutils::io::parse_file_generic<shapes::Soup<P,I>, char>(parse_shapes_from_stream_gen<P, I, 3>, filepath, err_handler);
+    return stdutils::io::open_and_parse_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I, 3>, err_handler);
 }
 
 } // namespace cdt
