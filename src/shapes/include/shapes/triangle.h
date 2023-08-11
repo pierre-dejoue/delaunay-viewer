@@ -41,7 +41,7 @@ template <typename P, typename I>
 bool is_valid(const Triangles<P, I>& triangles)
 {
     const I nb_vertices = static_cast<I>(triangles.vertices.size());
-    return std::all_of(std::cbegin(triangles.faces), std::cend(triangles.faces), [nb_vertices](const Triangles<P>::face& f) {
+    return std::all_of(std::cbegin(triangles.faces), std::cend(triangles.faces), [nb_vertices](const typename Triangles<P>::face& f) {
         return graphs::is_valid(f) && f[0] < nb_vertices && f[1] < nb_vertices && f[2] < nb_vertices;
     });
 }

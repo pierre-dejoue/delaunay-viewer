@@ -36,8 +36,8 @@ namespace dat
 //
 namespace cdt
 {
-    int peek_point_dimension(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept;
-    int peek_point_dimension(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept;
+    unsigned int peek_point_dimension(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept;
+    unsigned int peek_point_dimension(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept;
     shapes::Soup2d<double> parse_2d_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept;
     shapes::Soup2d<double> parse_2d_shapes_from_file(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept;
     shapes::Soup3d<double> parse_3d_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept;

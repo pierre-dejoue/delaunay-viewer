@@ -306,9 +306,9 @@ enum class CDT_State
 };
 
 template <typename F, typename I>
-int peek_point_dimension_gen(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler)
+unsigned int peek_point_dimension_gen(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler)
 {
-    int result = 0;
+    unsigned int result = 0;
     CDT_State cdt_state = CDT_State::HeaderLine;
     auto linestream = stdutils::io::SkipLineStream(inputstream).skip_blank_lines().skip_comment_lines("#");
     while (linestream.stream().good() && cdt_state != CDT_State::Done)
@@ -515,7 +515,7 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
 
 } // Anonymous namespace
 
-int peek_point_dimension(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
+unsigned int peek_point_dimension(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
     try
     {
@@ -530,9 +530,9 @@ int peek_point_dimension(std::istream& inputstream, const stdutils::io::ErrorHan
     return 0;
 }
 
-int peek_point_dimension(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
+unsigned int peek_point_dimension(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
-    return stdutils::io::open_and_parse_file<int, char>(filepath, peek_point_dimension_gen<double, std::uint32_t>, err_handler);
+    return stdutils::io::open_and_parse_file<unsigned int, char>(filepath, peek_point_dimension_gen<double, std::uint32_t>, err_handler);
 }
 
 shapes::Soup2d<double> parse_2d_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept

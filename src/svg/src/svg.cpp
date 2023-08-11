@@ -1,18 +1,24 @@
 #include <svg/svg.h>
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wall"
+#endif
 #include <bx/allocator.h>
 #include <ssvg/ssvg.h>
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
 #include <stdutils/macros.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <fstream>
 #include <sstream>
-
-
-#include <iostream>
 
 
 namespace svg
@@ -376,7 +382,7 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
             std::ifstream inputstream(filepath);
             if (inputstream.is_open())
             {
-                inputstream.read(buf.data(), sz);
+                inputstream.read(buf.data(), static_cast<std::streamsize>(sz));
             }
             else
             {
