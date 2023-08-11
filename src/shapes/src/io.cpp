@@ -44,7 +44,10 @@ bool parse_numeric_line(const std::string& line, NumericLineBuffer<T, MAX_DIM>& 
     entry.fill(default_val);
     unsigned int idx = 0;
     while(numeric_stream != stream_end && idx < MAX_DIM)
-        entry[idx++] = *numeric_stream++;
+    {
+        entry[idx] = *numeric_stream++;
+        idx++;      // postincrement outside of the previous expression due to a warning C28020 false positive
+    }
     if (idx > 0)
     {
         buffer.lines.push_back(entry);
@@ -133,22 +136,22 @@ namespace dat
 namespace
 {
 
-template <typename F, int DIM, int MAX_DIM>
+template <typename F, int POINT_DIM, std::size_t MAX_DIM>
 void append_new_shape(const ShapeBuffer<F, MAX_DIM>& buffer, ShapeAggregate<F>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
-    static_assert(DIM <= MAX_DIM);
+    static_assert(static_cast<std::size_t>(POINT_DIM) <= MAX_DIM);
     switch (buffer.type)
     {
         case ShapeType::POINT_CLOUD:
         {
-            shapes::PointCloud<typename shapes::Traits<F, DIM>::Point> pc;
+            shapes::PointCloud<typename shapes::Traits<F, POINT_DIM>::Point> pc;
             append_vertices(pc.vertices, buffer.vertices);
             shapes.emplace_back(std::move(pc));
             break;
         }
         case ShapeType::POINT_PATH:
         {
-            shapes::PointPath<typename shapes::Traits<F, DIM>::Point> pp;
+            shapes::PointPath<typename shapes::Traits<F, POINT_DIM>::Point> pp;
             pp.closed = buffer.closed;
             append_vertices(pp.vertices, buffer.vertices);
             shapes.emplace_back(std::move(pp));
@@ -156,7 +159,7 @@ void append_new_shape(const ShapeBuffer<F, MAX_DIM>& buffer, ShapeAggregate<F>& 
         }
         case ShapeType::CUBIC_BEZIER_PATH:
         {
-            shapes::CubicBezierPath<typename shapes::Traits<F, DIM>::Point> cbp;
+            shapes::CubicBezierPath<typename shapes::Traits<F, POINT_DIM>::Point> cbp;
             cbp.closed = buffer.closed;
             append_vertices(cbp.vertices, buffer.vertices);
             if (shapes::valid_size(cbp))
@@ -362,16 +365,17 @@ int peek_point_dimension_gen(std::istream& inputstream, const stdutils::io::Erro
     return result;
 }
 
-template <typename P, typename I, int DIM>
+template <typename P, typename I>
 shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler)
 {
     using F = typename P::scalar;
+    constexpr auto POINT_DIM = static_cast<std::size_t>(P::dim);
     shapes::Soup<P, I> result;
     CDT_State cdt_state = CDT_State::HeaderLine;
     I nb_vertices = 0;
     I nb_edges = 0;
     I nb_triangles = 0;
-    std::vector<typename shapes::Traits<F, DIM>::Point> vertices;
+    std::vector<P> vertices;
     graphs::EdgeSoup<I> edges;
     graphs::TriangleSoup<I> triangles;
     constexpr I undef = graphs::IndexTraits<I>::undef();
@@ -406,7 +410,7 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
             }
             case CDT_State::ParseVertices:
             {
-                NumericLineBuffer<F, DIM> vertex_buffer;
+                NumericLineBuffer<F, POINT_DIM> vertex_buffer;
                 while (vertex_buffer.lines.size() < nb_vertices && linestream.getline(line) && parse_numeric_line(line, vertex_buffer)) { }
                 append_vertices(vertices, vertex_buffer);
                 cdt_state = CDT_State::ParseEdgeIndices;
@@ -537,7 +541,7 @@ shapes::Soup2d<double> parse_2d_shapes_from_stream(std::istream& inputstream, co
     using I = std::uint32_t;
     try
     {
-        return parse_shapes_from_stream_gen<P, I, 2>(inputstream, err_handler);
+        return parse_shapes_from_stream_gen<P, I>(inputstream, err_handler);
     }
     catch (const std::exception& e)
     {
@@ -552,7 +556,7 @@ shapes::Soup2d<double> parse_2d_shapes_from_file(std::filesystem::path filepath,
 {
     using P = shapes::Point2d<double>;
     using I = std::uint32_t;
-    return stdutils::io::open_and_parse_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I, 2>, err_handler);
+    return stdutils::io::open_and_parse_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I>, err_handler);
 }
 
 shapes::Soup3d<double> parse_3d_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
@@ -561,7 +565,7 @@ shapes::Soup3d<double> parse_3d_shapes_from_stream(std::istream& inputstream, co
     using I = std::uint32_t;
     try
     {
-        return parse_shapes_from_stream_gen<P, I, 3>(inputstream, err_handler);
+        return parse_shapes_from_stream_gen<P, I>(inputstream, err_handler);
     }
     catch (const std::exception& e)
     {
@@ -576,7 +580,7 @@ shapes::Soup3d<double> parse_3d_shapes_from_file(std::filesystem::path filepath,
 {
     using P = shapes::Point3d<double>;
     using I = std::uint32_t;
-    return stdutils::io::open_and_parse_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I, 3>, err_handler);
+    return stdutils::io::open_and_parse_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I>, err_handler);
 }
 
 } // namespace cdt
