@@ -1,4 +1,4 @@
-#include <catch2/catch_test_macros.hpp>
+#include <catch_amalgamated.hpp>
 
 #include <shapes/conversion.h>
 #include <shapes/shapes.h>

@@ -1,4 +1,4 @@
-#include <catch2/catch_test_macros.hpp>
+#include <catch_amalgamated.hpp>
 
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
