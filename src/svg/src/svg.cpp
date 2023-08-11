@@ -1,15 +1,7 @@
 #include <svg/svg.h>
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wall"
-#endif
-#include <bx/allocator.h>
+#include <ssvg_init.h>
 #include <ssvg/ssvg.h>
-#if defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
-
 #include <stdutils/macros.h>
 
 #include <algorithm>
@@ -54,18 +46,6 @@ ssvg::ShapeAttributes init_default_shape_attr()
     return defaultAttrs;
 }
 
-bx::DefaultAllocator s_bx_default_allocator;
-bx::AllocatorI* s_initialize_ssvg_lib()
-{
-    ssvg::initLib(&s_bx_default_allocator);
-    return &s_bx_default_allocator;
-}
-
-bool initialize_ssvg_lib()
-{
-    static bx::AllocatorI* bx_allocator = s_initialize_ssvg_lib();
-    return bx_allocator != nullptr;
-}
 
 const ssvg::ShapeAttributes& get_default_shape_attributes()
 {

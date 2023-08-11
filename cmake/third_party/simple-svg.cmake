@@ -39,7 +39,7 @@ if(MSVC)
 endif()
 
 target_link_libraries(simple-svg
-    PUBLIC
+    PRIVATE
     bx
 )
 
