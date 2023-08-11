@@ -18,9 +18,9 @@
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
 
-#include <portable-file-dialogs.h>      // Include before glfw3.h
+#include <pfd_wrap.h>           // Include before glfw3.h
 #include <GLFW/glfw3.h>
-#include <imgui.h>
+#include <imgui_wrap.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 

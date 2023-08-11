@@ -302,7 +302,7 @@ namespace details
         RemapIndices(const std::pair<I, I>& minmax)
             : min_idx(minmax.first)
             , max_idx(minmax.second)
-            , idx_map(2 + max_idx - min_idx, 0)
+            , idx_map(2u + max_idx - min_idx, I{0})
         {
             assert(min_idx <= max_idx);
         }
@@ -310,7 +310,7 @@ namespace details
         void visit(I idx)
         {
             assert(min_idx <= idx && idx <= max_idx);
-            idx_map[1 + idx - min_idx] = 1;     // Notice the +1 extra offset
+            idx_map[1u + idx - min_idx] = 1;     // Notice the +1 extra offset
         }
 
         void remap()

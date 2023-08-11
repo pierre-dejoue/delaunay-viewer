@@ -72,13 +72,13 @@ EdgeSoup<I> test_edge_soup_non_manifold_letter_a()
 template <typename I = std::uint32_t>
 EdgeSoup<I> test_edge_soup_non_manifold_lollipop()
 {
-    //
-    //                5
-    //              /   \
-    //   0 -- 1 -- 2     4
-    //              \   /
-    //                3
-    //
+    //                                   //
+    //                   5               //
+    //                 /   \             //
+    //      0 -- 1 -- 2     4            //
+    //                 \   /             //
+    //                   3               //
+    //                                   //
     EdgeSoup<I> out;
     out.push_back(std::make_pair<I, I>(0, 1));
     out.push_back(std::make_pair<I, I>(1, 2));
@@ -303,7 +303,7 @@ TEST_CASE("Algo: Extract paths from edge soup", "[graphs]")
         CAPTURE(test_loop_idx);
         REQUIRE(is_valid(test.edge_soup) == true);
         const auto paths = extract_paths(test.edge_soup);
-        const std::size_t count_closed = std::count_if(paths.cbegin(), paths.cend(), [](const auto& path) { return path.closed; });
+        const std::size_t count_closed = static_cast<std::size_t>(std::count_if(paths.cbegin(), paths.cend(), [](const auto& path) { return path.closed; }));
         const std::size_t count_open = paths.size() - count_closed;
         CHECK(count_closed == test.expected_closed_paths);
         CHECK(count_open == test.expected_open_paths);

@@ -4,7 +4,7 @@
 #include <shapes/point.h>
 #include <shapes/vect.h>
 
-#include <imgui.h>
+#include <imgui_wrap.h>
 
 #include <cassert>
 

@@ -7,7 +7,7 @@
 #include <stdutils/macros.h>
 #include <stdutils/visit.h>
 
-#include <imgui.h>
+#include <imgui_wrap.h>
 
 #include <cassert>
 #include <variant>
@@ -49,8 +49,8 @@ void ShapeDrawWindow::zoom_in(const shapes::BoundingBox2d<scalar>& bb)
 
 void ShapeDrawWindow::pan(const shapes::Vect2d<scalar>& dir)
 {
-    const auto tl_pan = static_cast<shapes::Vect2d<scalar>>(m_canvas_box.min()) - dir;
-    const auto br_pan = static_cast<shapes::Vect2d<scalar>>(m_canvas_box.max()) - dir;
+    const auto tl_pan = m_canvas_box.min() - dir;
+    const auto br_pan = m_canvas_box.max() - dir;
 
     m_canvas_box = shapes::BoundingBox2d<scalar>().add(tl_pan).add(br_pan);
 }

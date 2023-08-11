@@ -10,7 +10,7 @@
 #include <stdutils/macros.h>
 #include <stdutils/visit.h>
 
-#include <imgui.h>
+#include <imgui_wrap.h>
 
 #include <algorithm>
 #include <cassert>
@@ -200,9 +200,9 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
         active_button << "Active#" << idx;
         float hue = shape_control.active ? 0.3f : 0.f;
         ImGui::PushID(active_button.str().c_str());
-        ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor::HSV(hue, 0.6f, 0.6f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, (ImVec4)ImColor::HSV(hue, 0.7f, 0.7f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, (ImVec4)ImColor::HSV(hue, 0.8f, 0.8f));
+        ImGui::PushStyleColor(ImGuiCol_Button, static_cast<ImVec4>(ImColor::HSV(hue, 0.6f, 0.6f)));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, static_cast<ImVec4>(ImColor::HSV(hue, 0.7f, 0.7f)));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, static_cast<ImVec4>(ImColor::HSV(hue, 0.8f, 0.8f)));
         ImGui::PushStyleColor(ImGuiCol_Text, shape_control.active ? ImVec4(1.f, 1.f, 1.f, 1.f) : ImVec4(0.4f, 0.4f, 0.4f, 1.f));
         const bool pressed = ImGui::Button("Active");
         ImGui::PopStyleColor(4);
@@ -214,7 +214,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
         }
 
         // Info
-        ImGui::Text("Nb vertices: %d, nb edges: %d", shape_control.nb_vertices, shape_control.nb_edges);
+        ImGui::Text("Nb vertices: %ld, nb edges: %ld", shape_control.nb_vertices, shape_control.nb_edges);
 
         // Sampling
         if (allow_sampling && (shapes::is_bezier_path(shape_control.shape) || shapes::is_point_path(shape_control.shape)))
@@ -225,7 +225,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
             ImGui::Checkbox(sample_checkbox.str().c_str(), &is_sampled);
             if (is_sampled && !shape_control.sampled_shape)
             {
-                shape_control.sampled_shape = allocate_new_sampled_shape(shapes::AllShapes<scalar>(shapes::trivial_sampling(shape_control.shape)));
+                shape_control.sampled_shape = allocate_new_sampled_shape(shapes::trivial_sampling(shape_control.shape));
                 if (std::holds_alternative<shapes::CubicBezierPath2d<scalar>>(shape_control.shape))
                 {
                     const auto& cbp = std::get<shapes::CubicBezierPath2d<scalar>>(shape_control.shape);
@@ -380,8 +380,8 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
             if (is_open)
             {
                 // Info
-                ImGui::Text("Nb vertices: %d, nb edges: %d, nb faces: %d", triangulation_shape_control.nb_vertices, triangulation_shape_control.nb_edges, triangulation_shape_control.nb_faces);
-                ImGui::Text("Computation time: %0.3g ms", triangulation_shape_control.latest_computation_time_ms);
+                ImGui::Text("Nb vertices: %ld, nb edges: %ld, nb faces: %ld", triangulation_shape_control.nb_vertices, triangulation_shape_control.nb_edges, triangulation_shape_control.nb_faces);
+                ImGui::Text("Computation time: %0.3g ms", static_cast<double>(triangulation_shape_control.latest_computation_time_ms));
                 ImGui::TreePop();
             }
             ImGui::TreePop();

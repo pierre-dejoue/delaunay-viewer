@@ -151,7 +151,7 @@ PointPath<P<F>> UniformSamplingPointPath<F, P>::sample(F max_sampling_length) co
         F t{0};
         for (std::size_t s = 0; s < nb_sampling_edges; s++, t += dt)
         {
-            result.vertices.emplace_back((1.f - t) * p0 + t * p1);
+            result.vertices.emplace_back((F{1} - t) * p0 + t * p1);
         }
     }
     if (!m_point_path.closed)
@@ -330,7 +330,7 @@ void UniformSamplingCubicBezier<F, Point2d>::one_iteration(bool trace)
         F& seg_length = m_segment_total_length[seg];
         seg_length = F{0};
         for(idx = 0; idx < SAMPLING_BASE_N; idx++)
-            seg_length += sample_dl[idx] = sample_v_norm_avg[idx] * (begin_sample_t[idx+1] - begin_sample_t[idx]);
+            seg_length += sample_dl[idx] = sample_v_norm_avg[idx] * static_cast<double>(begin_sample_t[idx+1] - begin_sample_t[idx]);
 
         // 3. The target delta length (the desired curve length between two samples)
         const F target_dl = seg_length / static_cast<F>(SAMPLING_BASE_N);

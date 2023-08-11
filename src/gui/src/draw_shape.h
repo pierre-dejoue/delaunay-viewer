@@ -8,7 +8,7 @@
 #include <shapes/path_algos.h>
 #include <shapes/triangle.h>
 
-#include <imgui.h>
+#include <imgui_wrap.h>
 
 #include <cassert>
 
