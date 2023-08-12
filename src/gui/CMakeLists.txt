@@ -28,6 +28,14 @@ if(DELAUNAY_VIEWER_IMGUI_DEMO)
     )
 endif()
 
+if(APPLE)
+    # OpenGL API is deprecated since macOS 10.14
+    target_compile_definitions(delaunay_viewer
+        PUBLIC
+        GL_SILENCE_DEPRECATION
+    )
+endif()
+
 target_include_directories(delaunay_viewer
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
