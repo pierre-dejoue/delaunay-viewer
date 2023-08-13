@@ -35,7 +35,7 @@ TEST_CASE("Sample a CubicbezierCurve2d", "[sampling]")
     UniformSamplingCubicBezier2d<double> sampler(cbp);
 
     // segment length ~ 4.2184
-    const PointPath2d<double> pp = sampler.sample(0.25f);
+    const PointPath2d<double> pp = sampler.sample(0.25);
 
     CHECK(pp.closed == cbp.closed);
     CHECK(pp.vertices.size() == 18);

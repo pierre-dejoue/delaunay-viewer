@@ -140,6 +140,7 @@ TEST_CASE("Invalid paths: Duplicate vertices", "[graphs]")
 
     path.vertices.pop_back();
     CHECK(is_valid(path) == true);
+    CHECK(has_duplicates(path) == false);
 }
 
 TEST_CASE("Open paths", "[graphs]")
@@ -186,6 +187,35 @@ TEST_CASE("Edge soup from closed path", "[graphs]")
     const auto path = test_closed_path();
     const auto edge_soup_compare = to_edge_soup(path);
     CHECK(edge_soup == edge_soup_compare);
+}
+
+TEST_CASE("Invalid EdgeSoup: Duplicate edges", "[graphs]")
+{
+    EdgeSoup<> edges;
+    edges.emplace_back(0, 1);
+    edges.emplace_back(1, 2);
+    edges.emplace_back(1, 0);
+
+    CHECK(is_valid(edges) == false);
+    CHECK(has_duplicates(edges) == true);
+
+    edges.pop_back();
+    CHECK(is_valid(edges) == true);
+}
+
+TEST_CASE("Invalid EdgeSoup: Undef index", "[graphs]")
+{
+    using I = std::uint8_t;
+    REQUIRE(IndexTraits<I>::undef() == 255);
+    EdgeSoup<I> edges;
+    edges.emplace_back(I{0}, I{1});
+    edges.emplace_back(I{1}, I{2});
+    edges.emplace_back(I{2}, I{255});
+
+    CHECK(is_valid(edges) == false);
+
+    edges.pop_back();
+    CHECK(is_valid(edges) == true);
 }
 
 TEST_CASE("EdgeSoup: min_degree, max_degree and minmax_degree", "[graphs]")
@@ -278,7 +308,6 @@ TEST_CASE("EdgeSoup: nb_vertices and remap indices", "[graphs]")
         test_loop_idx++;
     }
 }
-
 
 TEST_CASE("Algo: Extract paths from edge soup", "[graphs]")
 {

@@ -119,16 +119,14 @@ template <typename I>
 bool has_duplicates(const EdgeSoup<I>& edges)
 {
     std::set<Edge<I>> ordered_edges;
-    for (const auto& e : edges)
-        ordered_edges.insert(ordered_edge(e)).second;
-    return edges.size() != ordered_edges.size();
+    return std::any_of(edges.cbegin(), edges.cend(), [&ordered_edges](const auto& e) { return !ordered_edges.insert(ordered_edge(e)).second; });
 }
 
 template <typename I>
 bool has_duplicates(const Path<I>& path)
 {
-    std::set<I> unique_vertices(std::cbegin(path.vertices), std::cend(path.vertices));
-    return unique_vertices.size() != path.vertices.size();
+    std::set<I> unique_vertices;
+    return std::any_of(path.vertices.cbegin(), path.vertices.cend(), [&unique_vertices](const auto& p) { return !unique_vertices.insert(p).second; });
 }
 
 template <typename I>

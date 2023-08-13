@@ -43,7 +43,13 @@ target_compile_definitions(bx
     BX_REALLOC=bx::realloc
 )
 
-if(MSVC)
+if(APPLE)
+    # Required to include <malloc.h>
+    target_include_directories(bx
+        PUBLIC
+        ${bx_SOURCE_DIR}/include/compat/osx
+    )
+elseif(MSVC)
     # Required to include <alloca.h>
     target_include_directories(bx
         PUBLIC
@@ -53,7 +59,6 @@ if(MSVC)
     # Correct definition of macro __cplusplus on Visual Studio
     # https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
     target_compile_options(bx PRIVATE "/Zc:__cplusplus")
-
 
     target_compile_definitions(bx PRIVATE __STDC_FORMAT_MACROS)
 endif()

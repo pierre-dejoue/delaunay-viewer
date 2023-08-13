@@ -61,8 +61,8 @@ std::size_t nb_edges(const AllShapes<F>& shape)
 {
     std::size_t result = 0;
     std::visit(stdutils::Overloaded {
-        [&result](const shapes::PointCloud2d<F>&)        { /* Do nothing */ },
-        [&result](const shapes::PointCloud3d<F>&)        { /* Do nothing */ },
+        [](const shapes::PointCloud2d<F>&)               { /* Do nothing */ },
+        [](const shapes::PointCloud3d<F>&)               { /* Do nothing */ },
         [&result](const shapes::PointPath2d<F>& s)       { result = nb_edges(s); },
         [&result](const shapes::PointPath3d<F>& s)       { result = nb_edges(s); },
         [&result](const shapes::CubicBezierPath2d<F>& s) { result = nb_edges(s); },
@@ -79,14 +79,14 @@ std::size_t nb_faces(const AllShapes<F>& shape)
 {
     std::size_t result = 0;
     std::visit(stdutils::Overloaded {
-        [&result](const shapes::PointCloud2d<F>&)        { /* Do nothing */ },
-        [&result](const shapes::PointCloud3d<F>&)        { /* Do nothing */ },
-        [&result](const shapes::PointPath2d<F>&)         { /* Do nothing */ },
-        [&result](const shapes::PointPath3d<F>&)         { /* Do nothing */ },
-        [&result](const shapes::CubicBezierPath2d<F>&)   { /* Do nothing */ },
-        [&result](const shapes::CubicBezierPath3d<F>&)   { /* Do nothing */ },
-        [&result](const shapes::Triangles2d<F>& s)       { result = s.faces.size(); },
-        [&result](const shapes::Triangles3d<F>& s)       { result = s.faces.size(); },
+        [](const shapes::PointCloud2d<F>&)              { /* Do nothing */ },
+        [](const shapes::PointCloud3d<F>&)              { /* Do nothing */ },
+        [](const shapes::PointPath2d<F>&)               { /* Do nothing */ },
+        [](const shapes::PointPath3d<F>&)               { /* Do nothing */ },
+        [](const shapes::CubicBezierPath2d<F>&)         { /* Do nothing */ },
+        [](const shapes::CubicBezierPath3d<F>&)         { /* Do nothing */ },
+        [&result](const shapes::Triangles2d<F>& s)      { result = s.faces.size(); },
+        [&result](const shapes::Triangles3d<F>& s)      { result = s.faces.size(); },
         [](const auto&) { assert(0); }
     }, shape);
     return result;
@@ -98,7 +98,7 @@ bool is_point_cloud(const AllShapes<F>& shape)
     return std::visit(stdutils::Overloaded {
         [](const shapes::PointCloud2d<F>&)          { return true; },
         [](const shapes::PointCloud3d<F>&)          { return true; },
-        [](const auto&) { return false; }
+        [](const auto&)                             { return false; }
     }, shape);
 }
 
@@ -108,7 +108,7 @@ bool is_point_path(const AllShapes<F>& shape)
     return std::visit(stdutils::Overloaded {
         [](const shapes::PointPath2d<F>&)           { return true; },
         [](const shapes::PointPath3d<F>&)           { return true; },
-        [](const auto&) { return false; }
+        [](const auto&)                             { return false; }
     }, shape);
 }
 
@@ -118,7 +118,7 @@ bool is_bezier_path(const AllShapes<F>& shape)
     return std::visit(stdutils::Overloaded {
         [](const shapes::CubicBezierPath2d<F>&)     { return true; },
         [](const shapes::CubicBezierPath3d<F>&)     { return true; },
-        [](const auto&) { return false; }
+        [](const auto&)                             { return false; }
     }, shape);
 }
 

@@ -12,7 +12,6 @@ endif()
 
 set(LIB_SOURCES
     src/dt_impl.cpp
-    src/dt_interface.cpp
 )
 
 file(GLOB LIB_HEADERS include/dt/*.h src/*.h)

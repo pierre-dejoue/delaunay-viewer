@@ -261,7 +261,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
                 if (new_sampling_length != shape_control.sampling_length)
                 {
                     shape_control.sampling_length = new_sampling_length;
-                    shape_control.sampled_shape->update(shapes::AllShapes<scalar>(shape_control.sampler->sample(new_sampling_length)));
+                    shape_control.sampled_shape->update(shapes::AllShapes<scalar>(shape_control.sampler->sample(static_cast<scalar>(new_sampling_length))));
                     input_has_changed = true;
                 }
             }
