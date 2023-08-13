@@ -31,5 +31,3 @@ if(MSVC)
 endif()
 
 set_property(TARGET stdutils PROPERTY FOLDER "libraries")
-
-install(TARGETS stdutils EXPORT picross_project)
