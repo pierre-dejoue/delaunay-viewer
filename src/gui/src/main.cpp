@@ -18,11 +18,12 @@
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
 
-#include <pfd_wrap.h>           // Include before glfw3.h
-#include <GLFW/glfw3.h>
+// Order matters in this section
 #include <imgui_wrap.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <pfd_wrap.h>
+#include "opengl_and_glfw.h"
 
 #include <cassert>
 #include <filesystem>
@@ -36,11 +37,6 @@
 
 namespace
 {
-
-void glfw_error_callback(int error, const char* description)
-{
-    std::cerr << "GLFW Error " << error << ": " << description << std::endl;
-}
 
 const ImColor WindowBackgroundColor_Classic(29, 75, 99, 255);
 const ImColor WindowBackgroundColor_Dark(4, 8, 25, 255);
@@ -61,6 +57,11 @@ void imgui_set_style(bool dark_mode)
     }
 }
 
+void err_callback(stdutils::io::SeverityCode sev, std::string_view msg)
+{
+    std::cerr << stdutils::io::str_severity_code(sev) << ": " << msg << std::endl;
+}
+
 } // Anonymous namespace
 
 
@@ -69,28 +70,23 @@ int main(int argc, char *argv[])
     UNUSED(argc);
     UNUSED(argv);
 
-    // Versions
-    std::stringstream delaunay_title;
-    delaunay_title << "Delaunay Viewer " << get_version_string();
-    std::cout << delaunay_title.str() << std::endl;
-    std::cout << "Dear ImGui " << IMGUI_VERSION << std::endl;
+    // Window size
+    constexpr int WINDOW_WIDTH = 1280;
+    constexpr int WINDOW_HEIGHT = 720;
 
-    // Setup main window
-    glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit())
+    // Window title
+    std::stringstream window_title;
+    window_title << "Delaunay Viewer " << get_version_string();
+    std::cout << window_title.str() << std::endl;
+
+    // Setup GLFW window and OpenGL
+    stdutils::io::ErrorHandler err_handler(err_callback);
+    GLFWWindowContext glfw_context(WINDOW_WIDTH, WINDOW_HEIGHT, window_title.str(), &err_handler);
+    if (glfw_context.window() == nullptr)
         return 1;
-
-    // GL 3.2 + GLSL 150
-    const char* glsl_version = "#version 150";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-
-    GLFWwindow* window = glfwCreateWindow(1280, 720, delaunay_title.str().c_str(), nullptr, nullptr);
-    if (window == nullptr)
+    glfwSwapInterval(1);
+    if (!load_opengl(&err_handler))
         return 1;
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -99,8 +95,13 @@ int main(int argc, char *argv[])
     UNUSED(io);
 
     // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init(glsl_version);
+    ImGui_ImplGlfw_InitForOpenGL(glfw_context.window(), true);
+    ImGui_ImplOpenGL3_Init(glsl_version());
+
+    // Print out version information
+    std::cout << "Dear ImGui " << IMGUI_VERSION << std::endl;
+    std::cout << "GLFW " << GLFW_VERSION_MAJOR << "." << GLFW_VERSION_MINOR << "." << GLFW_VERSION_REVISION << std::endl;
+    std::cout << "OpenGL " << glGetString(GL_VERSION) << std::endl;
 
     // Style
     bool imgui_dark_mode = false;
@@ -120,7 +121,7 @@ int main(int argc, char *argv[])
 
     // Main loop
     std::vector<std::unique_ptr<ShapeWindow>> shape_windows;
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(glfw_context.window()))
     {
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -213,7 +214,7 @@ int main(int argc, char *argv[])
                 ImGui::Separator();
                 if (ImGui::MenuItem("Quit", "Alt+F4"))
                 {
-                    glfwSetWindowShouldClose(window, 1);
+                    glfwSetWindowShouldClose(glfw_context.window(), 1);
                 }
                 ImGui::EndMenu();
             }
@@ -242,13 +243,13 @@ int main(int argc, char *argv[])
         // Rendering
         ImGui::Render();
         int display_w, display_h;
-        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glfwGetFramebufferSize(glfw_context.window(), &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
         const auto clear_color = static_cast<ImVec4>(imgui_dark_mode ? WindowMainBackgroundColor_Dark : WindowMainBackgroundColor_Classic);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(glfw_context.window());
     } // while (!glfwWindowShouldClose(window))
 
     // Cleanup
@@ -256,8 +257,6 @@ int main(int argc, char *argv[])
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    glfwDestroyWindow(window);
-    glfwTerminate();
 
     return 0;
 }

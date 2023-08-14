@@ -4,12 +4,15 @@
 
 # Dependencies
 include(pfd)
+add_subdirectory(gl3w)
+add_subdirectory(imgui)
 
 configure_file(src/version.h.in version.h @ONLY)
 
 set(GUI_SOURCES
     src/draw_shape.cpp
     src/main.cpp
+    src/opengl_and_glfw.cpp
     src/settings.cpp
     src/settings_window.cpp
     src/shape_control_window.cpp
@@ -47,6 +50,7 @@ set_target_warnings(delaunay_viewer ON)
 target_link_libraries(delaunay_viewer
     PRIVATE
     dt
+    gl3w
     imgui
     portable_file_dialogs
     stdutils
