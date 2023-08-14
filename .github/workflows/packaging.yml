@@ -1,16 +1,16 @@
-name: build
+name: packaging
 
 on:
-  push:
-    branches: [ "main" ]
+  # This workflow is manually triggered
+  workflow_dispatch:
 
 jobs:
   build:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ ubuntu, macos, windows ]
-        build_type: [ Debug ]
+        build_type: [ Debug, Release ]
         arch: [ x86_64, arm64 ]
         exclude:
           - os: ubuntu
@@ -49,3 +49,14 @@ jobs:
       name: Test shapes
       working-directory: ${{ github.workspace }}/build
       run: cmake --build . --target run_utests_shapes --config ${{ matrix.build_type }}
+
+    - name: Install
+      working-directory: ${{ github.workspace }}/build
+      run: cmake --install . --config ${{ matrix.build_type }} --prefix install
+
+    - name: Upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: package-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.build_type }}
+        path: ${{ github.workspace }}/build/install
+        retention-days: 6
