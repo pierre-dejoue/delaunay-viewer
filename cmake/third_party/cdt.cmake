@@ -13,7 +13,7 @@ FetchContent_Declare(
 FetchContent_Populate(cdt)
 
 # When specifying an out-of-tree source a binary directory must be explicitly specified (2nd argument.)
-add_subdirectory(${cdt_SOURCE_DIR}/CDT CDT)     # The target is called CDT::CDT
+add_subdirectory(${cdt_SOURCE_DIR}/CDT CDT EXCLUDE_FROM_ALL)    # The target is called CDT::CDT
 
 set_property(TARGET CDT PROPERTY FOLDER "third_parties")
 
