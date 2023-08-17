@@ -32,6 +32,7 @@ struct Severity
     static constexpr SeverityCode EXCPT = -1;
     static constexpr SeverityCode ERR   = 1;
     static constexpr SeverityCode WARN  = 2;
+    static constexpr SeverityCode INFO  = 3;
 };
 
 std::string_view str_severity_code(SeverityCode code);
