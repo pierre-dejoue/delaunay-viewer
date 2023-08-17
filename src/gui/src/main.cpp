@@ -8,9 +8,11 @@
 
 #include "settings.h"
 #include "shape_control_window.h"
+#include "shaders.h"
 #include "version.h"
 
 #include <dt/dt_impl.h>
+#include <lin/mat.h>
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
 #include <shapes/io.h>
@@ -25,6 +27,7 @@
 #include <pfd_wrap.h>
 #include "opengl_and_glfw.h"
 
+#include <array>
 #include <cassert>
 #include <filesystem>
 #include <iostream>
@@ -42,6 +45,21 @@ const ImColor WindowBackgroundColor_Classic(29, 75, 99, 255);
 const ImColor WindowBackgroundColor_Dark(4, 8, 25, 255);
 const ImColor WindowMainBackgroundColor_Classic(35, 92, 121, 255);
 const ImColor WindowMainBackgroundColor_Dark(10, 25, 50, 255);
+
+#define TEST_TRIANGLE 0
+#if TEST_TRIANGLE
+const std::array<float, 9> vertex_arr = {
+    -0.5f, -0.2887f, 0.f,
+     0.5f, -0.2887f, 0.f,
+     0.f,   0.5773f, 0.f
+};
+
+const std::array<float, 9> vertex_color_arr = {
+     1.f, 0.f, 0.f,
+     0.f, 1.f, 0.f,
+     0.f, 0.f, 1.f
+};
+#endif
 
 void imgui_set_style(bool dark_mode)
 {
@@ -63,7 +81,6 @@ void err_callback(stdutils::io::SeverityCode sev, std::string_view msg)
 }
 
 } // Anonymous namespace
-
 
 int main(int argc, char *argv[])
 {
@@ -87,6 +104,7 @@ int main(int argc, char *argv[])
     glfwSwapInterval(1);
     if (!load_opengl(&err_handler))
         return 1;
+    gl_enable_debug(err_handler);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -101,7 +119,8 @@ int main(int argc, char *argv[])
     // Print out version information
     std::cout << "Dear ImGui " << IMGUI_VERSION << std::endl;
     std::cout << "GLFW " << GLFW_VERSION_MAJOR << "." << GLFW_VERSION_MINOR << "." << GLFW_VERSION_REVISION << std::endl;
-    std::cout << "OpenGL " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "OpenGL Version " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "OpenGL Renderer " << glGetString(GL_RENDERER) << std::endl;
 
     // Style
     bool imgui_dark_mode = false;
@@ -118,6 +137,36 @@ int main(int argc, char *argv[])
         if (!registered_delaunay_impl)
             std::cerr << "Error during Delaunay implementations' registration" << std::endl;
     }
+
+    // GL program
+    GLuint gl_program_id = gl_compile_shaders(vertex_shader_source, fragment_shader_source, &err_handler);
+    if (gl_program_id == 0u)
+    {
+        return 1;
+    }
+
+#if TEST_TRIANGLE
+    // Our rendering (simple example)
+    const GLint mat_proj_location = glGetUniformLocation(gl_program_id, "mat_proj");
+    const GLint v_pos_location = glGetAttribLocation(gl_program_id, "v_pos");
+    const GLint v_color_location = glGetAttribLocation(gl_program_id, "v_color");
+
+    GLuint gl_vao;
+    glGenVertexArrays(1, &gl_vao);
+    glBindVertexArray(gl_vao);
+    std::array<GLuint, 2> gl_vertex_buffer;
+    glGenBuffers(2, &gl_vertex_buffer[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, gl_vertex_buffer[0]);
+    glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(vertex_arr), static_cast<const void*>(vertex_arr.data()), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(v_pos_location);
+    glVertexAttribPointer(v_pos_location, 3, GL_FLOAT, GL_FALSE, GLstride(0), GLoffset(0));
+    glBindBuffer(GL_ARRAY_BUFFER, gl_vertex_buffer[1]);
+    glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(vertex_color_arr), static_cast<const void*>(vertex_color_arr.data()), GL_STATIC_DRAW);
+    glEnableVertexAttribArray(v_color_location);
+    glVertexAttribPointer(v_color_location, 3, GL_FLOAT, GL_FALSE, GLstride(0), GLoffset(0));
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+#endif
 
     // Main loop
     std::vector<std::unique_ptr<ShapeWindow>> shape_windows;
@@ -240,16 +289,34 @@ int main(int argc, char *argv[])
         ImGui::ShowDemoWindow();
 #endif
 
-        // Rendering
+        // Prepare ImGui rendering
         ImGui::Render();
+
+        // OpenGL Rendering
         int display_w, display_h;
         glfwGetFramebufferSize(glfw_context.window(), &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
         const auto clear_color = static_cast<ImVec4>(imgui_dark_mode ? WindowMainBackgroundColor_Dark : WindowMainBackgroundColor_Classic);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
+
+
+#if TEST_TRIANGLE
+        // Our rendering (simple example)
+        auto mat_proj = lin::identity<float, 4>();
+        const auto r = static_cast<float>(display_w) / static_cast<float>(display_h);
+        mat_proj[0][0] = 1 / r;
+        glUseProgram(gl_program_id);
+        glBindVertexArray(gl_vao);
+        glUniformMatrix4fv(mat_proj_location, 1, GL_TRUE, mat_proj.data());
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+        glUseProgram(0);
+#endif
+
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(glfw_context.window());
+
     } // while (!glfwWindowShouldClose(window))
 
     // Cleanup

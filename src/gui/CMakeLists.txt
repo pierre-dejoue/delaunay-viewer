@@ -54,6 +54,7 @@ target_link_libraries(delaunay_viewer
     imgui
     pfd
     stdutils
+    lin
     svg
 )
 
