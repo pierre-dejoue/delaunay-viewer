@@ -25,6 +25,9 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 # Stdutils
 add_subdirectory(src/stdutils)
 
+# Linear algebra
+add_subdirectory(src/lin)
+
 # Graph, geometrical shapes
 add_subdirectory(src/graphs)
 add_subdirectory(src/shapes)
@@ -41,6 +44,7 @@ add_subdirectory(src/gui)
 # Tests
 if(DELAUNAY_VIEWER_BUILD_UTESTS)
     add_subdirectory(src/tests/stdutils)
+    add_subdirectory(src/tests/lin)
     add_subdirectory(src/tests/shapes)
 endif()
 
