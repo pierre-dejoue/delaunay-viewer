@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 #endif
 
     // Main loop
-    std::vector<std::unique_ptr<ShapeWindow>> shape_windows;
+    std::unique_ptr<ShapeWindow> shape_window;
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -212,7 +212,8 @@ int main(int argc, char *argv[])
                                 for (auto& pp: point_paths) { shapes.emplace_back(std::move(pp)); }
                             }
                             // Ignore Triangles2d
-                            shape_windows.emplace_back(std::make_unique<ShapeWindow>(std::move(shapes), filename));
+                            if (!shapes.empty())
+                                shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename);
                         }
                         else
                         {
@@ -229,7 +230,8 @@ int main(int argc, char *argv[])
                         std::cout << "User selected DAT file " << path << std::endl;
                         auto shapes = shapes::io::dat::parse_shapes_from_file(path, io_err_handler);
                         const std::string filename = std::filesystem::path(path).filename().string();
-                        shape_windows.emplace_back(std::make_unique<ShapeWindow>(std::move(shapes), filename));
+                        if (!shapes.empty())
+                            shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename);
                     }
                 }
                 if (ImGui::MenuItem("Open SVG"))
@@ -248,7 +250,8 @@ int main(int argc, char *argv[])
                             shapes.emplace_back(std::move(pp));
                         for (const auto& cbp : file_paths.cubic_bezier_paths)
                             shapes.emplace_back(std::move(cbp));
-                        shape_windows.emplace_back(std::make_unique<ShapeWindow>(std::move(shapes), filename));
+                        if (!shapes.empty())
+                            shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename);
                     }
                 }
                 ImGui::Separator();
@@ -271,11 +274,12 @@ int main(int argc, char *argv[])
         }
 
         // Shape windows (one window per input file)
-        for (auto it = std::cbegin(shape_windows); it != std::cend(shape_windows);)
+        if(shape_window)
         {
             bool can_be_erased = false;
-            (*it)->visit(can_be_erased, settings);
-            it = can_be_erased ? shape_windows.erase(it) : std::next(it);
+            shape_window->visit(can_be_erased, settings);
+            if (can_be_erased)
+                shape_window.reset();
         }
 
         // Settings window (always ON)
@@ -320,7 +324,6 @@ int main(int argc, char *argv[])
     } // while (!glfwWindowShouldClose(window))
 
     // Cleanup
-    shape_windows.clear();
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
