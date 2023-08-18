@@ -52,7 +52,7 @@ target_link_libraries(delaunay_viewer
     dt
     gl3w
     imgui
-    portable_file_dialogs
+    pfd
     stdutils
     svg
 )
