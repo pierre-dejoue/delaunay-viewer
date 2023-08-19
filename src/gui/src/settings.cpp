@@ -10,7 +10,7 @@ namespace
     {
         Settings::GeneralLimits result;
 
-        result.flip_y = Parameter::limits_false;
+        result.flip_y = Parameter::limits_true;
 
         return result;
     }

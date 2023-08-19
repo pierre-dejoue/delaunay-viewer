@@ -14,7 +14,7 @@ public:
     };
     struct General
     {
-        bool flip_y;
+        bool flip_y;        // If false, the Y-axis is in the "up" direction.
     };
     struct PointLimits
     {

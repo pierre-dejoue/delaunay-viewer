@@ -81,7 +81,7 @@ public:
         //assert "is inside bb"
         return ImVec2(
             bb_corner.x + static_cast<float>(scale * (p.x - bb.rx.min)),
-            bb_corner.y + static_cast<float>(scale * (flip_y ? (bb.ry.max - p.y) : (p.y - bb.ry.min)))
+            bb_corner.y + static_cast<float>(scale * (flip_y ? (p.y - bb.ry.min) : (bb.ry.max - p.y)))
         );
     }
 
@@ -91,10 +91,10 @@ public:
         return flip_y ?
             shapes::Point2d<F>(
                 bb.rx.min + static_cast<F>(p.x - bb_corner.x) / scale,
-                bb.ry.max - static_cast<F>(p.y - bb_corner.y) / scale) :
+                bb.ry.min + static_cast<F>(p.y - bb_corner.y) / scale) :
             shapes::Point2d<F>(
                 bb.rx.min + static_cast<F>(p.x - bb_corner.x) / scale,
-                bb.ry.min + static_cast<F>(p.y - bb_corner.y) / scale);
+                bb.ry.max - static_cast<F>(p.y - bb_corner.y) / scale);
     }
 
     ImVec2 to_screen_vector(const shapes::Vect2d<F>& v) const
@@ -109,7 +109,7 @@ public:
         assert(scale > F{0});
         return shapes::Vect2d<F>(
             static_cast<F>(v.x) / scale,
-            static_cast<F>((flip_y ? -1.f : 1.f) * v.y) / scale
+            static_cast<F>((flip_y ? 1.f : -1.f) * v.y) / scale
         );
     }
 
@@ -128,7 +128,7 @@ private:
     ImVec2 tl_corner;
     ImVec2 size;
     ImVec2 bb_corner;       // /!\ Not the br_corner
-    bool flip_y;
+    bool flip_y;            // If false, the Y-axis of the world space is in the "up" direction.
 
     // Geometrical region
     shapes::BoundingBox2d<F> bb;
