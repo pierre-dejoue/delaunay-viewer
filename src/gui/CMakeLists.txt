@@ -13,6 +13,7 @@ set(GUI_SOURCES
     src/draw_shape.cpp
     src/main.cpp
     src/opengl_and_glfw.cpp
+    src/opengl_draw_list.cpp
     src/settings.cpp
     src/settings_window.cpp
     src/shape_control_window.cpp

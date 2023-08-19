@@ -1,6 +1,7 @@
 #include "shape_draw_window.h"
 
 #include "draw_shape.h"
+#include "imgui_helpers.h"
 #include "settings.h"
 
 #include <shapes/bounding_box_algos.h>
@@ -33,6 +34,7 @@ ShapeDrawWindow::ShapeDrawWindow(
     , m_canvas_box()
     , m_prev_mouse_in_canvas(Canvas<scalar>())
     , m_zoom_selection_box()
+    , m_selected_tab()
 {
     reset_zoom();
 }
@@ -54,7 +56,6 @@ void ShapeDrawWindow::pan(const shapes::Vect2d<scalar>& dir)
 
     m_canvas_box = shapes::BoundingBox2d<scalar>().add(tl_pan).add(br_pan);
 }
-
 
 void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const DrawCommandLists& draw_command_lists)
 {
@@ -130,11 +131,13 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
         }
     }
 
+    m_selected_tab = "";
     if (ImGui::BeginTabBar("##TabBar"))
     {
         for (const auto& draw_commands_pair : draw_command_lists)
             if (ImGui::BeginTabItem(draw_commands_pair.first.c_str(), nullptr, ImGuiTabItemFlags_None))
             {
+                m_selected_tab = draw_commands_pair.first;
                 const auto& draw_commands = draw_commands_pair.second;
 
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -144,14 +147,14 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
                 ImVec2 br_corner = ImVec2(tl_corner.x + canvas_sz.x, tl_corner.y + canvas_sz.y);
 
                 // Canvas
-                Canvas canvas(tl_corner, canvas_sz, flip_y_axis, m_canvas_box);
+                auto canvas = build_canvas(tl_corner, canvas_sz, m_canvas_box, flip_y_axis);
                 MouseInCanvas mouse_in_canvas(canvas);
                 ImGuiIO& io = ImGui::GetIO();
                 ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
                 mouse_in_canvas.canvas = canvas;
                 mouse_in_canvas.is_hovered = ImGui::IsItemHovered();
                 mouse_in_canvas.is_held = ImGui::IsItemActive();
-                mouse_in_canvas.mouse_pos = io.MousePos;
+                mouse_in_canvas.mouse_pos = to_screen_pos(io.MousePos);
 
                 // Zoom selection box
                 if (mouse_in_canvas.is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_zoom_selection_box.is_ongoing)
@@ -168,8 +171,8 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
                         m_zoom_selection_box.corner_1 = mouse_in_canvas.mouse_pos;
                         const auto& corner_0 = m_zoom_selection_box.corner_0;
                         const auto& corner_1 = m_zoom_selection_box.corner_1;
-                        const ImVec2 z_tl_corner = ImVec2(std::min(corner_0.x, corner_1.x), std::min(corner_0.y, corner_1.y));
-                        const ImVec2 z_br_corner = ImVec2(std::max(corner_0.x, corner_1.x), std::max(corner_0.y, corner_1.y));
+                        const ScreenPos z_tl_corner(std::min(corner_0.x, corner_1.x), std::min(corner_0.y, corner_1.y));
+                        const ScreenPos z_br_corner(std::max(corner_0.x, corner_1.x), std::max(corner_0.y, corner_1.y));
                         if (z_br_corner.x - z_tl_corner.x > 3.f && z_br_corner.y - z_tl_corner.y > 3.f)
                             zoom_in(shapes::BoundingBox2d<scalar>().add(canvas.to_world(z_tl_corner)).add(canvas.to_world(z_br_corner)));
                     }
@@ -178,7 +181,7 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
                 // Pan
                 if (mouse_in_canvas.is_held && !m_zoom_selection_box.is_ongoing && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
                 {
-                    pan(canvas.to_world_vector(io.MouseDelta));
+                    pan(canvas.to_world_vector(to_screen_pos(io.MouseDelta)));
                 }
 
                 // Clip rectangle and background
@@ -207,7 +210,12 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
                 {
                     constexpr float rounding = 0.f;
                     constexpr float thickness = 0.5f;
-                    draw_list->AddRect(m_zoom_selection_box.corner_0, m_zoom_selection_box.corner_1, IM_COL32(120, 120, 120, 255), rounding, ImDrawFlags_None, thickness);
+                    draw_list->AddRect(
+                        to_imgui_vec2(m_zoom_selection_box.corner_0),
+                        to_imgui_vec2(m_zoom_selection_box.corner_1),
+                        IM_COL32(120, 120, 120, 255), rounding,
+                        ImDrawFlags_None, thickness
+                    );
                 };
 
                 // Canvas frame
@@ -224,4 +232,14 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
     }
 
     ImGui::End();
+}
+
+shapes::BoundingBox2d<ShapeDrawWindow::scalar> ShapeDrawWindow::get_canvas_bounding_box() const
+{
+    return m_canvas_box;
+}
+
+const std::string& ShapeDrawWindow::get_selected_tab() const
+{
+    return m_selected_tab;
 }

@@ -1,5 +1,6 @@
 #include "shape_control_window.h"
 
+#include "draw_shape.h"
 #include "settings.h"
 
 #include <dt/dt_interface.h>
@@ -21,12 +22,28 @@
 
 namespace
 {
+    const char* INPUT_TAB_NAME = "Input";
+
     ShapeDrawWindow::DrawCommand to_draw_command(const ShapeWindow::ShapeControl& shape_control)
     {
         ShapeDrawWindow::DrawCommand result(shape_control.shape);
         result.highlight = shape_control.highlight;
         result.constraint_edges = shape_control.constraint_edges;
         return result;
+    }
+
+    template <typename F>
+    void to_opengl_draw_commands(const ShapeWindow::ShapeControl& shape_control, OpenGLDrawList& draw_list, DrawingOptions& options)
+    {
+        options.highlight = shape_control.highlight;
+        // options.constraint_edges is set by the caller
+        std::visit(stdutils::Overloaded {
+            [&draw_list, &options](const shapes::PointCloud2d<F>& pc) { draw_point_cloud(pc, draw_list, options); },
+            [&draw_list, &options](const shapes::PointPath2d<F>& pp) { draw_point_path(pp, draw_list, options); },
+            [&draw_list, &options](const shapes::CubicBezierPath2d<F>& cbp) { draw_cubic_bezier_path(cbp, draw_list, options); },
+            [&draw_list, &options](const shapes::Triangles2d<F>& tri) { draw_triangles(tri, draw_list, options); },
+            [](const auto&) { assert(0); }
+        }, shape_control.shape);
     }
 }
 
@@ -57,9 +74,12 @@ ShapeWindow::ShapeWindow(
         std::vector<shapes::AllShapes<scalar>>&& shapes,
         std::string_view name)
     : m_input_shape_controls()
+    , m_geometry_has_changed(true)  // True to trigger the first triangulation
     , m_sampled_shape_controls()
+    , m_opengl_draw_list()
     , m_title(std::string(name) + " Controls")
     , m_draw_window()
+    , m_previous_selected_tab()
     , m_bounding_box()
 {
     m_input_shape_controls.reserve(shapes.size());
@@ -134,7 +154,7 @@ ShapeDrawWindow::DrawCommandLists ShapeWindow::build_draw_lists() const
 {
     ShapeDrawWindow::DrawCommandLists draw_command_lists;
     {
-        auto& draw_command_list = draw_command_lists.emplace_back("Input", std::vector<ShapeDrawWindow::DrawCommand>()).second;
+        auto& draw_command_list = draw_command_lists.emplace_back(INPUT_TAB_NAME, std::vector<ShapeDrawWindow::DrawCommand>()).second;
         for (const auto& shape_control : m_input_shape_controls)
         {
             if (shape_control.active)
@@ -148,11 +168,10 @@ ShapeDrawWindow::DrawCommandLists ShapeWindow::build_draw_lists() const
         }
     }
 
-    for (const auto& triangulation_shape_control_pair : m_triangulation_shape_controls)
+    for (const auto& [algo_name, shape_control_dt] : m_triangulation_shape_controls)
     {
-        const std::string& algo_name = triangulation_shape_control_pair.first;
         auto& draw_command_list = draw_command_lists.emplace_back(algo_name, std::vector<ShapeDrawWindow::DrawCommand>()).second;
-        draw_command_list.emplace_back(to_draw_command(triangulation_shape_control_pair.second));
+        draw_command_list.emplace_back(to_draw_command(shape_control_dt));
         for (const auto& shape_control : m_input_shape_controls)
         {
             if (shape_control.active && !shapes::is_bezier_path(shape_control.shape))
@@ -174,6 +193,36 @@ ShapeDrawWindow::DrawCommandLists ShapeWindow::build_draw_lists() const
     return draw_command_lists;
 }
 
+void ShapeWindow::update_opengl_draw_list(bool geometry_has_changed, const Settings& settings)
+{
+    DrawingOptions options;
+    options.point_settings = settings.read_point_settings();
+    options.path_settings = settings.read_path_settings();
+    options.surface_settings = settings.read_surface_settings();
+
+    const std::string& current_tab = m_draw_window->get_selected_tab();
+    m_opengl_draw_list.clear();
+
+    for (const auto& [algo_name, shape_control] : m_triangulation_shape_controls)
+    {
+        if (algo_name == current_tab) { to_opengl_draw_commands<scalar>(shape_control, m_opengl_draw_list, options); }
+    }
+    options.constraint_edges = (current_tab != INPUT_TAB_NAME);
+    for (const auto& shape_control : m_input_shape_controls)
+    {
+        if (shape_control.active) { to_opengl_draw_commands<scalar>(shape_control, m_opengl_draw_list, options); }
+    }
+    for (const auto& shape_control_ptr : m_sampled_shape_controls)
+    {
+        assert(shape_control_ptr);
+        if (shape_control_ptr->active) { to_opengl_draw_commands<scalar>(*shape_control_ptr, m_opengl_draw_list, options); }
+    }
+
+    if (geometry_has_changed || current_tab != m_previous_selected_tab)
+        m_opengl_draw_list.m_buffer_version++;
+    m_previous_selected_tab = current_tab;
+}
+
 ShapeWindow::ShapeControl* ShapeWindow::allocate_new_sampled_shape(shapes::AllShapes<scalar>&& shape)
 {
     return m_sampled_shape_controls.emplace_back(std::make_unique<ShapeControl>(std::move(shape))).get();
@@ -187,7 +236,7 @@ void ShapeWindow::delete_sampled_shape(ShapeControl** sc)
     *sc = nullptr;
 }
 
-void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& input_has_changed)
+void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& geometry_has_changed)
 {
     std::stringstream label;
     label << "Shape #" << idx;
@@ -210,7 +259,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
         if (pressed && !shape_control.force_inactive)
         {
             shape_control.active = !shape_control.active;
-            input_has_changed = true;
+            geometry_has_changed = true;
         }
 
         // Info
@@ -240,14 +289,14 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
                     shape_control.sampler = std::make_unique<shapes::UniformSamplingPointPath2d<scalar>>(pp);
                     shape_control.sampling_length = static_cast<float>(shape_control.sampler->max_segment_length());
                 }
-                input_has_changed = true;
+                geometry_has_changed = true;
             }
             if (!is_sampled && shape_control.sampled_shape)
             {
                 shape_control.sampler.reset();
                 delete_sampled_shape(&shape_control.sampled_shape);
                 shape_control.force_inactive = false;
-                input_has_changed = true;
+                geometry_has_changed = true;
             }
             if (shape_control.sampler)
             {
@@ -262,14 +311,13 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
                 {
                     shape_control.sampling_length = new_sampling_length;
                     shape_control.sampled_shape->update(shapes::AllShapes<scalar>(shape_control.sampler->sample(static_cast<scalar>(new_sampling_length))));
-                    input_has_changed = true;
+                    geometry_has_changed = true;
                 }
             }
         }
         ImGui::TreePop();
     }
 }
-
 
 void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
 {
@@ -316,14 +364,13 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
     }
 
     // Iterate all input/samples shapes
-    bool input_has_changed = false;
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (ImGui::TreeNode("Input shapes"))
     {
         unsigned int shape_idx = 1;
         for (auto& shape_control : m_input_shape_controls)
         {
-            shape_list_menu(shape_control, shape_idx++, ALLOW_SAMPLING, input_has_changed);
+            shape_list_menu(shape_control, shape_idx++, ALLOW_SAMPLING, m_geometry_has_changed);
         }
         ImGui::TreePop();
     }
@@ -342,7 +389,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
         for (auto& shape_control_ptr : m_sampled_shape_controls)
         {
             assert(shape_control_ptr);
-            shape_list_menu(*shape_control_ptr, shape_idx++, !ALLOW_SAMPLING, input_has_changed);
+            shape_list_menu(*shape_control_ptr, shape_idx++, !ALLOW_SAMPLING, m_geometry_has_changed);
         }
         ImGui::TreePop();
     }
@@ -358,7 +405,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
     stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
 
     // Triangulate
-    if (m_triangulation_shape_controls.empty() || input_has_changed)
+    if (m_geometry_has_changed)
     {
         std::chrono::duration<float, std::milli> duration;
         {
@@ -390,6 +437,10 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
 
     ImGui::End();
 
+    // Set opengl draw list
+    update_opengl_draw_list(m_geometry_has_changed, settings);
+    m_geometry_has_changed = false;
+
     // Draw Window
     bool draw_window_can_be_erased = false;
     assert(m_draw_window);
@@ -397,3 +448,14 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
 
     can_be_erased = draw_window_can_be_erased || !is_window_open;
 }
+
+shapes::BoundingBox2d<ShapeWindow::scalar> ShapeWindow::get_canvas_bounding_box() const
+{
+    return m_draw_window ? m_draw_window->get_canvas_bounding_box() : shapes::BoundingBox2d<ShapeWindow::scalar>();
+}
+
+const OpenGLDrawList& ShapeWindow::get_opengl_draw_list() const
+{
+    return m_opengl_draw_list;
+}
+

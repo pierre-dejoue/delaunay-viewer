@@ -1,6 +1,7 @@
 #pragma once
 
 #include "canvas.h"
+#include "opengl_draw_list.h"
 
 #include <shapes/bounding_box.h>
 #include <shapes/shapes.h>
@@ -24,6 +25,7 @@ public:
         DrawCommand(const shapes::AllShapes<scalar>& shape);
         bool highlight;
         bool constraint_edges;
+        bool geometry_updated;
         const shapes::AllShapes<scalar>* shape;
     };
     using DrawCommandList = std::pair<std::string, std::vector<DrawCommand>>;
@@ -38,12 +40,15 @@ public:
 
     void visit(bool& can_be_erased, const Settings& settings, const DrawCommandLists& draw_command_lists);
 
+    shapes::BoundingBox2d<scalar> get_canvas_bounding_box() const;
+    const std::string& get_selected_tab() const;
+
 private:
     struct ZoomSelectionBox
     {
         bool is_ongoing = false;
-        ImVec2 corner_0;
-        ImVec2 corner_1;
+        ScreenPos corner_0;
+        ScreenPos corner_1;
     };
     void reset_zoom();
     void zoom_in(const shapes::BoundingBox2d<scalar>& bb);
@@ -54,4 +59,5 @@ private:
     shapes::BoundingBox2d<scalar> m_canvas_box;
     MouseInCanvas<scalar> m_prev_mouse_in_canvas;
     ZoomSelectionBox m_zoom_selection_box;
+    std::string m_selected_tab;
 };

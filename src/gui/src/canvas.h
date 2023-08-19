@@ -4,9 +4,10 @@
 #include <shapes/point.h>
 #include <shapes/vect.h>
 
-#include <imgui_wrap.h>
-
 #include <cassert>
+
+
+using ScreenPos = shapes::Vect2d<float>;
 
 /**
  * Canvas
@@ -23,14 +24,14 @@ public:
         : tl_corner(0.f, 0.f)
         , size(1.f, 1.f)
         , bb_corner(0.f, 0.f)
-        , flip_y(true)
+        , flip_y(false)
         , bb()
         , scale(0)
     {
         // NB: The default Canvas is invalid
     }
 
-    Canvas(ImVec2 tl_corner, ImVec2 size, bool flip_y, shapes::BoundingBox2d<F> bb)
+    Canvas(ScreenPos tl_corner, ScreenPos size, const shapes::BoundingBox2d<F>& bb, bool flip_y = false)
         : tl_corner(tl_corner)
         , size(size)
         , bb_corner()
@@ -49,43 +50,47 @@ public:
         if (scale_x < scale_y)
         {
             scale = scale_x;
-            bb_corner = ImVec2(tl_corner.x, tl_corner.y + 0.5f * (size.y - static_cast<float>(scale * bb.height())));
+            bb_corner = ScreenPos(tl_corner.x, tl_corner.y + 0.5f * (size.y - static_cast<float>(scale * bb.height())));
         }
         else
         {
             scale = scale_y;
-            bb_corner = ImVec2(tl_corner.x + 0.5f * (size.x - static_cast<float>(scale * bb.width())), tl_corner.y);
+            bb_corner = ScreenPos(tl_corner.x + 0.5f * (size.x - static_cast<float>(scale * bb.width())), tl_corner.y);
         }
 
         assert(scale > F{0});
     }
+
+    Canvas(float x, float y, float width, float height, const shapes::BoundingBox2d<F>& bb, bool flip_y = false)
+        : Canvas(ScreenPos(x, y), ScreenPos(width, height), bb, flip_y)
+    {}
 
     F get_scale() const
     {
         return scale;
     }
 
-    ImVec2 get_tl_corner() const
+    ScreenPos get_tl_corner() const
     {
         return tl_corner;
     }
 
-    ImVec2 get_br_corner() const
+    ScreenPos get_br_corner() const
     {
-        return ImVec2(tl_corner.x + size.x, tl_corner.y + size.y);
+        return ScreenPos(tl_corner.x + size.x, tl_corner.y + size.y);
     }
 
-    ImVec2 to_screen(const shapes::Point2d<F>& p) const
+    ScreenPos to_screen(const shapes::Point2d<F>& p) const
     {
         assert(scale > F{0});
         //assert "is inside bb"
-        return ImVec2(
+        return ScreenPos(
             bb_corner.x + static_cast<float>(scale * (p.x - bb.rx.min)),
             bb_corner.y + static_cast<float>(scale * (flip_y ? (p.y - bb.ry.min) : (bb.ry.max - p.y)))
         );
     }
 
-    shapes::Point2d<F> to_world(const ImVec2& p) const
+    shapes::Point2d<F> to_world(const ScreenPos& p) const
     {
         assert(scale > F{0});
         return flip_y ?
@@ -97,14 +102,14 @@ public:
                 bb.ry.max - static_cast<F>(p.y - bb_corner.y) / scale);
     }
 
-    ImVec2 to_screen_vector(const shapes::Vect2d<F>& v) const
+    ScreenPos to_screen_vector(const shapes::Vect2d<F>& v) const
     {
         assert(scale > F{0});
         const auto sv = scale * v;
-        return ImVec2(static_cast<float>(sv.x), (flip_y ? -1.f : 1.f) * static_cast<float>(sv.y));
+        return ScreenPos(static_cast<float>(sv.x), (flip_y ? -1.f : 1.f) * static_cast<float>(sv.y));
     }
 
-    shapes::Vect2d<F> to_world_vector(const ImVec2& v) const
+    shapes::Vect2d<F> to_world_vector(const ScreenPos& v) const
     {
         assert(scale > F{0});
         return shapes::Vect2d<F>(
@@ -123,17 +128,23 @@ public:
         return to_world(get_br_corner());
     }
 
+    // The bounding box exactly matching the drawing canvas
+    shapes::BoundingBox2d<F> actual_bounding_box() const
+    {
+        return shapes::BoundingBox2d<F>().add(min()).add(max());
+    }
+
 private:
-    // ImGui drawing canvas coordinates
-    ImVec2 tl_corner;
-    ImVec2 size;
-    ImVec2 bb_corner;       // /!\ Not the br_corner
+    // Drawing canvas coordinates on the screen
+    ScreenPos tl_corner;
+    ScreenPos size;
+    ScreenPos bb_corner;       // /!\ Not the br_corner
     bool flip_y;            // If false, the Y-axis of the world space is in the "up" direction.
 
-    // Geometrical region
+    // Geometrical region (world space)
     shapes::BoundingBox2d<F> bb;
 
-    // Conversion scale that preserve the aspect ratio
+    // Conversion scale that preserves the aspect ratio
     F scale;
 };
 
@@ -168,6 +179,6 @@ struct MouseInCanvas
     Canvas<F> canvas;
     bool is_hovered;            // Is the mouse inside the canvas on the screen?
     bool is_held;
-    ImVec2 mouse_pos;
+    ScreenPos mouse_pos;
 };
 

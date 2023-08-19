@@ -3,6 +3,7 @@
 #include <stdutils/macros.h>
 
 #include <array>
+#include <algorithm>
 #include <cassert>
 #include <iomanip>
 #include <ios>
@@ -238,6 +239,40 @@ bool gl_errors(const char* context, const stdutils::io::ErrorHandler* err_handle
     return any_error;
 }
 
+GLuint gl_get_uniform_location(GLuint program, const GLchar *name, const stdutils::io::ErrorHandler* err_handler)
+{
+    assert(name);
+    GLint id = glGetUniformLocation(program, name);
+    if (id < 0)
+    {
+        if (err_handler)
+        {
+            std::stringstream out;
+            out << "OpenGL: Location not found in shader [" << name << "]";
+             (*err_handler)(stdutils::io::Severity::ERR, out.str());
+        }
+        return GLuint(0);
+    }
+    return static_cast<GLuint>(id);
+}
+
+GLuint gl_get_attrib_location(GLuint program, const GLchar *name, const stdutils::io::ErrorHandler* err_handler)
+{
+    assert(name);
+    GLint id = glGetAttribLocation(program, name);
+    if (id < 0)
+    {
+        if (err_handler)
+        {
+            std::stringstream out;
+            out << "OpenGL: Location not found in shader [" << name << "]";
+             (*err_handler)(stdutils::io::Severity::ERR, out.str());
+        }
+        return GLuint(0);
+    }
+    return static_cast<GLuint>(id);
+}
+
 namespace
 {
     // OpenGL debug output callaback;
@@ -418,8 +453,44 @@ void gl_enable_debug(const stdutils::io::ErrorHandler& err_handler)
     //glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 }
 
+
 #ifdef _WIN32
-// On Windows, here is a trick to select the main GPU fo rthe application (instead of the integrated GPU)
+#undef min
+#undef max
+#endif
+
+lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox3d<float>& bb, bool flip_y)
+{
+    const float& l = bb.min().x;
+    const float& r = bb.max().x;
+    const float& b = bb.min().y;
+    const float& t = bb.max().y;
+    const float& f = bb.min().z;            // Because the z axis is towards the viewer
+    const float& n = bb.max().z;
+    lin::mat4f proj = {
+        2.f / (r -l), 0.f,           0.f,           -(r + l) / (r - l),
+        0.f,          2.f / (t - b), 0.f,           -(t + b) / (t - b),
+        0.f,          0.f,           2.f / (n - f), -(f + n) / (n - f),
+        0.f,          0.f,           0.f,            1.f
+    };
+    if (flip_y)
+    {
+        proj[1][1] = -proj[1][1];
+        proj[1][3] = -proj[1][3];
+    }
+    return proj;
+}
+
+lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox2d<float>& bb, bool flip_y, float n, float f)
+{
+    const auto z_range = std::minmax<float>(n, f);
+    auto bb3d = shapes::BoundingBox3d<float>().add(bb.min().x, bb.min().y, z_range.first).add(bb.max().x, bb.max().y, z_range.second);
+    lin::mat4f proj = gl_orth_proj_mat(bb3d, flip_y);
+    return proj;
+}
+
+#ifdef _WIN32
+// On Windows, here is a trick to select the main GPU for the application (instead of the integrated GPU)
 // See Technical Note from NVidia: "Enabling High Performance Graphics Rendering on Optimus Systems"
 extern "C" {
     __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;

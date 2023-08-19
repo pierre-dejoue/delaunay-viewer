@@ -6,6 +6,7 @@
  * Copyright (c) 2023 Pierre DEJOUE
  ******************************************************************************/
 
+#include "opengl_draw_list.h"
 #include "settings.h"
 #include "shape_control_window.h"
 #include "shaders.h"
@@ -48,17 +49,36 @@ const ImColor WindowMainBackgroundColor_Dark(10, 25, 50, 255);
 
 #define TEST_TRIANGLE 0
 #if TEST_TRIANGLE
-const std::array<float, 9> vertex_arr = {
-    -0.5f, -0.2887f, 0.f,
-     0.5f, -0.2887f, 0.f,
-     0.f,   0.5773f, 0.f
-};
 
-const std::array<float, 9> vertex_color_arr = {
-     1.f, 0.f, 0.f,
-     0.f, 1.f, 0.f,
-     0.f, 0.f, 1.f
-};
+OpenGLDrawList opengl_test_triangle_static_init()
+{
+    static OpenGLDrawList triangle;
+    triangle.m_vertices = {
+        { -0.5f, -0.2887f, 0.f },
+        { 0.5f, -0.2887f, 0.f },
+        { 0.f,   0.5773f, 0.f }
+    };
+    triangle.m_indices = {
+        0, 1, 2,            // GL_TRIANGLES
+        0, 1, 1, 2, 2, 0    // GL_LINES
+    };
+    auto& filled_shape = triangle.m_draw_calls.emplace_back();
+    filled_shape.m_uniform_color = { 1.0f, 0.f, 0.f, 1.f };
+    filled_shape.m_range = { 0, 3 };
+    filled_shape.m_cmd = DrawCmd::Triangles;
+    auto& border = triangle.m_draw_calls.emplace_back();
+    border.m_uniform_color = { 0.0f, 0.f, 1.f, 1.f };
+    border.m_range = { 3, 9 };
+    border.m_cmd = DrawCmd::Lines;
+    triangle.m_buffer_version = 1;
+    return triangle;
+}
+
+const OpenGLDrawList& opengl_test_triangle()
+{
+    static OpenGLDrawList triangle = opengl_test_triangle_static_init();
+    return triangle;
+}
 #endif
 
 void imgui_set_style(bool dark_mode)
@@ -145,28 +165,17 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-#if TEST_TRIANGLE
-    // Our rendering (simple example)
-    const GLint mat_proj_location = glGetUniformLocation(gl_program_id, "mat_proj");
-    const GLint v_pos_location = glGetAttribLocation(gl_program_id, "v_pos");
-    const GLint v_color_location = glGetAttribLocation(gl_program_id, "v_color");
-
+    // Setup viewport rendering
+    const GLuint mat_proj_location = gl_get_uniform_location(gl_program_id, "mat_proj", &err_handler);
+    const GLuint uni_color_location = gl_get_uniform_location(gl_program_id, "uni_color", &err_handler);
+    const GLuint v_pos_location = gl_get_attrib_location(gl_program_id, "v_pos", &err_handler);
     GLuint gl_vao;
     glGenVertexArrays(1, &gl_vao);
     glBindVertexArray(gl_vao);
-    std::array<GLuint, 2> gl_vertex_buffer;
-    glGenBuffers(2, &gl_vertex_buffer[0]);
-    glBindBuffer(GL_ARRAY_BUFFER, gl_vertex_buffer[0]);
-    glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(vertex_arr), static_cast<const void*>(vertex_arr.data()), GL_STATIC_DRAW);
-    glEnableVertexAttribArray(v_pos_location);
-    glVertexAttribPointer(v_pos_location, 3, GL_FLOAT, GL_FALSE, GLstride(0), GLoffset(0));
-    glBindBuffer(GL_ARRAY_BUFFER, gl_vertex_buffer[1]);
-    glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(vertex_color_arr), static_cast<const void*>(vertex_color_arr.data()), GL_STATIC_DRAW);
-    glEnableVertexAttribArray(v_color_location);
-    glVertexAttribPointer(v_color_location, 3, GL_FLOAT, GL_FALSE, GLstride(0), GLoffset(0));
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    std::array<GLuint, 2> gl_buffers;
+    glGenBuffers(2, &gl_buffers[0]);
     glBindVertexArray(0);
-#endif
+    static OpenGLDrawList::Version last_opengl_draw_list_version = 0;
 
     // Main loop
     std::unique_ptr<ShapeWindow> shape_window;
@@ -178,6 +187,8 @@ int main(int argc, char *argv[])
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
+
+        //int iconified = glfwGetWindowAttrib(glfw_context.window(), GLFW_ICONIFIED);
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
@@ -273,7 +284,7 @@ int main(int argc, char *argv[])
             ImGui::EndMainMenuBar();
         }
 
-        // Shape windows (one window per input file)
+        // Draw shapes
         if(shape_window)
         {
             bool can_be_erased = false;
@@ -306,21 +317,55 @@ int main(int argc, char *argv[])
 
 
 #if TEST_TRIANGLE
-        // Our rendering (simple example)
-        auto mat_proj = lin::identity<float, 4>();
-        const auto r = static_cast<float>(display_w) / static_cast<float>(display_h);
-        mat_proj[0][0] = 1 / r;
-        glUseProgram(gl_program_id);
-        glBindVertexArray(gl_vao);
-        glUniformMatrix4fv(mat_proj_location, 1, GL_TRUE, mat_proj.data());
-        glDrawArrays(GL_TRIANGLES, 0, 3);
-        glBindVertexArray(0);
-        glUseProgram(0);
+        const auto& gl_draw_list = opengl_test_triangle();
+#else
+        const auto& gl_draw_list = shape_window ? shape_window->get_opengl_draw_list() : OpenGLDrawList::empty();
 #endif
 
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        glfwSwapBuffers(glfw_context.window());
+        // Viewport rendering
+        if (!gl_draw_list.m_draw_calls.empty() && display_w > 0 && display_h > 0)
+        {
+            glBindVertexArray(gl_vao);
+            if (last_opengl_draw_list_version != gl_draw_list.m_buffer_version)
+            {
+                // Copy buffers
+                glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[0]);
+                glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(gl_draw_list.m_vertices), static_cast<const void*>(gl_draw_list.m_vertices.data()), GL_STATIC_DRAW);
+                glEnableVertexAttribArray(v_pos_location);
+                glVertexAttribPointer(v_pos_location, 3, GL_FLOAT, /* normalized */ GL_FALSE, /* stride */ 0, GLoffsetf(0));
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_buffers[1]);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER, gl_size_in_bytes(gl_draw_list.m_indices), static_cast<const void*>(gl_draw_list.m_indices.data()), GL_STATIC_DRAW);
+            }
+            last_opengl_draw_list_version = gl_draw_list.m_buffer_version;
 
+            // Render
+            #if TEST_TRIANGLE
+            const auto r = static_cast<float>(display_w) / static_cast<float>(display_h);
+            const auto bb = shapes::BoundingBox2d<float>().add(-r, -1.f).add(+r, 1.f);
+            #else
+            const auto target_bb = shapes::cast<float, ShapeWindow::scalar>(shape_window->get_canvas_bounding_box());
+            const auto canvas = Canvas(0.f, 0.f, static_cast<float>(display_w), static_cast<float>(display_h), target_bb);
+            const auto bb = canvas.actual_bounding_box();
+            #endif
+            const auto mat_proj = gl_orth_proj_mat(bb, settings.get_general_settings()->flip_y);
+            glUseProgram(gl_program_id);
+            glUniformMatrix4fv(static_cast<GLint>(mat_proj_location), 1, GL_TRUE, mat_proj.data());
+            for (const auto& draw_call : gl_draw_list.m_draw_calls)
+            {
+                assert(draw_call.m_range.first <= draw_call.m_range.second);
+                const auto count = static_cast<GLsizei>(draw_call.m_range.second - draw_call.m_range.first);
+                glUniform4fv(static_cast<GLint>(uni_color_location), 1, draw_call.m_uniform_color.data());
+                glDrawElements(to_gl_draw_cmd(draw_call.m_cmd), count, GL_UNSIGNED_INT, GLoffsetui(draw_call.m_range.first));
+            }
+            glBindVertexArray(0);
+            glUseProgram(0);
+        }
+
+        // Imgui rendering
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        // End frame
+        glfwSwapBuffers(glfw_context.window());
     } // while (!glfwWindowShouldClose(window))
 
     // Cleanup

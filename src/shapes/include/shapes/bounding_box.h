@@ -29,6 +29,7 @@ struct BoundingBox2d
 {
     bool is_populated() const { return rx.is_populated() && ry.is_populated(); }
     BoundingBox2d<F>& add(const Point2d<F>& p);
+    BoundingBox2d<F>& add(F x, F y);
     BoundingBox2d<F>& merge(const BoundingBox2d& o);
     Point2d<F> min() const;
     Point2d<F> max() const;
@@ -43,6 +44,7 @@ struct BoundingBox3d
 {
     bool is_populated() const { return rx.is_populated() && ry.is_populated() && rz.is_populated(); }
     BoundingBox3d<F>& add(const Point3d<F>& p);
+    BoundingBox3d<F>& add(F x, F y, F z);
     BoundingBox3d<F>& merge(const BoundingBox3d& o);
     Point3d<F> min() const;
     Point3d<F> max() const;
@@ -58,6 +60,36 @@ std::ostream& operator<<(std::ostream& out, const BoundingBox2d<F>& bb);
 template <typename F>
 std::ostream& operator<<(std::ostream& out, const BoundingBox3d<F>& bb);
 
+//
+// Conversions
+//
+template <typename F1, typename F0>
+Range<F1> cast(const Range<F0>& range)
+{
+    if (range.min <= range.max)
+        return Range<F1>(static_cast<F1>(range.min), static_cast<F1>(range.max));
+    else
+        return Range<F1>();
+}
+
+template <typename F1, typename F0>
+BoundingBox2d<F1> cast(const BoundingBox2d<F0>& bb)
+{
+    BoundingBox2d<F1> result;
+    result.rx = cast<F1, F0>(bb.rx);
+    result.ry = cast<F1, F0>(bb.ry);
+    return result;
+}
+
+template <typename F1, typename F0>
+BoundingBox3d<F1> cast(const BoundingBox3d<F0>& bb)
+{
+    BoundingBox3d<F1> result;
+    result.rx = cast<F1, F0>(bb.rx);
+    result.ry = cast<F1, F0>(bb.ry);
+    result.rz = cast<F1, F0>(bb.rz);
+    return result;
+}
 
 //
 // Implementations
@@ -84,6 +116,14 @@ BoundingBox2d<F>& BoundingBox2d<F>::add(const Point2d<F>& p)
 {
     rx.add(p.x);
     ry.add(p.y);
+    return *this;
+}
+
+template <typename F>
+BoundingBox2d<F>& BoundingBox2d<F>::add(F x, F y)
+{
+    rx.add(x);
+    ry.add(y);
     return *this;
 }
 
@@ -115,6 +155,15 @@ BoundingBox3d<F>& BoundingBox3d<F>::add(const Point3d<F>& p)
     rx.add(p.x);
     ry.add(p.y);
     rz.add(p.z);
+    return *this;
+}
+
+template <typename F>
+BoundingBox3d<F>& BoundingBox3d<F>::add(F x, F y, F z)
+{
+    rx.add(x);
+    ry.add(y);
+    rz.add(z);
     return *this;
 }
 

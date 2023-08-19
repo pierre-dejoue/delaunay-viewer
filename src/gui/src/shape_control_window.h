@@ -1,5 +1,6 @@
 #pragma once
 
+#include "opengl_draw_list.h"
 #include "shape_draw_window.h"
 
 #include <dt/dt_impl.h>
@@ -47,19 +48,27 @@ public:
 
     void visit(bool& can_be_erased, const Settings& settings);
 
+    // Forwarded to the drawing window
+    shapes::BoundingBox2d<scalar> get_canvas_bounding_box() const;
+    const OpenGLDrawList& get_opengl_draw_list() const;
+
 private:
     void init_bounding_box();
     void recompute_triangulations();
     typename ShapeDrawWindow::DrawCommandLists build_draw_lists() const;
+    void update_opengl_draw_list(bool geometry_has_changed, const Settings& settings);
     ShapeControl* allocate_new_sampled_shape(shapes::AllShapes<scalar>&& shape);
     void delete_sampled_shape(ShapeControl** sc);
     static constexpr bool ALLOW_SAMPLING = true;
     void shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& input_has_changed);
 
     std::vector<ShapeControl> m_input_shape_controls;
+    bool m_geometry_has_changed;
     std::vector<std::unique_ptr<ShapeControl>> m_sampled_shape_controls;
     std::vector<std::pair<std::string, ShapeControl>> m_triangulation_shape_controls;
+    OpenGLDrawList m_opengl_draw_list;
     const std::string m_title;
     std::unique_ptr<ShapeDrawWindow> m_draw_window;
+    std::string m_previous_selected_tab;
     shapes::BoundingBox2d<scalar> m_bounding_box;
 };
