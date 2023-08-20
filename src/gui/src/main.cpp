@@ -46,33 +46,6 @@ const ImColor WindowBackgroundColor_Dark(4, 8, 25, 255);
 const ImColor WindowMainBackgroundColor_Classic(35, 92, 121, 255);
 const ImColor WindowMainBackgroundColor_Dark(10, 25, 50, 255);
 
-#define TEST_TRIANGLE 0
-#if TEST_TRIANGLE
-
-void opengl_test_triangle(renderer::DrawList& triangle)
-{
-    triangle.clear();
-    triangle.m_vertices = {
-        { -0.5f, -0.2887f, 0.f },
-        { 0.5f, -0.2887f, 0.f },
-        { 0.f,   0.5773f, 0.f }
-    };
-    triangle.m_indices = {
-        0, 1, 2,            // GL_TRIANGLES
-        0, 1, 1, 2, 2, 0    // GL_LINES
-    };
-    auto& filled_shape = triangle.m_draw_calls.emplace_back();
-    filled_shape.m_uniform_color = { 1.0f, 0.f, 0.f, 1.f };
-    filled_shape.m_range = { 0, 3 };
-    filled_shape.m_cmd = renderer::DrawCmd::Triangles;
-    auto& border = triangle.m_draw_calls.emplace_back();
-    border.m_uniform_color = { 0.0f, 0.f, 1.f, 1.f };
-    border.m_range = { 3, 9 };
-    border.m_cmd = renderer::DrawCmd::Lines;
-    triangle.m_buffer_version = 1;
-}
-#endif
-
 void imgui_set_style(bool dark_mode)
 {
     if (dark_mode)
@@ -296,19 +269,10 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Viewport rendering
-#if TEST_TRIANGLE
-        opengl_test_triangle(draw_2d_renderer.draw_list());
-        if (display_w > 0 && display_h > 0)
-#else
         if (shape_window && display_w > 0 && display_h > 0)
-#endif
         {
             // Render
-#if TEST_TRIANGLE
-            const auto target_bb = shapes::BoundingBox2d<float>().add(-1.f, -1.f).add(1.f, 1.f);
-#else
             const auto target_bb = shapes::cast<float, ShapeWindow::scalar>(shape_window->get_canvas_bounding_box());
-#endif
             const auto canvas = Canvas(0.f, 0.f, static_cast<float>(display_w), static_cast<float>(display_h), target_bb);
             draw_2d_renderer.render(canvas, settings.get_general_settings()->flip_y);
         }
