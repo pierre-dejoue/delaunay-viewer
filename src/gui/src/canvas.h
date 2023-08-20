@@ -15,6 +15,9 @@ using ScreenPos = shapes::Vect2d<float>;
  * It relates two things:
  *  - A rectangular space on the screen
  *  - A world space 2D box
+ *
+ * This class is generic on the floating point type F used for world space coordinates.
+ * Screen space's coordinates have float precision.
  */
 template <typename F>
 class Canvas
@@ -78,6 +81,11 @@ public:
     ScreenPos get_br_corner() const
     {
         return ScreenPos(tl_corner.x + size.x, tl_corner.y + size.y);
+    }
+
+    ScreenPos get_size() const
+    {
+        return size;
     }
 
     ScreenPos to_screen(const shapes::Point2d<F>& p) const

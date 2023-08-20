@@ -1,6 +1,6 @@
 #pragma once
 
-#include "opengl_draw_list.h"
+#include "renderer.h"
 #include "shape_draw_window.h"
 
 #include <dt/dt_impl.h>
@@ -41,7 +41,8 @@ public:
 
     ShapeWindow(
         std::vector<shapes::AllShapes<scalar>>&& shapes,
-        std::string_view name);
+        std::string_view name,
+        renderer::DrawList& draw_list);
     ~ShapeWindow();
     ShapeWindow(const ShapeWindow&) = delete;
     ShapeWindow& operator=(const ShapeWindow&) = delete;
@@ -50,7 +51,6 @@ public:
 
     // Forwarded to the drawing window
     shapes::BoundingBox2d<scalar> get_canvas_bounding_box() const;
-    const OpenGLDrawList& get_opengl_draw_list() const;
 
 private:
     void init_bounding_box();
@@ -66,7 +66,7 @@ private:
     bool m_geometry_has_changed;
     std::vector<std::unique_ptr<ShapeControl>> m_sampled_shape_controls;
     std::vector<std::pair<std::string, ShapeControl>> m_triangulation_shape_controls;
-    OpenGLDrawList m_opengl_draw_list;
+    renderer::DrawList& m_renderer_draw_list;
     const std::string m_title;
     std::unique_ptr<ShapeDrawWindow> m_draw_window;
     std::string m_previous_selected_tab;

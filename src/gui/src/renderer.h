@@ -1,11 +1,19 @@
 #pragma once
 
+#include "canvas.h"
+
+#include <stdutils/io.h>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <utility>
 #include <vector>
 
+
+namespace renderer
+{
 
 enum class DrawCmd
 {
@@ -13,11 +21,9 @@ enum class DrawCmd
     Triangles,
 };
 
-unsigned int to_gl_draw_cmd(DrawCmd cmd);
-
-struct OpenGLDrawList
+struct DrawList
 {
-    using GLindex = std::uint32_t;
+    using HWindex = std::uint32_t;
     using IndexRange = std::pair<std::size_t, std::size_t>;
     using VertexData = std::array<float, 3>;                    // x, y, z
     using ColorData = std::array<float, 4>;                     // r, g, b, a
@@ -30,11 +36,34 @@ struct OpenGLDrawList
         DrawCmd     m_cmd;
     };
 
-    static const OpenGLDrawList& empty();
+    static const DrawList& empty();
     void clear();
 
     std::vector<VertexData>     m_vertices;
-    std::vector<GLindex>        m_indices;
+    std::vector<HWindex>        m_indices;
     std::vector<DrawCall>       m_draw_calls;
     Version                     m_buffer_version = 0u;          // Use to knwow when to call glBufferData
 };
+
+class Draw2D
+{
+public:
+    Draw2D(const stdutils::io::ErrorHandler* err_handler = nullptr);
+    ~Draw2D();
+
+    // return true upon successul initialization
+    bool init();
+
+    DrawList& draw_list();
+
+    void set_background_color(float r, float g, float b, float a = 1.f);
+    void reset_background_color();
+
+    void render(const Canvas<float>& canvas, bool flip_y);
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> p_impl;
+};
+
+} // namespace renderer

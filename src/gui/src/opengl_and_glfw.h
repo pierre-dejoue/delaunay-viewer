@@ -44,8 +44,8 @@ std::string_view gl_debug_severity_str(GLenum sev_enum);
 bool gl_errors(const char* context, const stdutils::io::ErrorHandler* err_handler = nullptr);
 
 // Wrapper functions with error handling (in the case no GLError is generated)
-GLuint gl_get_uniform_location(GLuint program, const GLchar *name, const stdutils::io::ErrorHandler* err_handler = nullptr);
-GLuint gl_get_attrib_location(GLuint program, const GLchar *name, const stdutils::io::ErrorHandler* err_handler = nullptr);
+bool gl_get_uniform_location(GLuint program, const GLchar *name, GLuint* out_location, const stdutils::io::ErrorHandler* err_handler = nullptr);
+bool gl_get_attrib_location(GLuint program, const GLchar *name, GLuint* out_location, const stdutils::io::ErrorHandler* err_handler = nullptr);
 
 // Enable debug log
 void gl_enable_debug(const stdutils::io::ErrorHandler& err_handler);

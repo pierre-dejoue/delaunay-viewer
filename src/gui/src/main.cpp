@@ -6,10 +6,9 @@
  * Copyright (c) 2023 Pierre DEJOUE
  ******************************************************************************/
 
-#include "opengl_draw_list.h"
+#include "renderer.h"
 #include "settings.h"
 #include "shape_control_window.h"
-#include "shaders.h"
 #include "version.h"
 
 #include <dt/dt_impl.h>
@@ -50,9 +49,9 @@ const ImColor WindowMainBackgroundColor_Dark(10, 25, 50, 255);
 #define TEST_TRIANGLE 0
 #if TEST_TRIANGLE
 
-OpenGLDrawList opengl_test_triangle_static_init()
+void opengl_test_triangle(renderer::DrawList& triangle)
 {
-    static OpenGLDrawList triangle;
+    triangle.clear();
     triangle.m_vertices = {
         { -0.5f, -0.2887f, 0.f },
         { 0.5f, -0.2887f, 0.f },
@@ -65,19 +64,12 @@ OpenGLDrawList opengl_test_triangle_static_init()
     auto& filled_shape = triangle.m_draw_calls.emplace_back();
     filled_shape.m_uniform_color = { 1.0f, 0.f, 0.f, 1.f };
     filled_shape.m_range = { 0, 3 };
-    filled_shape.m_cmd = DrawCmd::Triangles;
+    filled_shape.m_cmd = renderer::DrawCmd::Triangles;
     auto& border = triangle.m_draw_calls.emplace_back();
     border.m_uniform_color = { 0.0f, 0.f, 1.f, 1.f };
     border.m_range = { 3, 9 };
-    border.m_cmd = DrawCmd::Lines;
+    border.m_cmd = renderer::DrawCmd::Lines;
     triangle.m_buffer_version = 1;
-    return triangle;
-}
-
-const OpenGLDrawList& opengl_test_triangle()
-{
-    static OpenGLDrawList triangle = opengl_test_triangle_static_init();
-    return triangle;
 }
 #endif
 
@@ -158,24 +150,11 @@ int main(int argc, char *argv[])
             std::cerr << "Error during Delaunay implementations' registration" << std::endl;
     }
 
-    // GL program
-    GLuint gl_program_id = gl_compile_shaders(vertex_shader_source, fragment_shader_source, &err_handler);
-    if (gl_program_id == 0u)
-    {
+    // Renderer
+    renderer::Draw2D draw_2d_renderer(&err_handler);
+    if (!draw_2d_renderer.init())
         return 1;
-    }
-
-    // Setup viewport rendering
-    const GLuint mat_proj_location = gl_get_uniform_location(gl_program_id, "mat_proj", &err_handler);
-    const GLuint uni_color_location = gl_get_uniform_location(gl_program_id, "uni_color", &err_handler);
-    const GLuint v_pos_location = gl_get_attrib_location(gl_program_id, "v_pos", &err_handler);
-    GLuint gl_vao;
-    glGenVertexArrays(1, &gl_vao);
-    glBindVertexArray(gl_vao);
-    std::array<GLuint, 2> gl_buffers;
-    glGenBuffers(2, &gl_buffers[0]);
-    glBindVertexArray(0);
-    static OpenGLDrawList::Version last_opengl_draw_list_version = 0;
+    draw_2d_renderer.set_background_color(0.166f, 0.166f, 0.166f);
 
     // Main loop
     std::unique_ptr<ShapeWindow> shape_window;
@@ -201,6 +180,8 @@ int main(int argc, char *argv[])
             const stdutils::io::ErrorHandler io_err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
             if (ImGui::BeginMenu("File"))
             {
+                shapes::io::ShapeAggregate<double> shapes;
+                std::string filename = "no_file";
                 if (ImGui::MenuItem("Open CDT"))
                 {
                     const auto paths = pfd::open_file("Select a CDT file", "",
@@ -211,8 +192,8 @@ int main(int argc, char *argv[])
                         if (shapes::io::cdt::peek_point_dimension(path, io_err_handler) == 2)
                         {
                             auto cdt_shapes = shapes::io::cdt::parse_2d_shapes_from_file(path, io_err_handler);
-                            const std::string filename = std::filesystem::path(path).filename().string();
-                            shapes::io::ShapeAggregate<double> shapes;
+                            filename = std::filesystem::path(path).filename().string();
+                            shapes.clear();
                             if (!cdt_shapes.point_cloud.vertices.empty())
                             {
                                 shapes.emplace_back(std::move(cdt_shapes.point_cloud));
@@ -223,8 +204,6 @@ int main(int argc, char *argv[])
                                 for (auto& pp: point_paths) { shapes.emplace_back(std::move(pp)); }
                             }
                             // Ignore Triangles2d
-                            if (!shapes.empty())
-                                shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename);
                         }
                         else
                         {
@@ -239,10 +218,8 @@ int main(int argc, char *argv[])
                     for (const auto& path : paths)
                     {
                         std::cout << "User selected DAT file " << path << std::endl;
-                        auto shapes = shapes::io::dat::parse_shapes_from_file(path, io_err_handler);
-                        const std::string filename = std::filesystem::path(path).filename().string();
-                        if (!shapes.empty())
-                            shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename);
+                        filename = std::filesystem::path(path).filename().string();
+                        shapes = shapes::io::dat::parse_shapes_from_file(path, io_err_handler);
                     }
                 }
                 if (ImGui::MenuItem("Open SVG"))
@@ -254,16 +231,19 @@ int main(int argc, char *argv[])
                         std::cout << "User selected SVG file " << path << std::endl;
                         auto file_paths = svg::io::parse_svg_paths(path, io_err_handler);
                         std::cout << "Nb of point paths: " << file_paths.point_paths.size() << ". Nb of cubic bezier paths: " << file_paths.cubic_bezier_paths.size() << "." << std::endl;
-                        const std::string filename = std::filesystem::path(path).filename().string();
-                        std::vector<shapes::AllShapes<double>> shapes;
+                        filename = std::filesystem::path(path).filename().string();
+                        shapes.clear();
                         shapes.reserve(file_paths.point_paths.size() + file_paths.cubic_bezier_paths.size());
                         for (const auto& pp : file_paths.point_paths)
                             shapes.emplace_back(std::move(pp));
                         for (const auto& cbp : file_paths.cubic_bezier_paths)
                             shapes.emplace_back(std::move(cbp));
-                        if (!shapes.empty())
-                            shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename);
+
                     }
+                }
+                if (!shapes.empty())
+                {
+                    shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename, draw_2d_renderer.draw_list());
                 }
                 ImGui::Separator();
                 if (ImGui::BeginMenu("Options"))
@@ -315,50 +295,22 @@ int main(int argc, char *argv[])
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
 
-
-#if TEST_TRIANGLE
-        const auto& gl_draw_list = opengl_test_triangle();
-#else
-        const auto& gl_draw_list = shape_window ? shape_window->get_opengl_draw_list() : OpenGLDrawList::empty();
-#endif
-
         // Viewport rendering
-        if (!gl_draw_list.m_draw_calls.empty() && display_w > 0 && display_h > 0)
+#if TEST_TRIANGLE
+        opengl_test_triangle(draw_2d_renderer.draw_list());
+        if (display_w > 0 && display_h > 0)
+#else
+        if (shape_window && display_w > 0 && display_h > 0)
+#endif
         {
-            glBindVertexArray(gl_vao);
-            if (last_opengl_draw_list_version != gl_draw_list.m_buffer_version)
-            {
-                // Copy buffers
-                glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[0]);
-                glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(gl_draw_list.m_vertices), static_cast<const void*>(gl_draw_list.m_vertices.data()), GL_STATIC_DRAW);
-                glEnableVertexAttribArray(v_pos_location);
-                glVertexAttribPointer(v_pos_location, 3, GL_FLOAT, /* normalized */ GL_FALSE, /* stride */ 0, GLoffsetf(0));
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_buffers[1]);
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, gl_size_in_bytes(gl_draw_list.m_indices), static_cast<const void*>(gl_draw_list.m_indices.data()), GL_STATIC_DRAW);
-            }
-            last_opengl_draw_list_version = gl_draw_list.m_buffer_version;
-
             // Render
-            #if TEST_TRIANGLE
-            const auto r = static_cast<float>(display_w) / static_cast<float>(display_h);
-            const auto bb = shapes::BoundingBox2d<float>().add(-r, -1.f).add(+r, 1.f);
-            #else
+#if TEST_TRIANGLE
+            const auto target_bb = shapes::BoundingBox2d<float>().add(-1.f, -1.f).add(1.f, 1.f);
+#else
             const auto target_bb = shapes::cast<float, ShapeWindow::scalar>(shape_window->get_canvas_bounding_box());
+#endif
             const auto canvas = Canvas(0.f, 0.f, static_cast<float>(display_w), static_cast<float>(display_h), target_bb);
-            const auto bb = canvas.actual_bounding_box();
-            #endif
-            const auto mat_proj = gl_orth_proj_mat(bb, settings.get_general_settings()->flip_y);
-            glUseProgram(gl_program_id);
-            glUniformMatrix4fv(static_cast<GLint>(mat_proj_location), 1, GL_TRUE, mat_proj.data());
-            for (const auto& draw_call : gl_draw_list.m_draw_calls)
-            {
-                assert(draw_call.m_range.first <= draw_call.m_range.second);
-                const auto count = static_cast<GLsizei>(draw_call.m_range.second - draw_call.m_range.first);
-                glUniform4fv(static_cast<GLint>(uni_color_location), 1, draw_call.m_uniform_color.data());
-                glDrawElements(to_gl_draw_cmd(draw_call.m_cmd), count, GL_UNSIGNED_INT, GLoffsetui(draw_call.m_range.first));
-            }
-            glBindVertexArray(0);
-            glUseProgram(0);
+            draw_2d_renderer.render(canvas, settings.get_general_settings()->flip_y);
         }
 
         // Imgui rendering

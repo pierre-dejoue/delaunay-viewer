@@ -239,38 +239,42 @@ bool gl_errors(const char* context, const stdutils::io::ErrorHandler* err_handle
     return any_error;
 }
 
-GLuint gl_get_uniform_location(GLuint program, const GLchar *name, const stdutils::io::ErrorHandler* err_handler)
+bool gl_get_uniform_location(GLuint program, const GLchar *name, GLuint* out_location, const stdutils::io::ErrorHandler* err_handler)
 {
     assert(name);
+    assert(out_location);
     GLint id = glGetUniformLocation(program, name);
     if (id < 0)
     {
         if (err_handler)
         {
             std::stringstream out;
-            out << "OpenGL: Location not found in shader [" << name << "]";
+            out << "OpenGL: Uniform location [" << name << "] not found in the program";
              (*err_handler)(stdutils::io::Severity::ERR, out.str());
         }
-        return GLuint(0);
+        return false;
     }
-    return static_cast<GLuint>(id);
+    *out_location = static_cast<GLuint>(id);
+    return true;
 }
 
-GLuint gl_get_attrib_location(GLuint program, const GLchar *name, const stdutils::io::ErrorHandler* err_handler)
+bool gl_get_attrib_location(GLuint program, const GLchar *name, GLuint* out_location, const stdutils::io::ErrorHandler* err_handler)
 {
     assert(name);
+    assert(out_location);
     GLint id = glGetAttribLocation(program, name);
     if (id < 0)
     {
         if (err_handler)
         {
             std::stringstream out;
-            out << "OpenGL: Location not found in shader [" << name << "]";
+            out << "OpenGL: Attribute location [" << name << "] not found in the program";
              (*err_handler)(stdutils::io::Severity::ERR, out.str());
         }
-        return GLuint(0);
+        return false;
     }
-    return static_cast<GLuint>(id);
+    *out_location = static_cast<GLuint>(id);
+    return true;
 }
 
 namespace
@@ -399,7 +403,7 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     glCompileShader(fragment_shader_id);
     if (!check_shader_compilation(fragment_shader_id, "fragment shader", true, err_handler)) { return 0; }
 
-    // Link program
+    // Link the program
     const GLuint program_id = glCreateProgram();
     if (program_id == 0u)
     {
@@ -409,8 +413,12 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     glAttachShader(program_id, vertex_shader_id);
     glAttachShader(program_id, fragment_shader_id);
     glLinkProgram(program_id);
+
+    // Free shaders resources
     glDetachShader(program_id, vertex_shader_id);
     glDetachShader(program_id, fragment_shader_id);
+    glDeleteShader(vertex_shader_id);
+    glDeleteShader(fragment_shader_id);
 
     // Check the program
     GLint link_status;

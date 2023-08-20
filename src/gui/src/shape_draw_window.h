@@ -1,7 +1,7 @@
 #pragma once
 
 #include "canvas.h"
-#include "opengl_draw_list.h"
+#include "renderer.h"
 
 #include <shapes/bounding_box.h>
 #include <shapes/shapes.h>

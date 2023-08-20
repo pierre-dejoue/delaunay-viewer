@@ -16,6 +16,7 @@ SettingsWindow::SettingsWindow(Settings& settings)
 void SettingsWindow::visit(bool& can_be_erased)
 {
     can_be_erased = false;        // Cannot close
+    const ImVec2 spacing = { 10.f, 10.f };
 
     ImGui::SetNextWindowSizeConstraints(ImVec2(1.f, 300.f), ImVec2(FLT_MAX, 600.f));
 
@@ -32,7 +33,7 @@ void SettingsWindow::visit(bool& can_be_erased)
     if (general_settings)
     {
         //const auto& limits = m_settings.read_general_limits();
-
+        //ImGui::Dummy(spacing); First section, so no spacing required
         ImGui::BulletText("General");
         ImGui::Indent();
         ImGui::Checkbox("Flip Y-axis", &(general_settings->flip_y));
@@ -44,6 +45,7 @@ void SettingsWindow::visit(bool& can_be_erased)
     {
         const auto& limits = m_settings.read_point_limits();
 
+        ImGui::Dummy(spacing);
         ImGui::BulletText("Points");
         ImGui::Indent();
         ImGui::Checkbox("Show##Point", &(point_settings->show));
@@ -55,8 +57,6 @@ void SettingsWindow::visit(bool& can_be_erased)
     if (path_settings)
     {
         const auto& limits = m_settings.read_path_limits();
-
-        ImVec2 spacing = { 10.f, 10.f };
         ImGui::Dummy(spacing);
         ImGui::BulletText("Curve Segments");
         ImGui::Indent();
@@ -69,8 +69,6 @@ void SettingsWindow::visit(bool& can_be_erased)
     if (surface_settings)
     {
         const auto& limits = m_settings.read_surface_limits();
-
-        ImVec2 spacing = { 10.f, 10.f };
         ImGui::Dummy(spacing);
         ImGui::BulletText("Faces");
         ImGui::Indent();

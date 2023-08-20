@@ -33,7 +33,7 @@ namespace
     }
 
     template <typename F>
-    void to_opengl_draw_commands(const ShapeWindow::ShapeControl& shape_control, OpenGLDrawList& draw_list, DrawingOptions& options)
+    void to_opengl_draw_commands(const ShapeWindow::ShapeControl& shape_control, renderer::DrawList& draw_list, DrawingOptions& options)
     {
         options.highlight = shape_control.highlight;
         // options.constraint_edges is set by the caller
@@ -72,11 +72,12 @@ void ShapeWindow::ShapeControl::update(shapes::AllShapes<scalar>&& rep_shape)
 
 ShapeWindow::ShapeWindow(
         std::vector<shapes::AllShapes<scalar>>&& shapes,
-        std::string_view name)
+        std::string_view name,
+        renderer::DrawList& draw_list)
     : m_input_shape_controls()
     , m_geometry_has_changed(true)  // True to trigger the first triangulation
     , m_sampled_shape_controls()
-    , m_opengl_draw_list()
+    , m_renderer_draw_list(draw_list)
     , m_title(std::string(name) + " Controls")
     , m_draw_window()
     , m_previous_selected_tab()
@@ -201,25 +202,25 @@ void ShapeWindow::update_opengl_draw_list(bool geometry_has_changed, const Setti
     options.surface_settings = settings.read_surface_settings();
 
     const std::string& current_tab = m_draw_window->get_selected_tab();
-    m_opengl_draw_list.clear();
+    m_renderer_draw_list.clear();
 
     for (const auto& [algo_name, shape_control] : m_triangulation_shape_controls)
     {
-        if (algo_name == current_tab) { to_opengl_draw_commands<scalar>(shape_control, m_opengl_draw_list, options); }
+        if (algo_name == current_tab) { to_opengl_draw_commands<scalar>(shape_control, m_renderer_draw_list, options); }
     }
     options.constraint_edges = (current_tab != INPUT_TAB_NAME);
     for (const auto& shape_control : m_input_shape_controls)
     {
-        if (shape_control.active) { to_opengl_draw_commands<scalar>(shape_control, m_opengl_draw_list, options); }
+        if (shape_control.active) { to_opengl_draw_commands<scalar>(shape_control, m_renderer_draw_list, options); }
     }
     for (const auto& shape_control_ptr : m_sampled_shape_controls)
     {
         assert(shape_control_ptr);
-        if (shape_control_ptr->active) { to_opengl_draw_commands<scalar>(*shape_control_ptr, m_opengl_draw_list, options); }
+        if (shape_control_ptr->active) { to_opengl_draw_commands<scalar>(*shape_control_ptr, m_renderer_draw_list, options); }
     }
 
     if (geometry_has_changed || current_tab != m_previous_selected_tab)
-        m_opengl_draw_list.m_buffer_version++;
+        m_renderer_draw_list.m_buffer_version++;
     m_previous_selected_tab = current_tab;
 }
 
@@ -453,9 +454,3 @@ shapes::BoundingBox2d<ShapeWindow::scalar> ShapeWindow::get_canvas_bounding_box(
 {
     return m_draw_window ? m_draw_window->get_canvas_bounding_box() : shapes::BoundingBox2d<ShapeWindow::scalar>();
 }
-
-const OpenGLDrawList& ShapeWindow::get_opengl_draw_list() const
-{
-    return m_opengl_draw_list;
-}
-

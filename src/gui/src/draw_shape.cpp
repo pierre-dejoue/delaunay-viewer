@@ -57,7 +57,7 @@ ImU32 get_face_color(const DrawingOptions& options)
     return ((base_color & ~IM_COL32_A_MASK) | (alpha_255 << IM_COL32_A_SHIFT));
 }
 
-void set_opengl_color(OpenGLDrawList::ColorData& gl_color, ImU32 color)
+void set_opengl_color(renderer::DrawList::ColorData& gl_color, ImU32 color)
 {
     const ImColor im_color(color);
     gl_color[0] = im_color.Value.x;
