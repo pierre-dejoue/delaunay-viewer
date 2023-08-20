@@ -169,14 +169,14 @@ void Settings::open_window()
     read_surface_settings();
 }
 
-void Settings::visit_window(bool& can_be_erased)
+void Settings::visit_window(bool& can_be_erased, ImVec2& initial_pos)
 {
     can_be_erased = false;
     if (general_settings || point_settings || path_settings || surface_settings || settings_window)
     {
         auto& settings_window_ref = get_settings_window();
         bool window_can_be_erased = false;
-        settings_window_ref.visit(window_can_be_erased);
+        settings_window_ref.visit(window_can_be_erased, initial_pos);
         assert(!window_can_be_erased); // Do not erase settings window once open
         can_be_erased &= window_can_be_erased;
     }

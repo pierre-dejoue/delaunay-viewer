@@ -1,6 +1,7 @@
 #pragma once
 
 #include "canvas.h"
+#include "imgui_wrap.h"
 #include "renderer.h"
 
 #include <shapes/bounding_box.h>
@@ -16,7 +17,7 @@
 class Settings;
 
 // Slave window of the ShapeWindow
-class ShapeDrawWindow
+class ViewportWindow
 {
 public:
     using scalar = double;
@@ -32,13 +33,15 @@ public:
     using DrawCommandLists = std::vector<DrawCommandList>;
 
 public:
-    ShapeDrawWindow(
-        const shapes::BoundingBox2d<scalar>& bounding_box,
-        std::string_view name);
-    ShapeDrawWindow(const ShapeDrawWindow&) = delete;
-    ShapeDrawWindow& operator=(const ShapeDrawWindow&) = delete;
+    ViewportWindow();
+    ViewportWindow(const ViewportWindow&) = delete;
+    ViewportWindow& operator=(const ViewportWindow&) = delete;
 
-    void visit(bool& can_be_erased, const Settings& settings, const DrawCommandLists& draw_command_lists);
+    void set_initial_window_pos_size(ImVec2 pos, ImVec2 size);
+
+    void visit(bool& can_be_erased, const Settings& settings, const DrawCommandLists* draw_command_lists_ptr = nullptr);
+
+    void set_initial_bounding_box(const shapes::BoundingBox2d<scalar>& bounding_box);
 
     shapes::BoundingBox2d<scalar> get_canvas_bounding_box() const;
     const std::string& get_selected_tab() const;
@@ -55,7 +58,9 @@ private:
     void pan(const shapes::Vect2d<scalar>& dir);
 
     const std::string m_title;
-    const shapes::BoundingBox2d<scalar> m_bounding_box;
+    ImVec2 m_initial_pos;
+    ImVec2 m_initial_size;
+    shapes::BoundingBox2d<scalar> m_bounding_box;
     shapes::BoundingBox2d<scalar> m_canvas_box;
     MouseInCanvas<scalar> m_prev_mouse_in_canvas;
     ZoomSelectionBox m_zoom_selection_box;

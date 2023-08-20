@@ -115,6 +115,9 @@ int main(int argc, char *argv[])
     Settings settings;
     settings.open_window();
 
+    // Viewport window
+    ViewportWindow viewport_window;
+
     // Register the Delaunay triangulation implementations
     {
         const bool registered_delaunay_impl = delaunay::register_all_implementations();
@@ -131,6 +134,7 @@ int main(int argc, char *argv[])
 
     // Main loop
     std::unique_ptr<ShapeWindow> shape_window;
+    ImVec2 initial_window_pos(0.f, 0.f);
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -216,7 +220,7 @@ int main(int argc, char *argv[])
                 }
                 if (!shapes.empty())
                 {
-                    shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename, draw_2d_renderer.draw_list());
+                    shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename, draw_2d_renderer.draw_list(), viewport_window);
                 }
                 ImGui::Separator();
                 if (ImGui::BeginMenu("Options"))
@@ -234,8 +238,16 @@ int main(int argc, char *argv[])
                 }
                 ImGui::EndMenu();
             }
+            initial_window_pos.y = ImGui::GetWindowHeight() + 1.f;
             ImGui::EndMainMenuBar();
         }
+
+        // Settings window (always ON)
+        {
+            bool can_be_erased = false;
+            settings.visit_window(can_be_erased, initial_window_pos);
+        }
+        viewport_window.set_initial_window_pos_size(initial_window_pos, ImVec2());
 
         // Draw shapes
         if(shape_window)
@@ -245,11 +257,11 @@ int main(int argc, char *argv[])
             if (can_be_erased)
                 shape_window.reset();
         }
-
-        // Settings window (always ON)
+        else
         {
+            // If there is a shape control window, it will visit the viewport window
             bool can_be_erased = false;
-            settings.visit_window(can_be_erased);
+            viewport_window.visit(can_be_erased, settings);
         }
 
 #if DELAUNAY_VIEWER_IMGUI_DEMO_FLAG
@@ -272,7 +284,7 @@ int main(int argc, char *argv[])
         if (shape_window && display_w > 0 && display_h > 0)
         {
             // Render
-            const auto target_bb = shapes::cast<float, ShapeWindow::scalar>(shape_window->get_canvas_bounding_box());
+            const auto target_bb = shapes::cast<float, ShapeWindow::scalar>(viewport_window.get_canvas_bounding_box());
             const auto canvas = Canvas(0.f, 0.f, static_cast<float>(display_w), static_cast<float>(display_h), target_bb);
             draw_2d_renderer.render(canvas, settings.get_general_settings()->flip_y);
         }

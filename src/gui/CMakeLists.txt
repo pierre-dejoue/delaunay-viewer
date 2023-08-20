@@ -17,7 +17,7 @@ set(GUI_SOURCES
     src/settings.cpp
     src/settings_window.cpp
     src/shape_control_window.cpp
-    src/shape_draw_window.cpp
+    src/viewport_window.cpp
     src/version.cpp
 )
 

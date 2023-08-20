@@ -24,9 +24,9 @@ namespace
 {
     const char* INPUT_TAB_NAME = "Input";
 
-    ShapeDrawWindow::DrawCommand to_draw_command(const ShapeWindow::ShapeControl& shape_control)
+    ViewportWindow::DrawCommand to_draw_command(const ShapeWindow::ShapeControl& shape_control)
     {
-        ShapeDrawWindow::DrawCommand result(shape_control.shape);
+        ViewportWindow::DrawCommand result(shape_control.shape);
         result.highlight = shape_control.highlight;
         result.constraint_edges = shape_control.constraint_edges;
         return result;
@@ -73,13 +73,14 @@ void ShapeWindow::ShapeControl::update(shapes::AllShapes<scalar>&& rep_shape)
 ShapeWindow::ShapeWindow(
         std::vector<shapes::AllShapes<scalar>>&& shapes,
         std::string_view name,
-        renderer::DrawList& draw_list)
+        renderer::DrawList& draw_list,
+        ViewportWindow& viewport_window)
     : m_input_shape_controls()
     , m_geometry_has_changed(true)  // True to trigger the first triangulation
     , m_sampled_shape_controls()
     , m_renderer_draw_list(draw_list)
     , m_title(std::string(name) + " Controls")
-    , m_draw_window()
+    , m_viewport_window(viewport_window)
     , m_previous_selected_tab()
     , m_bounding_box()
 {
@@ -88,7 +89,7 @@ ShapeWindow::ShapeWindow(
         m_input_shape_controls.emplace_back(std::move(shape));
     shapes.clear();
     init_bounding_box();
-    m_draw_window = std::make_unique<ShapeDrawWindow>(m_bounding_box, name);
+    m_viewport_window.set_initial_bounding_box(m_bounding_box);
 }
 
 ShapeWindow::~ShapeWindow() = default;
@@ -151,11 +152,11 @@ void ShapeWindow::recompute_triangulations()
     }
 }
 
-ShapeDrawWindow::DrawCommandLists ShapeWindow::build_draw_lists() const
+ViewportWindow::DrawCommandLists ShapeWindow::build_draw_lists() const
 {
-    ShapeDrawWindow::DrawCommandLists draw_command_lists;
+    ViewportWindow::DrawCommandLists draw_command_lists;
     {
-        auto& draw_command_list = draw_command_lists.emplace_back(INPUT_TAB_NAME, std::vector<ShapeDrawWindow::DrawCommand>()).second;
+        auto& draw_command_list = draw_command_lists.emplace_back(INPUT_TAB_NAME, std::vector<ViewportWindow::DrawCommand>()).second;
         for (const auto& shape_control : m_input_shape_controls)
         {
             if (shape_control.active)
@@ -171,7 +172,7 @@ ShapeDrawWindow::DrawCommandLists ShapeWindow::build_draw_lists() const
 
     for (const auto& [algo_name, shape_control_dt] : m_triangulation_shape_controls)
     {
-        auto& draw_command_list = draw_command_lists.emplace_back(algo_name, std::vector<ShapeDrawWindow::DrawCommand>()).second;
+        auto& draw_command_list = draw_command_lists.emplace_back(algo_name, std::vector<ViewportWindow::DrawCommand>()).second;
         draw_command_list.emplace_back(to_draw_command(shape_control_dt));
         for (const auto& shape_control : m_input_shape_controls)
         {
@@ -201,7 +202,7 @@ void ShapeWindow::update_opengl_draw_list(bool geometry_has_changed, const Setti
     options.path_settings = settings.read_path_settings();
     options.surface_settings = settings.read_surface_settings();
 
-    const std::string& current_tab = m_draw_window->get_selected_tab();
+    const std::string& current_tab = m_viewport_window.get_selected_tab();
     m_renderer_draw_list.clear();
 
     for (const auto& [algo_name, shape_control] : m_triangulation_shape_controls)
@@ -322,8 +323,9 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
 
 void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
 {
-    ImGui::SetNextWindowSizeConstraints(ImVec2(600.f, 200.f), ImVec2(FLT_MAX, FLT_MAX));
-    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_AlwaysAutoResize;
+    ImGui::SetNextWindowSizeConstraints(ImVec2(300.f, 200.f), ImVec2(FLT_MAX, FLT_MAX));
+    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+
     bool is_window_open = true;
     if (!ImGui::Begin(m_title.c_str(), &is_window_open, win_flags))
     {
@@ -332,6 +334,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
         ImGui::End();
         return;
     }
+    can_be_erased = !is_window_open;
 
     // Global bounding box
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
@@ -444,13 +447,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings)
 
     // Draw Window
     bool draw_window_can_be_erased = false;
-    assert(m_draw_window);
-    m_draw_window->visit(draw_window_can_be_erased, settings, build_draw_lists());
-
-    can_be_erased = draw_window_can_be_erased || !is_window_open;
-}
-
-shapes::BoundingBox2d<ShapeWindow::scalar> ShapeWindow::get_canvas_bounding_box() const
-{
-    return m_draw_window ? m_draw_window->get_canvas_bounding_box() : shapes::BoundingBox2d<ShapeWindow::scalar>();
+    const auto draw_lists = build_draw_lists();
+    m_viewport_window.visit(draw_window_can_be_erased, settings, &draw_lists);
+    assert(!draw_window_can_be_erased);
 }

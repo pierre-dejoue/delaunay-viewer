@@ -1,4 +1,4 @@
-#include "shape_draw_window.h"
+#include "viewport_window.h"
 
 #include "draw_shape.h"
 #include "imgui_helpers.h"
@@ -16,40 +16,50 @@
 
 namespace
 {
-constexpr ShapeDrawWindow::scalar DEFAULT_ZOOM = 0.9;
+
+constexpr ViewportWindow::scalar DEFAULT_ZOOM = 0.9;
+const ViewportWindow::DrawCommandLists DEFAULT_DRAW_COMMAND_LIST = {{ "Input", {} }};
+
 }
 
-ShapeDrawWindow::DrawCommand::DrawCommand(const shapes::AllShapes<scalar>& shape)
+ViewportWindow::DrawCommand::DrawCommand(const shapes::AllShapes<scalar>& shape)
     : highlight(false)
     , constraint_edges(false)
     , shape(&shape)
 {
 }
 
-ShapeDrawWindow::ShapeDrawWindow(
-        const shapes::BoundingBox2d<scalar>& bounding_box,
-        std::string_view name)
-    : m_title(std::string(name) + " Display")
-    , m_bounding_box(bounding_box)
+ViewportWindow::ViewportWindow()
+    : m_title("Viewport")
+    , m_initial_pos()
+    , m_initial_size()
+    , m_bounding_box()
     , m_canvas_box()
     , m_prev_mouse_in_canvas(Canvas<scalar>())
     , m_zoom_selection_box()
     , m_selected_tab()
 {
+    m_bounding_box.add(scalar{0}, scalar{0}).add(scalar{1}, scalar{1});
     reset_zoom();
 }
 
-void ShapeDrawWindow::reset_zoom()
+void ViewportWindow::set_initial_bounding_box(const shapes::BoundingBox2d<scalar>& bounding_box)
+{
+    m_bounding_box = bounding_box;
+    reset_zoom();
+}
+
+void ViewportWindow::reset_zoom()
 {
     m_canvas_box = shapes::scale_around_center(m_bounding_box, DEFAULT_ZOOM);
 }
 
-void ShapeDrawWindow::zoom_in(const shapes::BoundingBox2d<scalar>& bb)
+void ViewportWindow::zoom_in(const shapes::BoundingBox2d<scalar>& bb)
 {
     m_canvas_box = bb;  // Same as shapes::scale_around_center(bb, scalar{1});
 }
 
-void ShapeDrawWindow::pan(const shapes::Vect2d<scalar>& dir)
+void ViewportWindow::pan(const shapes::Vect2d<scalar>& dir)
 {
     const auto tl_pan = m_canvas_box.min() - dir;
     const auto br_pan = m_canvas_box.max() - dir;
@@ -57,27 +67,38 @@ void ShapeDrawWindow::pan(const shapes::Vect2d<scalar>& dir)
     m_canvas_box = shapes::BoundingBox2d<scalar>().add(tl_pan).add(br_pan);
 }
 
-void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const DrawCommandLists& draw_command_lists)
+void ViewportWindow::set_initial_window_pos_size(ImVec2 pos, ImVec2 size)
 {
+    m_initial_pos = pos;
+    m_initial_size = size;
+}
+
+void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const DrawCommandLists* draw_command_lists_ptr)
+{
+    can_be_erased = false; // Always ON
+
     DrawingOptions options;
     const bool flip_y_axis = settings.read_general_settings().flip_y;
     options.point_settings = settings.read_point_settings();
     options.path_settings = settings.read_path_settings();
     options.surface_settings = settings.read_surface_settings();
 
-    ImGui::SetNextWindowSizeConstraints(ImVec2(200.f, 200.f), ImVec2(FLT_MAX, FLT_MAX));
-    ImGui::SetNextWindowSize(ImVec2(600.f, 600.f), ImGuiCond_Once);
+    const DrawCommandLists& draw_command_lists = draw_command_lists_ptr ? *draw_command_lists_ptr : DEFAULT_DRAW_COMMAND_LIST;
 
-    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_None;
+    m_initial_size = ImGui::GetMainViewport()->WorkSize;
+    m_initial_size.x -= m_initial_pos.x;
+    m_initial_size.y -= m_initial_pos.y;
+    ImGui::SetNextWindowPos(m_initial_pos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(m_initial_size, ImGuiCond_Once);
+    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground;
+
     bool is_window_open = true;
     if (!ImGui::Begin(m_title.c_str(), &is_window_open, win_flags))
     {
         // Collapsed
-        can_be_erased = !is_window_open;
         ImGui::End();
         return;
     }
-    can_be_erased = !is_window_open;
 
     if(ImGui::Button("Reset Zoom"))
     {
@@ -86,59 +107,55 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
 
     if (is_valid(m_prev_mouse_in_canvas.canvas))
     {
-        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-        if (ImGui::TreeNode("Canvas"))
+        if (ImGui::BeginTable("canvas_table", 3))
         {
-            if (ImGui::BeginTable("canvas_table", 3))
+#if 0
             {
-                {
-                    ImGui::TableNextRow();
-                    const auto tl_corner_world = m_prev_mouse_in_canvas.canvas.min();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Top-left corner");
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%0.3g", tl_corner_world.x);
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%0.3g", tl_corner_world.y);
-                }
-                {
-                    ImGui::TableNextRow();
-                    const auto br_corner_world = m_prev_mouse_in_canvas.canvas.max();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Bottom-right corner");
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%0.3g", br_corner_world.x);
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%0.3g", br_corner_world.y);
-                }
-                {
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Mouse pointer");
-                    if (m_prev_mouse_in_canvas.is_hovered)
-                    {
-                        assert(is_valid(m_prev_mouse_in_canvas.canvas));
-                        const auto p = m_prev_mouse_in_canvas.to_world();
-                        ImGui::TableNextColumn();
-                        ImGui::Text("%0.3g", p.x);
-                        ImGui::TableNextColumn();
-                        ImGui::Text("%0.3g", p.y);
-                    }
-                }
-                ImGui::EndTable();
+                ImGui::TableNextRow();
+                const auto tl_corner_world = m_prev_mouse_in_canvas.canvas.min();
+                ImGui::TableNextColumn();
+                ImGui::Text("Top-left corner");
+                ImGui::TableNextColumn();
+                ImGui::Text("%0.3g", tl_corner_world.x);
+                ImGui::TableNextColumn();
+                ImGui::Text("%0.3g", tl_corner_world.y);
             }
-            ImGui::TreePop();
+            {
+                ImGui::TableNextRow();
+                const auto br_corner_world = m_prev_mouse_in_canvas.canvas.max();
+                ImGui::TableNextColumn();
+                ImGui::Text("Bottom-right corner");
+                ImGui::TableNextColumn();
+                ImGui::Text("%0.3g", br_corner_world.x);
+                ImGui::TableNextColumn();
+                ImGui::Text("%0.3g", br_corner_world.y);
+            }
+#endif
+            {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text("Mouse pointer");
+                if (m_prev_mouse_in_canvas.is_hovered)
+                {
+                    assert(is_valid(m_prev_mouse_in_canvas.canvas));
+                    const auto p = m_prev_mouse_in_canvas.to_world();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%0.3g", p.x);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%0.3g", p.y);
+                }
+            }
+            ImGui::EndTable();
         }
     }
 
     m_selected_tab = "";
     if (ImGui::BeginTabBar("##TabBar"))
     {
-        for (const auto& draw_commands_pair : draw_command_lists)
-            if (ImGui::BeginTabItem(draw_commands_pair.first.c_str(), nullptr, ImGuiTabItemFlags_None))
+        for (const auto& [tab_name, draw_commands] : draw_command_lists)
+            if (ImGui::BeginTabItem(tab_name.c_str(), nullptr, ImGuiTabItemFlags_None))
             {
-                m_selected_tab = draw_commands_pair.first;
-                const auto& draw_commands = draw_commands_pair.second;
+                m_selected_tab = tab_name;
 
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
                 assert(draw_list);
@@ -234,12 +251,12 @@ void ShapeDrawWindow::visit(bool& can_be_erased, const Settings& settings, const
     ImGui::End();
 }
 
-shapes::BoundingBox2d<ShapeDrawWindow::scalar> ShapeDrawWindow::get_canvas_bounding_box() const
+shapes::BoundingBox2d<ViewportWindow::scalar> ViewportWindow::get_canvas_bounding_box() const
 {
     return m_canvas_box;
 }
 
-const std::string& ShapeDrawWindow::get_selected_tab() const
+const std::string& ViewportWindow::get_selected_tab() const
 {
     return m_selected_tab;
 }

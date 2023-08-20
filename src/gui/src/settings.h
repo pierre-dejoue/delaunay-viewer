@@ -1,5 +1,6 @@
 #pragma once
 
+#include "imgui_wrap.h"
 #include "parameter.h"
 #include "settings_window.h"
 
@@ -71,7 +72,7 @@ public:
     static const SurfaceLimits& read_surface_limits();
 
     void open_window();
-    void visit_window(bool& can_be_erased);
+    void visit_window(bool& can_be_erased, ImVec2& initial_pos);
 
 private:
     SettingsWindow& get_settings_window();
