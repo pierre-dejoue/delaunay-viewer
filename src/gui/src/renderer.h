@@ -45,6 +45,14 @@ struct DrawList
     Version                     m_buffer_version = 0u;          // Use to knwow when to call glBufferData
 };
 
+struct Flag
+{
+    using type = std::uint32_t;
+    static constexpr type None = 0;
+    static constexpr type OnlyBackground = 1 << 0;
+    static constexpr type FlipYAxis = 1 << 1;
+};
+
 class Draw2D
 {
 public:
@@ -59,7 +67,7 @@ public:
     void set_background_color(float r, float g, float b, float a = 1.f);
     void reset_background_color();
 
-    void render(const Canvas<float>& canvas, bool flip_y);
+    void render(const Canvas<float>& canvas, float window_height, Flag::type flags = Flag::None);
 
 private:
     struct Impl;

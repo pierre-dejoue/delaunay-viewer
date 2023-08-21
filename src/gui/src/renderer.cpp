@@ -154,24 +154,11 @@ struct Draw2D::Impl
         glBindVertexArray(0);
     }
 
-    void render(const Canvas<float>& canvas, bool flip_y)
+    void render_assets(const lin::mat4f& mat_proj)
     {
         if (draw_list.m_draw_calls.empty()) { return; }
         if (draw_list.m_buffer_version == 0) { return; }
 
-        // Set viewport
-        const auto viewport_tl = canvas.get_tl_corner();
-        const auto viewport_sz = canvas.get_size();
-        glViewport(static_cast<GLint>(viewport_tl.x), static_cast<GLint>(viewport_tl.y), static_cast<GLsizei>(viewport_sz.x), static_cast<GLsizei>(viewport_sz.y));
-
-        // Projection matrix
-        const auto bb = canvas.actual_bounding_box();
-        const auto mat_proj = gl_orth_proj_mat(bb, flip_y);
-
-        // Render background
-        if (has_background) { render_background(bb, mat_proj); }
-
-        // Render assets
         glBindVertexArray(gl_vaos[1]);
         if (draw_list_last_buffer_version != draw_list.m_buffer_version)
         {
@@ -197,6 +184,28 @@ struct Draw2D::Impl
         }
         glUseProgram(0);
         glBindVertexArray(0);
+    }
+
+    void render(const Canvas<float>& canvas, float window_height, Flag::type flags)
+    {
+        // Set OpenGL viewport
+        // NB: The (0, 0) position in OpenGL is the bottom-left corner of the window, and the Y-axis is in the "up" direction.
+        // For that reason we need to transform the y value of the bottom-left corner of our canvas.
+        const ScreenPos canvas_bl(canvas.get_tl_corner().x, canvas.get_br_corner().y);
+        const auto canvas_sz = canvas.get_size();
+        glViewport(static_cast<GLint>(canvas_bl.x), static_cast<GLint>(window_height - canvas_bl.y), static_cast<GLsizei>(canvas_sz.x), static_cast<GLsizei>(canvas_sz.y));
+
+        // Projection matrix
+        const bool flip_y = flags & Flag::FlipYAxis;
+        const auto bb = canvas.actual_bounding_box();
+        const auto mat_proj = gl_orth_proj_mat(bb, flip_y);
+
+        // Render background
+        if (has_background) { render_background(bb, mat_proj); }
+
+        // Render assets
+        const bool draw_assets = !(flags & Flag::OnlyBackground);
+        if (draw_assets) { render_assets(mat_proj); }
     }
 
     DrawList draw_list;
@@ -238,9 +247,9 @@ void Draw2D::reset_background_color()
     p_impl->has_background = false;
 }
 
-void Draw2D::render(const Canvas<float>& canvas, bool flip_y)
+void Draw2D::render(const Canvas<float>& canvas, float window_height, Flag::type flags)
 {
-    p_impl->render(canvas, flip_y);
+    p_impl->render(canvas, window_height, flags);
 }
 
 } // namespace renderer

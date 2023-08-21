@@ -43,7 +43,7 @@ ViewportWindow::ViewportWindow()
     reset_zoom();
 }
 
-void ViewportWindow::set_initial_bounding_box(const shapes::BoundingBox2d<scalar>& bounding_box)
+void ViewportWindow::set_initial_geometry_bounding_box(const GeometryBB& bounding_box)
 {
     m_bounding_box = bounding_box;
     reset_zoom();
@@ -79,6 +79,7 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
 
     DrawingOptions options;
     const bool flip_y_axis = settings.read_general_settings().flip_y;
+    const bool render_shapes = settings.read_general_settings().imgui_renderer;
     options.point_settings = settings.read_point_settings();
     options.path_settings = settings.read_path_settings();
     options.surface_settings = settings.read_surface_settings();
@@ -90,10 +91,9 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
     m_initial_size.y -= m_initial_pos.y;
     ImGui::SetNextWindowPos(m_initial_pos, ImGuiCond_Once);
     ImGui::SetNextWindowSize(m_initial_size, ImGuiCond_Once);
-    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground;
+    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground;
 
-    bool is_window_open = true;
-    if (!ImGui::Begin(m_title.c_str(), &is_window_open, win_flags))
+    if (!ImGui::Begin(m_title.c_str(), nullptr, win_flags))
     {
         // Collapsed
         ImGui::End();
@@ -201,23 +201,25 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
                     pan(canvas.to_world_vector(to_screen_pos(io.MouseDelta)));
                 }
 
-                // Clip rectangle and background
+                // Clip rectangle
                 draw_list->PushClipRect(tl_corner, br_corner, true);
-                draw_canvas_background(draw_list, tl_corner, br_corner);
 
-                // Draw shapes
-                for (const auto& draw_command : draw_commands)
+                // Render shapes with ImGui primitives
+                if (render_shapes)
                 {
-                    assert(draw_command.shape);
-                    options.highlight = draw_command.highlight;
-                    options.constraint_edges = draw_command.constraint_edges;
-                    std::visit(stdutils::Overloaded {
-                        [&draw_list, &canvas, &options](const shapes::PointCloud2d<scalar>& pc) { draw_point_cloud(pc, draw_list, canvas, options); },
-                        [&draw_list, &canvas, &options](const shapes::PointPath2d<scalar>& pp) { draw_point_path(pp, draw_list, canvas, options); },
-                        [&draw_list, &canvas, &options](const shapes::CubicBezierPath2d<scalar>& cbp) { draw_cubic_bezier_path(cbp, draw_list, canvas, options); },
-                        [&draw_list, &canvas, &options](const shapes::Triangles2d<scalar>& tri) { draw_triangles(tri, draw_list, canvas, options); },
-                        [](const auto&) { assert(0); }
-                    }, *draw_command.shape);
+                    for (const auto& draw_command : draw_commands)
+                    {
+                        assert(draw_command.shape);
+                        options.highlight = draw_command.highlight;
+                        options.constraint_edges = draw_command.constraint_edges;
+                        std::visit(stdutils::Overloaded {
+                            [&draw_list, &canvas, &options](const shapes::PointCloud2d<scalar>& pc) { draw_point_cloud(pc, draw_list, canvas, options); },
+                            [&draw_list, &canvas, &options](const shapes::PointPath2d<scalar>& pp) { draw_point_path(pp, draw_list, canvas, options); },
+                            [&draw_list, &canvas, &options](const shapes::CubicBezierPath2d<scalar>& cbp) { draw_cubic_bezier_path(cbp, draw_list, canvas, options); },
+                            [&draw_list, &canvas, &options](const shapes::Triangles2d<scalar>& tri) { draw_triangles(tri, draw_list, canvas, options); },
+                            [](const auto&) { assert(0); }
+                        }, *draw_command.shape);
+                    }
                 }
 
                 // TODO : highlight bounding box
@@ -251,9 +253,14 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
     ImGui::End();
 }
 
-shapes::BoundingBox2d<ViewportWindow::scalar> ViewportWindow::get_canvas_bounding_box() const
+ViewportWindow::GeometryBB ViewportWindow::get_canvas_bounding_box() const
 {
     return m_canvas_box;
+}
+
+ViewportWindow::ScreenBB ViewportWindow::get_viewport_bounding_box() const
+{
+    return ScreenBB().add(m_prev_mouse_in_canvas.canvas.get_tl_corner()).add(m_prev_mouse_in_canvas.canvas.get_br_corner());
 }
 
 const std::string& ViewportWindow::get_selected_tab() const

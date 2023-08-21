@@ -89,7 +89,7 @@ ShapeWindow::ShapeWindow(
         m_input_shape_controls.emplace_back(std::move(shape));
     shapes.clear();
     init_bounding_box();
-    m_viewport_window.set_initial_bounding_box(m_bounding_box);
+    m_viewport_window.set_initial_geometry_bounding_box(m_bounding_box);
 }
 
 ShapeWindow::~ShapeWindow() = default;

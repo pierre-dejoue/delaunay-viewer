@@ -38,6 +38,7 @@ void SettingsWindow::visit(bool& can_be_erased, ImVec2& initial_pos)
         ImGui::BulletText("General");
         ImGui::Indent();
         ImGui::Checkbox("Flip Y-axis", &(general_settings->flip_y));
+        ImGui::Checkbox("Imgui Renderer", &(general_settings->imgui_renderer));
         ImGui::Unindent();
     }
 

@@ -33,6 +33,7 @@ struct BoundingBox2d
     BoundingBox2d<F>& merge(const BoundingBox2d& o);
     Point2d<F> min() const;
     Point2d<F> max() const;
+    Vect2d<F> extent() const { return { rx.extent(), ry.extent() }; }
     F width() const { return rx.extent(); }
     F height() const { return ry.extent(); }
     Range<F> rx;
@@ -48,6 +49,10 @@ struct BoundingBox3d
     BoundingBox3d<F>& merge(const BoundingBox3d& o);
     Point3d<F> min() const;
     Point3d<F> max() const;
+    Vect3d<F> extent() const { return { rx.extent(), ry.extent(), rz.extent() }; }
+    F width() const { return rx.extent(); }
+    F height() const { return ry.extent(); }
+    F depth() const { return rz.extent(); }
     Range<F> rx;
     Range<F> ry;
     Range<F> rz;

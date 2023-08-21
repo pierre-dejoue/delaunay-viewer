@@ -38,6 +38,11 @@
 #include <vector>
 
 
+#ifdef _WIN32
+#undef min
+#undef max
+#endif
+
 namespace
 {
 
@@ -133,7 +138,7 @@ int main(int argc, char *argv[])
     draw_2d_renderer.set_background_color(0.166f, 0.166f, 0.166f);
 
     // Main loop
-    std::unique_ptr<ShapeWindow> shape_window;
+    std::unique_ptr<ShapeWindow> shape_control_window;
     ImVec2 initial_window_pos(0.f, 0.f);
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
@@ -220,7 +225,7 @@ int main(int argc, char *argv[])
                 }
                 if (!shapes.empty())
                 {
-                    shape_window = std::make_unique<ShapeWindow>(std::move(shapes), filename, draw_2d_renderer.draw_list(), viewport_window);
+                    shape_control_window = std::make_unique<ShapeWindow>(std::move(shapes), filename, draw_2d_renderer.draw_list(), viewport_window);
                 }
                 ImGui::Separator();
                 if (ImGui::BeginMenu("Options"))
@@ -250,12 +255,12 @@ int main(int argc, char *argv[])
         viewport_window.set_initial_window_pos_size(initial_window_pos, ImVec2());
 
         // Draw shapes
-        if(shape_window)
+        if(shape_control_window)
         {
             bool can_be_erased = false;
-            shape_window->visit(can_be_erased, settings);
+            shape_control_window->visit(can_be_erased, settings);
             if (can_be_erased)
-                shape_window.reset();
+                shape_control_window.reset();
         }
         else
         {
@@ -281,15 +286,21 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Viewport rendering
-        if (shape_window && display_w > 0 && display_h > 0)
+        if (display_w > 0 && display_h > 0)
         {
+            // Rendering flags
+            renderer::Flag::type flags = 0;
+            if (settings.get_general_settings()->flip_y) { flags |= renderer::Flag::FlipYAxis; }
+            if (!shape_control_window || settings.get_general_settings()->imgui_renderer) { flags |= renderer::Flag::OnlyBackground; }
+
             // Render
             const auto target_bb = shapes::cast<float, ShapeWindow::scalar>(viewport_window.get_canvas_bounding_box());
-            const auto canvas = Canvas(0.f, 0.f, static_cast<float>(display_w), static_cast<float>(display_h), target_bb);
-            draw_2d_renderer.render(canvas, settings.get_general_settings()->flip_y);
+            const auto screen_bb = viewport_window.get_viewport_bounding_box();
+            const auto canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
+            draw_2d_renderer.render(canvas, static_cast<float>(display_h), flags);
         }
 
-        // Imgui rendering
+        // Imgui rendering (always on top of the viewport rendering)
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         // End frame

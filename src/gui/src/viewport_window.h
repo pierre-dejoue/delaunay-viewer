@@ -26,11 +26,14 @@ public:
         DrawCommand(const shapes::AllShapes<scalar>& shape);
         bool highlight;
         bool constraint_edges;
-        bool geometry_updated;
         const shapes::AllShapes<scalar>* shape;
     };
-    using DrawCommandList = std::pair<std::string, std::vector<DrawCommand>>;
+    using DrawCommands = std::vector<DrawCommand>;
+    using DrawCommandList = std::pair<std::string, DrawCommands>;
     using DrawCommandLists = std::vector<DrawCommandList>;
+
+    using GeometryBB = shapes::BoundingBox2d<scalar>;
+    using ScreenBB = shapes::BoundingBox2d<float>;
 
 public:
     ViewportWindow();
@@ -41,9 +44,12 @@ public:
 
     void visit(bool& can_be_erased, const Settings& settings, const DrawCommandLists* draw_command_lists_ptr = nullptr);
 
-    void set_initial_bounding_box(const shapes::BoundingBox2d<scalar>& bounding_box);
+    void set_initial_geometry_bounding_box(const GeometryBB& bounding_box);
 
-    shapes::BoundingBox2d<scalar> get_canvas_bounding_box() const;
+    GeometryBB get_canvas_bounding_box() const;
+
+    ScreenBB get_viewport_bounding_box() const;
+
     const std::string& get_selected_tab() const;
 
 private:
@@ -60,8 +66,8 @@ private:
     const std::string m_title;
     ImVec2 m_initial_pos;
     ImVec2 m_initial_size;
-    shapes::BoundingBox2d<scalar> m_bounding_box;
-    shapes::BoundingBox2d<scalar> m_canvas_box;
+    GeometryBB m_bounding_box;
+    GeometryBB m_canvas_box;
     MouseInCanvas<scalar> m_prev_mouse_in_canvas;
     ZoomSelectionBox m_zoom_selection_box;
     std::string m_selected_tab;
