@@ -6,6 +6,7 @@
  * Copyright (c) 2023 Pierre DEJOUE
  ******************************************************************************/
 
+#include "draw_shape.h"
 #include "renderer.h"
 #include "settings.h"
 #include "shape_control_window.h"
@@ -27,6 +28,7 @@
 #include <pfd_wrap.h>
 #include "opengl_and_glfw.h"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <filesystem>
@@ -123,6 +125,8 @@ int main(int argc, char *argv[])
     // Viewport window
     ViewportWindow viewport_window;
 
+    using scalar = ViewportWindow::scalar;
+
     // Register the Delaunay triangulation implementations
     {
         const bool registered_delaunay_impl = delaunay::register_all_implementations();
@@ -139,7 +143,8 @@ int main(int argc, char *argv[])
 
     // Main loop
     std::unique_ptr<ShapeWindow> shape_control_window;
-    ImVec2 initial_window_pos(0.f, 0.f);
+    ScreenPos initial_window_pos(0.f, 0.f);
+    ViewportWindow::Key previously_selected_tab;
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -225,7 +230,7 @@ int main(int argc, char *argv[])
                 }
                 if (!shapes.empty())
                 {
-                    shape_control_window = std::make_unique<ShapeWindow>(std::move(shapes), filename, draw_2d_renderer.draw_list(), viewport_window);
+                    shape_control_window = std::make_unique<ShapeWindow>(filename, initial_window_pos, std::move(shapes), viewport_window);
                 }
                 ImGui::Separator();
                 if (ImGui::BeginMenu("Options"))
@@ -252,21 +257,46 @@ int main(int argc, char *argv[])
             bool can_be_erased = false;
             settings.visit_window(can_be_erased, initial_window_pos);
         }
-        viewport_window.set_initial_window_pos_size(initial_window_pos, ImVec2());
+        viewport_window.set_initial_window_pos_size(initial_window_pos, ScreenPos());
 
-        // Draw shapes
+        // Shape control window
+        bool geometry_has_changed = false;
         if(shape_control_window)
         {
             bool can_be_erased = false;
-            shape_control_window->visit(can_be_erased, settings);
+            shape_control_window->visit(can_be_erased, settings, geometry_has_changed);
             if (can_be_erased)
-                shape_control_window.reset();
+            {
+                shape_control_window.reset();           // Close window
+                viewport_window.reset();                // Not closed, just reset
+                previously_selected_tab = "";
+            }
         }
-        else
+
+        // Fwd draw commands to Viewport
+        const bool imgui_rendering = settings.get_general_settings()->imgui_renderer;
+        if(shape_control_window)
         {
-            // If there is a shape control window, it will visit the viewport window
-            bool can_be_erased = false;
-            viewport_window.visit(can_be_erased, settings);
+            for (const auto& [key, cmds] : shape_control_window->get_draw_command_lists())
+            {
+                DrawCommands<scalar> filtered_cmds;
+                std::copy_if(std::cbegin(cmds), std::cend(cmds), std::back_inserter(filtered_cmds), [imgui_rendering](const auto& cmd) { return imgui_rendering || is_bezier_path(*cmd.shape); });
+                viewport_window.set_draw_commands(key, std::move(filtered_cmds));
+            }
+        }
+
+        // Viewport window
+        bool can_be_erased = false;
+        ViewportWindow::Key selected_tab;
+        viewport_window.visit(can_be_erased, settings, selected_tab);
+
+        if (shape_control_window && !imgui_rendering)
+        {
+            const auto& dcls = shape_control_window->get_draw_command_lists();
+            const auto draw_commands_it = std::find_if(std::cbegin(dcls), std::cend(dcls), [&selected_tab](const auto& kvp) { return kvp.first == selected_tab; });
+            assert(draw_commands_it != std::cend(dcls));
+            update_opengl_draw_list<scalar>(draw_2d_renderer.draw_list(), draw_commands_it->second, (geometry_has_changed || (selected_tab != previously_selected_tab)), settings);
+            previously_selected_tab = selected_tab;
         }
 
 #if DELAUNAY_VIEWER_IMGUI_DEMO_FLAG
@@ -277,7 +307,7 @@ int main(int argc, char *argv[])
         // Prepare ImGui rendering
         ImGui::Render();
 
-        // OpenGL Rendering
+        // OpenGL frame setup
         int display_w, display_h;
         glfwGetFramebufferSize(glfw_context.window(), &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
@@ -294,7 +324,7 @@ int main(int argc, char *argv[])
             if (!shape_control_window || settings.get_general_settings()->imgui_renderer) { flags |= renderer::Flag::OnlyBackground; }
 
             // Render
-            const auto target_bb = shapes::cast<float, ShapeWindow::scalar>(viewport_window.get_canvas_bounding_box());
+            const auto target_bb = shapes::cast<float, scalar>(viewport_window.get_canvas_bounding_box());
             const auto screen_bb = viewport_window.get_viewport_bounding_box();
             const auto canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
             draw_2d_renderer.render(canvas, static_cast<float>(display_h), flags);

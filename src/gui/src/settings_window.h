@@ -1,6 +1,6 @@
 #pragma once
 
-#include "imgui_wrap.h"
+#include "canvas.h"
 
 #include <string>
 
@@ -13,7 +13,7 @@ public:
     SettingsWindow(const SettingsWindow&) = delete;
     SettingsWindow& operator=(const SettingsWindow&) = delete;
 
-    void visit(bool& can_be_erased, ImVec2& initial_pos);
+    void visit(bool& can_be_erased, ScreenPos& initial_pos);
 
 private:
     Settings& m_settings;

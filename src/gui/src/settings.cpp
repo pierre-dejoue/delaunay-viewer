@@ -171,7 +171,7 @@ void Settings::open_window()
     read_surface_settings();
 }
 
-void Settings::visit_window(bool& can_be_erased, ImVec2& initial_pos)
+void Settings::visit_window(bool& can_be_erased, ScreenPos& initial_pos)
 {
     can_be_erased = false;
     if (general_settings || point_settings || path_settings || surface_settings || settings_window)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "canvas.h"
+#include "draw_command.h"
 #include "renderer.h"
 #include "viewport_window.h"
 
@@ -20,11 +22,14 @@ class Settings;
 class ShapeWindow
 {
 public:
-    using scalar = double;
+    using scalar = ViewportWindow::scalar;
     struct ShapeControl
     {
         ShapeControl(shapes::AllShapes<scalar>&& shape);
+
         void update(shapes::AllShapes<scalar>&& rep_shape);
+        DrawCommand<scalar> to_draw_command() const;
+
         std::size_t nb_vertices;
         std::size_t nb_edges;
         std::size_t nb_faces;
@@ -39,34 +44,38 @@ public:
         ShapeControl* sampled_shape;
     };
 
+    using Key = typename ViewportWindow::Key;
+    using DrawCommandListKVP = std::pair<Key, DrawCommands<scalar>>;
+    using DrawCommandLists = std::vector<DrawCommandListKVP>;
+
     ShapeWindow(
-        std::vector<shapes::AllShapes<scalar>>&& shapes,
         std::string_view name,
-        renderer::DrawList& draw_list,
+        ScreenPos initial_pos,
+        std::vector<shapes::AllShapes<scalar>>&& shapes,
         ViewportWindow& viewport_window);
     ~ShapeWindow();
     ShapeWindow(const ShapeWindow&) = delete;
     ShapeWindow& operator=(const ShapeWindow&) = delete;
 
-    void visit(bool& can_be_erased, const Settings& settings);
+    void visit(bool& can_be_erased, const Settings& settings, bool& input_has_changed);
+
+    const DrawCommandLists& get_draw_command_lists() const;
 
 private:
     void init_bounding_box();
     void recompute_triangulations();
-    typename ViewportWindow::DrawCommandLists build_draw_lists() const;
-    void update_opengl_draw_list(bool geometry_has_changed, const Settings& settings);
+    void build_draw_lists();
     ShapeControl* allocate_new_sampled_shape(shapes::AllShapes<scalar>&& shape);
     void delete_sampled_shape(ShapeControl** sc);
     static constexpr bool ALLOW_SAMPLING = true;
     void shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& input_has_changed);
 
+    const std::string m_title;
+    ScreenPos m_initial_pos;
     std::vector<ShapeControl> m_input_shape_controls;
-    bool m_geometry_has_changed;
     std::vector<std::unique_ptr<ShapeControl>> m_sampled_shape_controls;
     std::vector<std::pair<std::string, ShapeControl>> m_triangulation_shape_controls;
-    renderer::DrawList& m_renderer_draw_list;
-    const std::string m_title;
-    ViewportWindow& m_viewport_window;
-    std::string m_previous_selected_tab;
-    shapes::BoundingBox2d<scalar> m_bounding_box;
+    shapes::BoundingBox2d<scalar> m_geometry_bounding_box;
+    DrawCommandLists m_draw_command_lists;
+    bool m_first_visit;
 };

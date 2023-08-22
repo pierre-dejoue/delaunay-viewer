@@ -1,6 +1,7 @@
 #pragma once
 
 #include "canvas.h"
+#include "draw_command.h"
 #include "imgui_helpers.h"
 #include "renderer.h"
 #include "settings.h"
@@ -52,6 +53,9 @@ template <typename F, typename I>
 void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options);
 template <typename F, typename I>
 void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& draw_list, const DrawingOptions& options);
+
+template <typename F>
+void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool geometry_has_changed, const Settings& settings);
 
 //
 // Implementations
@@ -285,3 +289,39 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
         draw_call.m_cmd = renderer::DrawCmd::Lines;
     }
 }
+
+namespace
+{
+    template <typename F>
+    void to_opengl_draw_commands(const DrawCommand<F>& draw_command, renderer::DrawList& draw_list, DrawingOptions& options)
+    {
+        assert(draw_command.shape != nullptr);
+        options.highlight = draw_command.highlight;
+        options.constraint_edges = draw_command.constraint_edges;
+        std::visit(stdutils::Overloaded {
+            [&draw_list, &options](const shapes::PointCloud2d<F>& pc) { draw_point_cloud(pc, draw_list, options); },
+            [&draw_list, &options](const shapes::PointPath2d<F>& pp) { draw_point_path(pp, draw_list, options); },
+            [&draw_list, &options](const shapes::CubicBezierPath2d<F>& cbp) { draw_cubic_bezier_path(cbp, draw_list, options); },
+            [&draw_list, &options](const shapes::Triangles2d<F>& tri) { draw_triangles(tri, draw_list, options); },
+            [](const auto&) { assert(0); }
+        }, *draw_command.shape);
+    }
+}
+
+template <typename F>
+void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool geometry_has_changed, const Settings& settings)
+{
+    DrawingOptions options;
+    options.point_settings = settings.read_point_settings();
+    options.path_settings = settings.read_path_settings();
+    options.surface_settings = settings.read_surface_settings();
+
+    draw_list.clear();
+
+    for (const auto& cmd : draw_commands)
+        to_opengl_draw_commands<F>(cmd, draw_list, options);
+
+    if (geometry_has_changed)
+        draw_list.m_buffer_version++;
+}
+
