@@ -15,6 +15,8 @@
 namespace renderer
 {
 
+using ColorData = std::array<float, 4>;                     // r, g, b, a
+
 enum class DrawCmd
 {
     Lines,
@@ -26,7 +28,6 @@ struct DrawList
     using HWindex = std::uint32_t;
     using IndexRange = std::pair<std::size_t, std::size_t>;
     using VertexData = std::array<float, 3>;                    // x, y, z
-    using ColorData = std::array<float, 4>;                     // r, g, b, a
     using Version = unsigned int;
     struct DrawCall
     {
@@ -64,6 +65,7 @@ public:
 
     DrawList& draw_list();
 
+    void set_background_color(const ColorData& color);
     void set_background_color(float r, float g, float b, float a = 1.f);
     void reset_background_color();
 

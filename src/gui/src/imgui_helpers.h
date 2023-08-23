@@ -1,6 +1,7 @@
 #pragma once
 
 #include "canvas.h"
+#include "renderer.h"
 
 #include <shapes/vect.h>
 
@@ -21,3 +22,7 @@ inline ImVec2 to_imgui_vec2(ScreenPos pos)
 {
     return ImVec2(pos.x, pos.y);
 }
+
+void set_color(renderer::ColorData& color, ImU32 compact_color);
+
+renderer::ColorData to_float_color(ImU32 compact_color);

@@ -1,6 +1,7 @@
 #include "shape_control_window.h"
 
 #include "draw_shape.h"
+#include "imgui_helpers.h"
 #include "settings.h"
 
 #include <dt/dt_interface.h>
@@ -23,6 +24,43 @@
 namespace
 {
     const char* INPUT_TAB_NAME = "Input";
+
+    constexpr ImU32 VertexColor_Default     = IM_COL32(20, 90, 116, 255);
+    constexpr ImU32 VertexColor_Highlighted = IM_COL32(230, 230, 255, 255);
+
+    constexpr ImU32 EdgeColor_Default       = IM_COL32(91, 94, 137, 255);
+    constexpr ImU32 EdgeColor_Constraint    = IM_COL32(222, 91, 94, 255);
+    constexpr ImU32 EdgeColor_Highlighted   = IM_COL32(190, 230, 255, 255);
+
+    constexpr ImU32 FaceColor_Default       = IM_COL32(80, 82, 105, 255);
+    constexpr ImU32 FaceColor_Highlighted   = IM_COL32(170, 210, 255, 255);
+
+    const auto VertexColor_Float_Default = to_float_color(VertexColor_Default);
+    const auto EdgeColor_Float_Default =   to_float_color(EdgeColor_Default);
+    const auto FaceColor_Float_Default =   to_float_color(FaceColor_Default);
+
+    renderer::ColorData get_vertex_color(bool highlight, const renderer::ColorData& def)
+    {
+        return (highlight ? to_float_color(VertexColor_Highlighted) : def);
+    }
+
+    renderer::ColorData get_edge_color(bool highlight, bool constraint_edges, const renderer::ColorData& def)
+    {
+        if (highlight)
+            return to_float_color(EdgeColor_Highlighted);
+        else if (constraint_edges)
+            return to_float_color(EdgeColor_Constraint);
+        else
+            return def;
+    }
+
+    renderer::ColorData get_face_color(bool highlight, const Settings::Surface& surface_settings, const renderer::ColorData& def)
+    {
+        const float alpha = std::clamp(surface_settings.alpha, 0.f, 1.f);
+        auto base_color = (highlight ? to_float_color(FaceColor_Highlighted) : def);
+        base_color[3] *= alpha;
+        return base_color;
+    }
 }
 
 ShapeWindow::ShapeControl::ShapeControl(shapes::AllShapes<scalar>&& shape)
@@ -32,7 +70,9 @@ ShapeWindow::ShapeControl::ShapeControl(shapes::AllShapes<scalar>&& shape)
     , active(true)
     , force_inactive(false)
     , highlight(false)
-    , constraint_edges(false)
+    , point_color(VertexColor_Float_Default)
+    , edge_color(EdgeColor_Float_Default)
+    , face_color(FaceColor_Float_Default)
     , latest_computation_time_ms(0.f)
     , shape(std::move(shape))
     , sampled_shape(nullptr)
@@ -45,14 +85,15 @@ void ShapeWindow::ShapeControl::update(shapes::AllShapes<scalar>&& rep_shape)
     nb_vertices = shapes::nb_vertices(shape);
     nb_edges = shapes::nb_edges(shape);
     nb_faces = shapes::nb_faces(shape);
-    // 'active', 'hightlight' and 'constraint_edges' remain as-is
+    // 'active', 'hightlight' remain as-is
 }
 
-DrawCommand<ShapeWindow::scalar> ShapeWindow::ShapeControl::to_draw_command() const
+DrawCommand<ShapeWindow::scalar> ShapeWindow::ShapeControl::to_draw_command(const Settings& settings, bool constraint_edges) const
 {
     DrawCommand<ShapeWindow::scalar> result(shape);
-    result.highlight = highlight;
-    result.constraint_edges = constraint_edges;
+    result.point_color = get_vertex_color(highlight, point_color);
+    result.edge_color = get_edge_color(highlight, constraint_edges, edge_color);
+    result.face_color = get_face_color(highlight, settings.read_surface_settings(), face_color);
     return result;
 }
 
@@ -62,7 +103,7 @@ ShapeWindow::ShapeWindow(
         std::vector<shapes::AllShapes<scalar>>&& shapes,
         ViewportWindow& viewport_window)
     : m_title(std::string(name) + " Controls")
-    , m_initial_pos(0.f, initial_pos.y + 350.f)
+    , m_initial_pos(2.f, initial_pos.y + 350.f)
     , m_input_shape_controls()
     , m_sampled_shape_controls()
     , m_triangulation_shape_controls()
@@ -95,7 +136,6 @@ void ShapeWindow::init_bounding_box()
 void ShapeWindow::recompute_triangulations()
 {
     stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
-    m_triangulation_shape_controls.clear();
 
     std::chrono::duration<float, std::milli> duration;
     for (const auto& algo : delaunay::get_impl_list<double>())
@@ -132,13 +172,17 @@ void ShapeWindow::recompute_triangulations()
                 }, shape_control_ptr->shape);
             }
             // Triangulate
-            m_triangulation_shape_controls.emplace_back(algo.name, triangulation_algo->triangulate(err_handler));
+            auto triangulation = triangulation_algo->triangulate(err_handler);
+            if (m_triangulation_shape_controls.count(algo.name) > 0)
+                m_triangulation_shape_controls.at(algo.name).update(std::move(triangulation));
+            else
+                m_triangulation_shape_controls.emplace(algo.name, std::move(triangulation));
         }
-        m_triangulation_shape_controls.back().second.latest_computation_time_ms = duration.count();
+        m_triangulation_shape_controls.at(algo.name).latest_computation_time_ms = duration.count();
     }
 }
 
-void ShapeWindow::build_draw_lists()
+void ShapeWindow::build_draw_lists(const Settings& settings)
 {
     m_draw_command_lists.clear();
 
@@ -147,26 +191,25 @@ void ShapeWindow::build_draw_lists()
         for (const auto& shape_control : m_input_shape_controls)
         {
             if (shape_control.active)
-                draw_command_list.emplace_back(shape_control.to_draw_command());
+                draw_command_list.emplace_back(shape_control.to_draw_command(settings));
         }
         for (const auto& shape_control_ptr : m_sampled_shape_controls)
         {
             assert(shape_control_ptr);
             if (shape_control_ptr->active)
-                draw_command_list.emplace_back(shape_control_ptr->to_draw_command());
+                draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings));
         }
     }
 
-    for (const auto& [algo_name, shape_control_dt] : m_triangulation_shape_controls)
+    for (const auto& [algo_name, shape_control_delaunay] : m_triangulation_shape_controls)
     {
         auto& draw_command_list = m_draw_command_lists.emplace_back(algo_name, DrawCommands<scalar>()).second;
-        draw_command_list.emplace_back(shape_control_dt.to_draw_command());
+        draw_command_list.emplace_back(shape_control_delaunay.to_draw_command(settings));
         for (const auto& shape_control : m_input_shape_controls)
         {
             if (shape_control.active && !shapes::is_bezier_path(shape_control.shape))
             {
-                auto& draw_command = draw_command_list.emplace_back(shape_control.to_draw_command());
-                draw_command.constraint_edges = true;
+                draw_command_list.emplace_back(shape_control.to_draw_command(settings, true));
             }
         }
         for (const auto& shape_control_ptr : m_sampled_shape_controls)
@@ -174,16 +217,22 @@ void ShapeWindow::build_draw_lists()
             if (shape_control_ptr->active)
             {
                 assert(!shapes::is_bezier_path(shape_control_ptr->shape));
-                auto& draw_command = draw_command_list.emplace_back(shape_control_ptr->to_draw_command());
-                draw_command.constraint_edges = true;
+                draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings, true));
             }
         }
     }
 }
 
-ShapeWindow::ShapeControl* ShapeWindow::allocate_new_sampled_shape(shapes::AllShapes<scalar>&& shape)
+ShapeWindow::ShapeControl* ShapeWindow::allocate_new_sampled_shape(const ShapeControl& parent, shapes::AllShapes<scalar>&& shape)
 {
-    return m_sampled_shape_controls.emplace_back(std::make_unique<ShapeControl>(std::move(shape))).get();
+    const auto& new_shape = m_sampled_shape_controls.emplace_back(std::make_unique<ShapeControl>(std::move(shape)));
+
+    // Inherit colors from parent
+    new_shape->point_color = parent.point_color;
+    new_shape->edge_color = parent.edge_color;
+    new_shape->face_color = parent.face_color;
+
+    return new_shape.get();
 }
 
 void ShapeWindow::delete_sampled_shape(ShapeControl** sc)
@@ -220,6 +269,11 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
             geometry_has_changed = true;
         }
 
+        // Color pickers
+        ImGui::ColorEdit4("Point color", shape_control.point_color.data(), ImGuiColorEditFlags_NoInputs);
+        if (shapes::has_edges(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Edge color", shape_control.edge_color.data(), ImGuiColorEditFlags_NoInputs); }
+        if (shapes::has_faces(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Face color", shape_control.face_color.data(), ImGuiColorEditFlags_NoInputs); }
+
         // Info
         ImGui::Text("Nb vertices: %ld, nb edges: %ld", shape_control.nb_vertices, shape_control.nb_edges);
 
@@ -232,7 +286,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
             ImGui::Checkbox(sample_checkbox.str().c_str(), &is_sampled);
             if (is_sampled && !shape_control.sampled_shape)
             {
-                shape_control.sampled_shape = allocate_new_sampled_shape(shapes::trivial_sampling(shape_control.shape));
+                shape_control.sampled_shape = allocate_new_sampled_shape(shape_control, shapes::trivial_sampling(shape_control.shape));
                 if (std::holds_alternative<shapes::CubicBezierPath2d<scalar>>(shape_control.shape))
                 {
                     const auto& cbp = std::get<shapes::CubicBezierPath2d<scalar>>(shape_control.shape);
@@ -385,6 +439,13 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geo
             triangulation_shape_control.highlight = ImGui::IsItemHovered();
             if (is_open)
             {
+                // Color pickers
+                ImGui::ColorEdit4("Point color", triangulation_shape_control.point_color.data(), ImGuiColorEditFlags_NoInputs);
+                ImGui::SameLine();
+                ImGui::ColorEdit4("Edge color", triangulation_shape_control.edge_color.data(), ImGuiColorEditFlags_NoInputs);
+                ImGui::SameLine();
+                ImGui::ColorEdit4("Face color", triangulation_shape_control.face_color.data(), ImGuiColorEditFlags_NoInputs);
+
                 // Info
                 ImGui::Text("Nb vertices: %ld, nb edges: %ld, nb faces: %ld", triangulation_shape_control.nb_vertices, triangulation_shape_control.nb_edges, triangulation_shape_control.nb_faces);
                 ImGui::Text("Computation time: %0.3g ms", static_cast<double>(triangulation_shape_control.latest_computation_time_ms));
@@ -396,7 +457,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geo
 
     ImGui::End();
 
-    build_draw_lists();
+    build_draw_lists(settings);
 }
 
 const ShapeWindow::DrawCommandLists& ShapeWindow::get_draw_command_lists() const

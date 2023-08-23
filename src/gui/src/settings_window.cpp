@@ -28,7 +28,7 @@ void SettingsWindow::visit(bool& can_be_erased, ScreenPos& initial_pos)
         ImGui::End();
         return;
     }
-    initial_pos.x = ImGui::GetWindowPos().x + max_width + 1.f;
+    initial_pos.x += ImGui::GetWindowPos().x + max_width;
 
     const ImVec2 spacing = { 10.f, 10.f };
     Settings::General* general_settings = m_settings.get_general_settings();

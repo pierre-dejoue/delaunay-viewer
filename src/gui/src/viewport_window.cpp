@@ -17,6 +17,16 @@
 namespace
 {
 constexpr ViewportWindow::scalar DEFAULT_ZOOM = 0.9;
+
+constexpr ImU32 CanvasBackgroundColor_Default = IM_COL32(40, 40, 40, 255);
+constexpr ImU32 CanvasBorderColor_Default =     IM_COL32(250, 250, 250, 255);
+
+void draw_canvas_foreground(ImDrawList* draw_list, ImVec2 tl_corner, ImVec2 br_corner)
+{
+    assert(draw_list);
+    draw_list->AddRect(tl_corner, br_corner, CanvasBorderColor_Default);
+}
+
 }
 
 ViewportWindow::TabList ViewportWindow::s_default_tabs = { "<empty>" };
@@ -31,6 +41,7 @@ ViewportWindow::ViewportWindow()
     , m_zoom_selection_box()
     , m_draw_command_lists()
     , m_tabs()
+    , m_background_color(to_float_color(CanvasBackgroundColor_Default))
 {
     reset();
 }
@@ -119,11 +130,10 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, Key& s
         return;
     }
 
-    if(ImGui::Button("Reset Zoom"))
-    {
-        reset_zoom();
-    }
+    // Pick background color
+    ImGui::ColorEdit3("Background color", m_background_color.data(), ImGuiColorEditFlags_NoInputs);
 
+    ImGui::SameLine(0, 30);
     if (is_valid(m_prev_mouse_in_canvas.canvas))
     {
         if (ImGui::BeginTable("canvas_table", 3))
@@ -166,6 +176,11 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, Key& s
             }
             ImGui::EndTable();
         }
+    }
+
+    if(ImGui::Button("Reset Zoom"))
+    {
+        reset_zoom();
     }
 
     if (ImGui::BeginTabBar("##TabBar"))
@@ -229,8 +244,9 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, Key& s
                 for (const auto& draw_command : m_draw_command_lists[tab_name])
                 {
                     assert(draw_command.shape);
-                    options.highlight = draw_command.highlight;
-                    options.constraint_edges = draw_command.constraint_edges;
+                    options.point_color = draw_command.point_color;
+                    options.edge_color = draw_command.edge_color;
+                    options.face_color = draw_command.face_color;
                     std::visit(stdutils::Overloaded {
                         [&draw_list, &canvas, &options](const shapes::PointCloud2d<scalar>& pc) { draw_point_cloud(pc, draw_list, canvas, options); },
                         [&draw_list, &canvas, &options](const shapes::PointPath2d<scalar>& pp) { draw_point_path(pp, draw_list, canvas, options); },
@@ -279,4 +295,9 @@ ViewportWindow::GeometryBB ViewportWindow::get_canvas_bounding_box() const
 ViewportWindow::ScreenBB ViewportWindow::get_viewport_bounding_box() const
 {
     return ScreenBB().add(m_prev_mouse_in_canvas.canvas.get_tl_corner()).add(m_prev_mouse_in_canvas.canvas.get_br_corner());
+}
+
+const renderer::ColorData& ViewportWindow::get_background_color() const
+{
+    return m_background_color;
 }

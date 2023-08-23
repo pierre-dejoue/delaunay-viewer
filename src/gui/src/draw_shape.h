@@ -16,23 +16,15 @@
 #include <cassert>
 
 
-void draw_canvas_background(ImDrawList* draw_list, ImVec2 tl_corner, ImVec2 br_corner);
-void draw_canvas_foreground(ImDrawList* draw_list, ImVec2 tl_corner, ImVec2 br_corner);
-
 struct DrawingOptions
 {
     Settings::Point point_settings;
     Settings::Path path_settings;
     Settings::Surface surface_settings;
-    bool highlight = false;
-    bool constraint_edges = false;
+    renderer::ColorData point_color = { 0.f, 0.f, 0.f, 1.f };
+    renderer::ColorData edge_color = { 0.f, 0.f, 0.f, 1.f };
+    renderer::ColorData face_color = { 0.f, 0.f, 0.f, 1.f };
 };
-
-ImU32 get_vertex_color(const DrawingOptions& options);
-ImU32 get_edge_color(const DrawingOptions& options);
-ImU32 get_face_color(const DrawingOptions& options);
-
-void set_opengl_color(renderer::DrawList::ColorData& gl_color, ImU32 color);
 
 template <typename F>
 void draw_point_cloud(const shapes::PointCloud2d<F>& pc, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options);
@@ -63,6 +55,7 @@ void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F
 
 namespace details
 {
+
     // Draw all the vertices of any shape with vertices
     template <typename S, typename F = typename S::scalar>
     void draw_points(const S& s, ImDrawList* draw_list, const Canvas<F>& canvas, ImU32 color, float point_width)
@@ -91,7 +84,14 @@ namespace details
         draw_list->PathLineTo(p2);
         draw_list->PathStroke(col, 0, thickness);
     }
-}
+
+    inline ImU32 to_compact_color(const renderer::ColorData& color)
+    {
+        const ImColor im_color(color[0], color[1], color[2], color[3]);
+        return static_cast<ImU32>(im_color);
+    }
+
+} // namespace details
 
 template <typename F>
 void draw_point_cloud(const shapes::PointCloud2d<F>& pc, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options)
@@ -99,7 +99,7 @@ void draw_point_cloud(const shapes::PointCloud2d<F>& pc, ImDrawList* draw_list, 
     assert(draw_list);
     if (options.point_settings.show)
     {
-        const auto color = get_vertex_color(options);
+        const auto color = details::to_compact_color(options.point_color);
         details::draw_points(pc, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -119,7 +119,7 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, ImDrawList* draw_list, co
     if (options.path_settings.show)
     {
         assert(shapes::nb_edges(pp) <= nb_vertices);
-        const ImU32 color = get_edge_color(options);
+        const ImU32 color = details::to_compact_color(options.edge_color);
         for (std::size_t idx = 0; idx < shapes::nb_edges(pp); idx++)
         {
             const shapes::Point2d<F>& p0 = pp.vertices[idx];
@@ -131,7 +131,7 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, ImDrawList* draw_list, co
     }
     if (options.point_settings.show)
     {
-        const ImU32 color = get_vertex_color(options);
+        const ImU32 color = details::to_compact_color(options.point_color);
         details::draw_points(pp, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -160,7 +160,7 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, renderer::DrawList& draw_
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_indices_idx, end_indices_idx);
-        set_opengl_color(draw_call.m_uniform_color, get_edge_color(options));
+        draw_call.m_uniform_color = options.edge_color;
         draw_call.m_cmd = renderer::DrawCmd::Lines;
     }
 }
@@ -171,7 +171,7 @@ void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList*
     assert(draw_list);
     if (options.path_settings.show)
     {
-        const ImU32 color = get_edge_color(options);
+        const ImU32 color = details::to_compact_color(options.edge_color);
         for (std::size_t idx = 0; idx < shapes::nb_edges(cbp); idx++)
         {
             assert(3 * idx + 2 < cbp.vertices.size());
@@ -189,7 +189,7 @@ void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList*
     if (options.point_settings.show)
     {
         const shapes::PointPath2d<F> pp = shapes::extract_endpoints(cbp);
-        const ImU32 color = get_vertex_color(options);
+        const ImU32 color = details::to_compact_color(options.point_color);
         details::draw_points(pp, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -207,7 +207,7 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list,
     assert(draw_list);
     if (options.surface_settings.show)
     {
-        const ImU32 color = get_face_color(options);
+        const ImU32 color = details::to_compact_color(options.face_color);
         for (const auto& face : tri.faces)
         {
             const shapes::Point2d<F>& p0 = tri.vertices[face[0]];
@@ -221,7 +221,7 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list,
     }
     if (options.path_settings.show)
     {
-        const ImU32 color = get_edge_color(options);
+        const ImU32 color = details::to_compact_color(options.edge_color);
         const float thickness =  options.path_settings.width;
         for (const auto& face : tri.faces)
         {
@@ -238,7 +238,7 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list,
     }
     if (options.point_settings.show)
     {
-        const ImU32 color = get_vertex_color(options);
+        const ImU32 color = details::to_compact_color(options.point_color);
         details::draw_points(tri, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -278,14 +278,14 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_face_indices_idx, end_face_indices_idx);
-        set_opengl_color(draw_call.m_uniform_color, get_face_color(options));
+        draw_call.m_uniform_color = options.face_color;
         draw_call.m_cmd = renderer::DrawCmd::Triangles;
     }
     if (options.path_settings.show)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_edge_indices_idx, end_edge_indices_idx);
-        set_opengl_color(draw_call.m_uniform_color, get_edge_color(options));
+        draw_call.m_uniform_color = options.edge_color;
         draw_call.m_cmd = renderer::DrawCmd::Lines;
     }
 }
@@ -296,8 +296,9 @@ namespace
     void to_opengl_draw_commands(const DrawCommand<F>& draw_command, renderer::DrawList& draw_list, DrawingOptions& options)
     {
         assert(draw_command.shape != nullptr);
-        options.highlight = draw_command.highlight;
-        options.constraint_edges = draw_command.constraint_edges;
+        options.point_color = draw_command.point_color;
+        options.edge_color = draw_command.edge_color;
+        options.face_color = draw_command.face_color;
         std::visit(stdutils::Overloaded {
             [&draw_list, &options](const shapes::PointCloud2d<F>& pc) { draw_point_cloud(pc, draw_list, options); },
             [&draw_list, &options](const shapes::PointPath2d<F>& pp) { draw_point_path(pp, draw_list, options); },

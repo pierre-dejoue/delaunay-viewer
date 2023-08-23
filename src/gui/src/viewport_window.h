@@ -45,6 +45,8 @@ public:
 
     ScreenBB get_viewport_bounding_box() const;
 
+    const renderer::ColorData& get_background_color() const;
+
 private:
     using DrawCommandLists = std::map<Key, DrawCommands<scalar>>;
     using TabList = std::vector<Key>;
@@ -70,4 +72,5 @@ private:
     ZoomSelectionBox m_zoom_selection_box;
     DrawCommandLists m_draw_command_lists;
     TabList m_tabs;
+    renderer::ColorData m_background_color;
 };

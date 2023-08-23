@@ -10,7 +10,7 @@ add_subdirectory(imgui)
 configure_file(src/version.h.in version.h @ONLY)
 
 set(GUI_SOURCES
-    src/draw_shape.cpp
+    src/imgui_helpers.cpp
     src/main.cpp
     src/opengl_and_glfw.cpp
     src/renderer.cpp

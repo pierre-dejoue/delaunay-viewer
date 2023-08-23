@@ -139,11 +139,10 @@ int main(int argc, char *argv[])
     renderer::Draw2D draw_2d_renderer(&err_handler);
     if (!draw_2d_renderer.init())
         return 1;
-    draw_2d_renderer.set_background_color(0.166f, 0.166f, 0.166f);
 
     // Main loop
     std::unique_ptr<ShapeWindow> shape_control_window;
-    ScreenPos initial_window_pos(0.f, 0.f);
+    ScreenPos initial_window_pos(2.f, 2.f);
     ViewportWindow::Key previously_selected_tab;
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
@@ -248,7 +247,7 @@ int main(int argc, char *argv[])
                 }
                 ImGui::EndMenu();
             }
-            initial_window_pos.y = ImGui::GetWindowHeight() + 1.f;
+            initial_window_pos.y = ImGui::GetWindowHeight() + 2.f;
             ImGui::EndMainMenuBar();
         }
 
@@ -290,6 +289,7 @@ int main(int argc, char *argv[])
         ViewportWindow::Key selected_tab;
         viewport_window.visit(can_be_erased, settings, selected_tab);
 
+        draw_2d_renderer.set_background_color(viewport_window.get_background_color());
         if (shape_control_window && !imgui_rendering)
         {
             const auto& dcls = shape_control_window->get_draw_command_lists();

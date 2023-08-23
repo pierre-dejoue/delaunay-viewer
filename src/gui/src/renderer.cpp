@@ -58,7 +58,7 @@ unsigned int to_gl_draw_cmd(DrawCmd cmd)
     }
 }
 
-}
+}  // Anonymous namespace
 
 DrawList::DrawCall::DrawCall()
     : m_range(0, 0)
@@ -126,6 +126,13 @@ struct Draw2D::Impl
 
         glGenVertexArrays(N_VAOS, &gl_vaos[0]);
         glGenBuffers(N_BUFFERS, &gl_buffers[0]);
+
+        glEnable(GL_BLEND);
+        glBlendEquation(GL_FUNC_ADD);
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+        glDisable(GL_CULL_FACE);
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_STENCIL_TEST);
 
         return success;
     }
@@ -216,7 +223,7 @@ struct Draw2D::Impl
     GLlocations gl_locations;
     bool has_background;
     std::array<float, 12> background_vertices;
-    DrawList::ColorData background_color;
+    ColorData background_color;
     const stdutils::io::ErrorHandler* err_handler;
 };
 
@@ -234,6 +241,12 @@ bool Draw2D::init()
 DrawList& Draw2D::draw_list()
 {
     return p_impl->draw_list;
+}
+
+void Draw2D::set_background_color(const ColorData& color)
+{
+    p_impl->has_background = true;
+    p_impl->background_color = color;
 }
 
 void Draw2D::set_background_color(float r, float g, float b, float a)

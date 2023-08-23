@@ -122,4 +122,24 @@ bool is_bezier_path(const AllShapes<F>& shape)
     }, shape);
 }
 
+template <typename F>
+bool has_edges(const AllShapes<F>& shape)
+{
+    return std::visit(stdutils::Overloaded {
+        [](const shapes::PointCloud2d<F>&)          { return false; },
+        [](const shapes::PointCloud3d<F>&)          { return false; },
+        [](const auto&)                             { return true; }
+    }, shape);
+}
+
+template <typename F>
+bool has_faces(const AllShapes<F>& shape)
+{
+    return std::visit(stdutils::Overloaded {
+        [](const shapes::Triangles2d<F>&)           { return true; },
+        [](const shapes::Triangles3d<F>&)           { return true; },
+        [](const auto&)                             { return false; }
+    }, shape);
+}
+
 } // namespace shapes
