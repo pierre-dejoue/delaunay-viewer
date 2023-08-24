@@ -14,3 +14,21 @@ renderer::ColorData to_float_color(ImU32 compact_color)
     const ImColor im_color(compact_color);
     return renderer::ColorData{ im_color.Value.x, im_color.Value.y, im_color.Value.z, im_color.Value.w };
 }
+
+
+namespace ImGui
+{
+
+void HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::BeginItemTooltip())
+    {
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
+}

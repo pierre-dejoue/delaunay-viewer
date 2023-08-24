@@ -18,6 +18,7 @@
 #include <cassert>
 #include <iostream>
 #include <sstream>
+#include <utility>
 #include <variant>
 
 
@@ -106,6 +107,8 @@ ShapeWindow::ShapeWindow(
     , m_initial_pos(2.f, initial_pos.y + 350.f)
     , m_input_shape_controls()
     , m_sampled_shape_controls()
+    , m_steiner_shape_control(shapes::PointCloud2d<scalar>())
+    , m_new_steiner_pt()
     , m_triangulation_shape_controls()
     , m_geometry_bounding_box()
     , m_draw_command_lists()
@@ -133,10 +136,8 @@ void ShapeWindow::init_bounding_box()
     shapes::ensure_min_extent(m_geometry_bounding_box);
 }
 
-void ShapeWindow::recompute_triangulations()
+void ShapeWindow::recompute_triangulations(const stdutils::io::ErrorHandler& err_handler)
 {
-    stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
-
     std::chrono::duration<float, std::milli> duration;
     for (const auto& algo : delaunay::get_impl_list<double>())
     {
@@ -158,6 +159,10 @@ void ShapeWindow::recompute_triangulations()
                 assert(shape_control_ptr);
                 if (shape_control_ptr->active)
                     active_shapes.emplace_back(shape_control_ptr.get());
+            }
+            if (m_steiner_shape_control.active)
+            {
+                active_shapes.emplace_back(&m_steiner_shape_control);
             }
             for (const auto* shape_control_ptr : active_shapes)
             {
@@ -185,7 +190,6 @@ void ShapeWindow::recompute_triangulations()
 void ShapeWindow::build_draw_lists(const Settings& settings)
 {
     m_draw_command_lists.clear();
-
     {
         auto& draw_command_list = m_draw_command_lists.emplace_back(INPUT_TAB_NAME, DrawCommands<scalar>()).second;
         for (const auto& shape_control : m_input_shape_controls)
@@ -199,8 +203,11 @@ void ShapeWindow::build_draw_lists(const Settings& settings)
             if (shape_control_ptr->active)
                 draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings));
         }
+        if(m_steiner_shape_control.active)
+        {
+            draw_command_list.emplace_back(m_steiner_shape_control.to_draw_command(settings));
+        }
     }
-
     for (const auto& [algo_name, shape_control_delaunay] : m_triangulation_shape_controls)
     {
         auto& draw_command_list = m_draw_command_lists.emplace_back(algo_name, DrawCommands<scalar>()).second;
@@ -243,92 +250,106 @@ void ShapeWindow::delete_sampled_shape(ShapeControl** sc)
     *sc = nullptr;
 }
 
-void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& geometry_has_changed)
+void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& in_out_trash, bool& geometry_has_changed)
 {
     std::stringstream label;
     label << "Shape #" << idx;
     const bool is_open = ImGui::TreeNode(label.str().c_str());
     shape_control.highlight = ImGui::IsItemHovered();
-    if (is_open)
+    if (!is_open)
     {
-        // Active button
-        std::stringstream active_button;
-        active_button << "Active#" << idx;
-        float hue = shape_control.active ? 0.3f : 0.f;
-        ImGui::PushID(active_button.str().c_str());
-        ImGui::PushStyleColor(ImGuiCol_Button, static_cast<ImVec4>(ImColor::HSV(hue, 0.6f, 0.6f)));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, static_cast<ImVec4>(ImColor::HSV(hue, 0.7f, 0.7f)));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, static_cast<ImVec4>(ImColor::HSV(hue, 0.8f, 0.8f)));
-        ImGui::PushStyleColor(ImGuiCol_Text, shape_control.active ? ImVec4(1.f, 1.f, 1.f, 1.f) : ImVec4(0.4f, 0.4f, 0.4f, 1.f));
-        const bool pressed = ImGui::Button("Active");
-        ImGui::PopStyleColor(4);
+        in_out_trash = false;
+        return;
+    }
+
+    // Active button
+    std::stringstream active_button;
+    active_button << "Active#" << idx;
+    float hue = shape_control.active ? 0.3f : 0.f;
+    ImGui::PushID(active_button.str().c_str());
+    ImGui::PushStyleColor(ImGuiCol_Button, static_cast<ImVec4>(ImColor::HSV(hue, 0.6f, 0.6f)));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, static_cast<ImVec4>(ImColor::HSV(hue, 0.7f, 0.7f)));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, static_cast<ImVec4>(ImColor::HSV(hue, 0.8f, 0.8f)));
+    ImGui::PushStyleColor(ImGuiCol_Text, shape_control.active ? ImVec4(1.f, 1.f, 1.f, 1.f) : ImVec4(0.4f, 0.4f, 0.4f, 1.f));
+    const bool pressed = ImGui::Button("Active");
+    ImGui::PopStyleColor(4);
+    ImGui::PopID();
+    if (pressed && !shape_control.force_inactive)
+    {
+        shape_control.active = !shape_control.active;
+        geometry_has_changed = true;
+    }
+
+    // Trash button
+    if (in_out_trash)
+    {
+        ImGui::SameLine(0, 30);
+        std::stringstream trash_button;
+        trash_button << "Trash#" << idx;
+        ImGui::PushID(trash_button.str().c_str());
+        in_out_trash = ImGui::Button("Trash");
         ImGui::PopID();
-        if (pressed && !shape_control.force_inactive)
+    }
+
+    // Color pickers
+    ImGui::ColorEdit4("Point color", shape_control.point_color.data(), ImGuiColorEditFlags_NoInputs);
+    if (shapes::has_edges(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Edge color", shape_control.edge_color.data(), ImGuiColorEditFlags_NoInputs); }
+    if (shapes::has_faces(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Face color", shape_control.face_color.data(), ImGuiColorEditFlags_NoInputs); }
+
+    // Info
+    ImGui::Text("Nb vertices: %ld, nb edges: %ld", shape_control.nb_vertices, shape_control.nb_edges);
+
+    // Sampling
+    if (allow_sampling && (shapes::is_bezier_path(shape_control.shape) || shapes::is_point_path(shape_control.shape)))
+    {
+        std::stringstream sample_checkbox;
+        sample_checkbox << "Sample##" << idx;
+        bool is_sampled = (shape_control.sampled_shape != nullptr);
+        ImGui::Checkbox(sample_checkbox.str().c_str(), &is_sampled);
+        if (is_sampled && !shape_control.sampled_shape)
         {
-            shape_control.active = !shape_control.active;
+            shape_control.sampled_shape = allocate_new_sampled_shape(shape_control, shapes::trivial_sampling(shape_control.shape));
+            if (std::holds_alternative<shapes::CubicBezierPath2d<scalar>>(shape_control.shape))
+            {
+                const auto& cbp = std::get<shapes::CubicBezierPath2d<scalar>>(shape_control.shape);
+                shape_control.sampler = std::make_unique<shapes::UniformSamplingCubicBezier2d<scalar>>(cbp);
+                shape_control.sampling_length = static_cast<float>(shape_control.sampler->max_segment_length());
+            }
+            else if (std::holds_alternative<shapes::PointPath2d<scalar>>(shape_control.shape))
+            {
+                const auto& pp = std::get<shapes::PointPath2d<scalar>>(shape_control.shape);
+                shape_control.active = false;
+                shape_control.force_inactive = true;
+                shape_control.sampler = std::make_unique<shapes::UniformSamplingPointPath2d<scalar>>(pp);
+                shape_control.sampling_length = static_cast<float>(shape_control.sampler->max_segment_length());
+            }
             geometry_has_changed = true;
         }
-
-        // Color pickers
-        ImGui::ColorEdit4("Point color", shape_control.point_color.data(), ImGuiColorEditFlags_NoInputs);
-        if (shapes::has_edges(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Edge color", shape_control.edge_color.data(), ImGuiColorEditFlags_NoInputs); }
-        if (shapes::has_faces(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Face color", shape_control.face_color.data(), ImGuiColorEditFlags_NoInputs); }
-
-        // Info
-        ImGui::Text("Nb vertices: %ld, nb edges: %ld", shape_control.nb_vertices, shape_control.nb_edges);
-
-        // Sampling
-        if (allow_sampling && (shapes::is_bezier_path(shape_control.shape) || shapes::is_point_path(shape_control.shape)))
+        if (!is_sampled && shape_control.sampled_shape)
         {
-            std::stringstream sample_checkbox;
-            sample_checkbox << "Sample##" << idx;
-            bool is_sampled = (shape_control.sampled_shape != nullptr);
-            ImGui::Checkbox(sample_checkbox.str().c_str(), &is_sampled);
-            if (is_sampled && !shape_control.sampled_shape)
+            shape_control.sampler.reset();
+            delete_sampled_shape(&shape_control.sampled_shape);
+            shape_control.force_inactive = false;
+            geometry_has_changed = true;
+        }
+        if (shape_control.sampler)
+        {
+            std::stringstream sampling_length_id;
+            sampling_length_id << "Sampling length##" << idx;
+            assert(is_sampled);
+            const float max = 1.05f * static_cast<float>(shape_control.sampler->max_segment_length());
+            const float min = max / 1000.f;
+            float new_sampling_length = shape_control.sampling_length;
+            ImGui::SliderFloat(sampling_length_id .str().c_str(), &new_sampling_length, min, max, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
+            if (new_sampling_length != shape_control.sampling_length)
             {
-                shape_control.sampled_shape = allocate_new_sampled_shape(shape_control, shapes::trivial_sampling(shape_control.shape));
-                if (std::holds_alternative<shapes::CubicBezierPath2d<scalar>>(shape_control.shape))
-                {
-                    const auto& cbp = std::get<shapes::CubicBezierPath2d<scalar>>(shape_control.shape);
-                    shape_control.sampler = std::make_unique<shapes::UniformSamplingCubicBezier2d<scalar>>(cbp);
-                    shape_control.sampling_length = static_cast<float>(shape_control.sampler->max_segment_length());
-                }
-                else if (std::holds_alternative<shapes::PointPath2d<scalar>>(shape_control.shape))
-                {
-                    const auto& pp = std::get<shapes::PointPath2d<scalar>>(shape_control.shape);
-                    shape_control.active = false;
-                    shape_control.force_inactive = true;
-                    shape_control.sampler = std::make_unique<shapes::UniformSamplingPointPath2d<scalar>>(pp);
-                    shape_control.sampling_length = static_cast<float>(shape_control.sampler->max_segment_length());
-                }
+                shape_control.sampling_length = new_sampling_length;
+                shape_control.sampled_shape->update(shapes::AllShapes<scalar>(shape_control.sampler->sample(static_cast<scalar>(new_sampling_length))));
                 geometry_has_changed = true;
-            }
-            if (!is_sampled && shape_control.sampled_shape)
-            {
-                shape_control.sampler.reset();
-                delete_sampled_shape(&shape_control.sampled_shape);
-                shape_control.force_inactive = false;
-                geometry_has_changed = true;
-            }
-            if (shape_control.sampler)
-            {
-                std::stringstream sampling_length_id;
-                sampling_length_id << "Sampling length##" << idx;
-                assert(is_sampled);
-                const float max = 1.05f * static_cast<float>(shape_control.sampler->max_segment_length());
-                const float min = max / 1000.f;
-                float new_sampling_length = shape_control.sampling_length;
-                ImGui::SliderFloat(sampling_length_id .str().c_str(), &new_sampling_length, min, max, "%.3f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp);
-                if (new_sampling_length != shape_control.sampling_length)
-                {
-                    shape_control.sampling_length = new_sampling_length;
-                    shape_control.sampled_shape->update(shapes::AllShapes<scalar>(shape_control.sampler->sample(static_cast<scalar>(new_sampling_length))));
-                    geometry_has_changed = true;
-                }
             }
         }
-        ImGui::TreePop();
     }
+    ImGui::TreePop();
 }
 
 void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geometry_has_changed)
@@ -336,6 +357,8 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geo
     UNUSED(settings);
     geometry_has_changed = m_first_visit;
     m_first_visit = false;
+
+    stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
 
     ImGui::SetNextWindowSizeConstraints(ImVec2(200.f, 200.f), ImVec2(FLT_MAX, FLT_MAX));
     ImGui::SetNextWindowPos(to_imgui_vec2(m_initial_pos), ImGuiCond_Once);
@@ -389,7 +412,8 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geo
         unsigned int shape_idx = 1;
         for (auto& shape_control : m_input_shape_controls)
         {
-            shape_list_menu(shape_control, shape_idx++, ALLOW_SAMPLING, geometry_has_changed);
+            bool trash = false;
+            shape_list_menu(shape_control, shape_idx++, ALLOW_SAMPLING, trash, geometry_has_changed);
         }
         ImGui::TreePop();
     }
@@ -408,7 +432,8 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geo
         for (auto& shape_control_ptr : m_sampled_shape_controls)
         {
             assert(shape_control_ptr);
-            shape_list_menu(*shape_control_ptr, shape_idx++, !ALLOW_SAMPLING, geometry_has_changed);
+            bool trash = false;
+            shape_list_menu(*shape_control_ptr, shape_idx++, !ALLOW_SAMPLING, trash, geometry_has_changed);
         }
         ImGui::TreePop();
     }
@@ -421,11 +446,41 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geo
         }
     }
 
-    stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
+    if (m_new_steiner_pt.has_value())
+    {
+        auto new_pt = m_new_steiner_pt.value();     // Tried to take the contained value with *std::move(m_new_steiner_pt), it didn't work.
+        m_new_steiner_pt.reset();
+        auto& pc = std::get<shapes::PointCloud2d<scalar>>(m_steiner_shape_control.shape);
+        const auto pt_it = std::find(std::cbegin(pc.vertices), std::cend(pc.vertices), new_pt);
+        if (pt_it == std::cend(pc.vertices))
+        {
+            pc.vertices.emplace_back(std::move(new_pt));
+            m_steiner_shape_control.nb_vertices = pc.vertices.size();
+            geometry_has_changed = true;
+        }
+        else
+        {
+            err_handler(stdutils::io::Severity::INFO, "The new steiner point was skipped because it is a duplicate.");
+        }
+    }
+
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    if (ImGui::TreeNode("Steiner points"))
+    {
+        const unsigned int shape_idx = 1;
+        bool trash = true;
+        shape_list_menu(m_steiner_shape_control, shape_idx, !ALLOW_SAMPLING, trash, geometry_has_changed);
+        if (trash)
+        {
+            m_steiner_shape_control.update(shapes::PointCloud2d<scalar>());
+            geometry_has_changed = true;
+        }
+        ImGui::TreePop();
+    }
 
     // Triangulate
     if (geometry_has_changed)
-        recompute_triangulations();
+        recompute_triangulations(err_handler);
 
     // Triangulation shapes
     for (auto& triangulation_shape_control_pair : m_triangulation_shape_controls)
@@ -463,4 +518,10 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geo
 const ShapeWindow::DrawCommandLists& ShapeWindow::get_draw_command_lists() const
 {
     return m_draw_command_lists;
+}
+
+void ShapeWindow::add_steiner_point(const shapes::Point2d<scalar>& pt)
+{
+    assert(m_new_steiner_pt.has_value() == false);      // By design we de not receive more than one point per frame, so one optional is enough
+    m_new_steiner_pt = pt;
 }

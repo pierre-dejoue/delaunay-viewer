@@ -127,6 +127,13 @@ int main(int argc, char *argv[])
 
     using scalar = ViewportWindow::scalar;
 
+    // Steiner callback
+    std::unique_ptr<ShapeWindow> shape_control_window;
+    viewport_window.set_steiner_callback([&shape_control_window](const shapes::Point2d<scalar>& p) {
+        if (shape_control_window) { shape_control_window->add_steiner_point(p); }
+        else { std::cerr << "Could not add steiner point: No control window" << std::endl; }
+    });
+
     // Register the Delaunay triangulation implementations
     {
         const bool registered_delaunay_impl = delaunay::register_all_implementations();
@@ -141,7 +148,6 @@ int main(int argc, char *argv[])
         return 1;
 
     // Main loop
-    std::unique_ptr<ShapeWindow> shape_control_window;
     ScreenPos initial_window_pos(2.f, 2.f);
     ViewportWindow::Key previously_selected_tab;
     while (!glfwWindowShouldClose(glfw_context.window()))
@@ -229,6 +235,7 @@ int main(int argc, char *argv[])
                 }
                 if (!shapes.empty())
                 {
+                    viewport_window.reset();
                     shape_control_window = std::make_unique<ShapeWindow>(filename, initial_window_pos, std::move(shapes), viewport_window);
                 }
                 ImGui::Separator();

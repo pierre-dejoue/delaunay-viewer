@@ -8,11 +8,13 @@
 
 #include <dt/dt_impl.h>
 #include <shapes/bounding_box.h>
+#include <shapes/point.h>
 #include <shapes/sampling.h>
 #include <shapes/shapes.h>
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -65,19 +67,23 @@ public:
 
     const DrawCommandLists& get_draw_command_lists() const;
 
+    void add_steiner_point(const shapes::Point2d<scalar>& pt);
+
 private:
     void init_bounding_box();
-    void recompute_triangulations();
+    void recompute_triangulations(const stdutils::io::ErrorHandler& err_handler);
     void build_draw_lists(const Settings& settings);
     ShapeControl* allocate_new_sampled_shape(const ShapeControl& parent, shapes::AllShapes<scalar>&& shape);
     void delete_sampled_shape(ShapeControl** sc);
     static constexpr bool ALLOW_SAMPLING = true;
-    void shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& input_has_changed);
+    void shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& in_out_trash, bool& input_has_changed);
 
     const std::string m_title;
     ScreenPos m_initial_pos;
     std::vector<ShapeControl> m_input_shape_controls;
     std::vector<std::unique_ptr<ShapeControl>> m_sampled_shape_controls;
+    ShapeControl m_steiner_shape_control;
+    std::optional<shapes::Point2d<scalar>> m_new_steiner_pt;
     std::map<std::string, ShapeControl> m_triangulation_shape_controls;
     shapes::BoundingBox2d<scalar> m_geometry_bounding_box;
     DrawCommandLists m_draw_command_lists;

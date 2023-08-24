@@ -5,9 +5,11 @@
 #include "renderer.h"
 
 #include <shapes/bounding_box.h>
+#include <shapes/point.h>
 #include <shapes/shapes.h>
 #include <shapes/vect.h>
 
+#include <functional>
 #include <map>
 #include <string>
 #include <string_view>
@@ -25,6 +27,7 @@ public:
     using Key = std::string;
     using GeometryBB = shapes::BoundingBox2d<scalar>;
     using ScreenBB = shapes::BoundingBox2d<float>;
+    using SteinerCallback = std::function<void(const shapes::Point2d<scalar>& steiner_point)>;
 
     ViewportWindow();
     ViewportWindow(const ViewportWindow&) = delete;
@@ -40,6 +43,8 @@ public:
     void set_draw_commands(Key key, DrawCommands<scalar>&& draw_commands);
 
     void set_geometry_bounding_box(const GeometryBB& bounding_box);
+
+    void set_steiner_callback(const SteinerCallback& callback);
 
     GeometryBB get_canvas_bounding_box() const;
 
@@ -73,4 +78,6 @@ private:
     DrawCommandLists m_draw_command_lists;
     TabList m_tabs;
     renderer::ColorData m_background_color;
+    bool m_steiner_checked;
+    SteinerCallback m_steiner_callback;
 };

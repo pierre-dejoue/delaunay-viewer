@@ -42,6 +42,8 @@ ViewportWindow::ViewportWindow()
     , m_draw_command_lists()
     , m_tabs()
     , m_background_color(to_float_color(CanvasBackgroundColor_Default))
+    , m_steiner_checked(false)
+    , m_steiner_callback()
 {
     reset();
 }
@@ -56,12 +58,21 @@ void ViewportWindow::reset()
     // Reset geometry properties
     m_geometry_bounding_box.add(scalar{0}, scalar{0}).add(scalar{1}, scalar{1});
     reset_zoom();
+
+    // Misc
+    m_steiner_checked = false;
 }
 
 void ViewportWindow::set_geometry_bounding_box(const GeometryBB& bounding_box)
 {
     m_geometry_bounding_box = bounding_box;
     reset_zoom();
+}
+
+void ViewportWindow::set_steiner_callback(const ViewportWindow::SteinerCallback& callback)
+{
+    m_steiner_callback = callback;
+    if (!static_cast<bool>(m_steiner_callback)) { m_steiner_checked = false; }
 }
 
 void ViewportWindow::reset_zoom()
@@ -183,6 +194,15 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, Key& s
         reset_zoom();
     }
 
+    if (m_steiner_callback)
+    {
+        ImGui::SameLine(0, 30);
+        ImGui::Checkbox("Add Steiner", &m_steiner_checked);
+        ImGui::SameLine(0);
+        ImGui::HelpMarker("Right click to add Steiner points");
+    }
+    assert(static_cast<bool>(m_steiner_callback) || !m_steiner_checked);
+
     if (ImGui::BeginTabBar("##TabBar"))
     {
         const auto& tabs = !m_tabs.empty() ? m_tabs : s_default_tabs;
@@ -231,9 +251,15 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, Key& s
                 }
 
                 // Pan
-                if (mouse_in_canvas.is_held && !m_zoom_selection_box.is_ongoing && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
+                if (!m_steiner_checked && mouse_in_canvas.is_held && !m_zoom_selection_box.is_ongoing && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
                 {
                     pan(canvas.to_world_vector(to_screen_pos(io.MouseDelta)));
+                }
+
+                // Add Steiner point
+                if (m_steiner_checked && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+                {
+                    m_steiner_callback(canvas.to_world(to_screen_pos(io.MousePos)));
                 }
 
                 // Clip rectangle

@@ -26,3 +26,8 @@ inline ImVec2 to_imgui_vec2(ScreenPos pos)
 void set_color(renderer::ColorData& color, ImU32 compact_color);
 
 renderer::ColorData to_float_color(ImU32 compact_color);
+
+namespace ImGui
+{
+void HelpMarker(const char* desc);          // Function taken from imgui_demo.cpp
+}
