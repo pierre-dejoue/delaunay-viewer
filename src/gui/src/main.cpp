@@ -239,6 +239,20 @@ int main(int argc, char *argv[])
                     shape_control_window = std::make_unique<ShapeWindow>(filename, initial_window_pos, std::move(shapes), viewport_window);
                 }
                 ImGui::Separator();
+                bool save_menu_enabled = static_cast<bool>(shape_control_window);
+                if (ImGui::MenuItem("Save as DAT", "", false, save_menu_enabled))
+                {
+                    const auto filepath = pfd::save_file(
+                        "Select a file", "",
+                        { "DAT", "*.dat" },
+                        pfd::opt::force_overwrite).result();
+
+                    if (!filepath.empty())
+                    {
+                        shapes::io::dat::save_shapes_as_file(filepath, shape_control_window->get_triangulation_input_aggregate(), err_handler);
+                    }
+                }
+                ImGui::Separator();
                 if (ImGui::BeginMenu("Options"))
                 {
                     if (ImGui::MenuItem("Dark Mode", "", &imgui_dark_mode))

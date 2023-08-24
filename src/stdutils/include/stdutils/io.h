@@ -4,8 +4,10 @@
 #include <exception>
 #include <filesystem>
 #include <functional>
+#include <iomanip>
 #include <istream>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <string_view>
 #include <vector>
@@ -42,6 +44,15 @@ using ErrorMessage = std::string_view;
 using ErrorHandler = std::function<void(SeverityCode, ErrorMessage)>;
 
 /**
+ * Floating point IO precision
+ *
+ * Set the output stream precision so that the round-trip fp -> text -> fp is exact.
+ * Return the original precision of the stream.
+ */
+template <typename F, typename CharT>
+int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out);
+
+/**
  * Pass a file to a parser of std::basic_istream
  */
 template <typename Ret, typename CharT>
@@ -49,6 +60,15 @@ using StreamParser = std::function<Ret(std::basic_istream<CharT, std::char_trait
 
 template <typename Ret, typename CharT>
 Ret open_and_parse_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept;
+
+/**
+ * Save a file with a writer to std::basic_ostream
+ */
+template <typename Obj, typename CharT>
+using StreamWriter = std::function<void(std::basic_ostream<CharT, std::char_traits<CharT>>&, const Obj&, const stdutils::io::ErrorHandler&)>;
+
+template <typename Obj, typename CharT>
+void save_file(const std::filesystem::path& filepath, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept;
 
 /**
  * LineStream: A wrapper around std::getline to count line nb
@@ -122,6 +142,16 @@ std::size_t countlines(std::basic_istream<CharT, std::char_traits<CharT>>& istre
 //
 //
 
+template <typename F, typename CharT>
+int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out)
+{
+    // The precision max_digits10 (9 for float, 17 for double) ensures the round-trip "fp -> text -> fp" will be exact.
+    constexpr int max_fp_digits = std::numeric_limits<F>::max_digits10;
+    const int initial_fp_digits = static_cast<int>(out.precision());
+    out << std::setprecision(max_fp_digits);
+    return initial_fp_digits;
+}
+
 template <typename Ret, typename CharT>
 Ret open_and_parse_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
@@ -147,6 +177,31 @@ Ret open_and_parse_file(const std::filesystem::path& filepath, const StreamParse
         err_handler(stdutils::io::Severity::EXCPT, oss.str());
     }
     return Ret();
+}
+
+template <typename Obj, typename CharT>
+void save_file(const std::filesystem::path& filepath, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept
+{
+    try
+    {
+        std::basic_ofstream<CharT> outputstream(filepath);
+        if (outputstream.is_open())
+        {
+            stream_writer(outputstream, obj, err_handler);
+        }
+        else
+        {
+            std::stringstream oss;
+            oss << "Cannot open file " << filepath;
+            err_handler(stdutils::io::Severity::FATAL, oss.str());
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::stringstream oss;
+        oss << "Exception: " << e.what();
+        err_handler(stdutils::io::Severity::EXCPT, oss.str());
+    }
 }
 
 template <typename CharT>

@@ -29,6 +29,9 @@ namespace dat
 {
     ShapeAggregate<double> parse_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept;
     ShapeAggregate<double> parse_shapes_from_file(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept;
+
+    void save_shapes_as_stream(std::ostream& outputstream, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept;
+    void save_shapes_as_file(std::filesystem::path filepath, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept;
 }
 
 //

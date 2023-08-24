@@ -8,6 +8,7 @@
 
 #include <dt/dt_impl.h>
 #include <shapes/bounding_box.h>
+#include <shapes/io.h>
 #include <shapes/point.h>
 #include <shapes/sampling.h>
 #include <shapes/shapes.h>
@@ -66,6 +67,8 @@ public:
     void visit(bool& can_be_erased, const Settings& settings, bool& input_has_changed);
 
     const DrawCommandLists& get_draw_command_lists() const;
+
+    shapes::io::ShapeAggregate<scalar> get_triangulation_input_aggregate() const;
 
     void add_steiner_point(const shapes::Point2d<scalar>& pt);
 

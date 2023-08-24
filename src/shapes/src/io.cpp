@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <iterator>
 #include <istream>
 #include <numeric>
@@ -216,6 +217,45 @@ ShapeAggregate<F> parse_shapes_from_stream_gen(std::istream& inputstream, const 
     return result;
 }
 
+template <typename F>
+void save_shapes_as_stream_gen(std::ostream& out, const ShapeAggregate<F>& shapes, const stdutils::io::ErrorHandler& err_handler)
+{
+    const auto initial_fp_digits = stdutils::io::accurate_fp_precision<F>(out);
+    for (const auto& shape : shapes)
+    {
+        std::visit(stdutils::Overloaded {
+            [&out](const shapes::PointCloud2d<F>& pc) {
+                out << "POINT_CLOUD\n";
+                for (const auto& p : pc.vertices) { out << p.x << ' ' << p.y << '\n'; }
+            },
+            [&out](const shapes::PointCloud3d<F>& pc) {
+                out << "POINT_CLOUD\n";
+                for (const auto& p : pc.vertices) { out << p.x << ' ' << p.y << ' ' << p.z << '\n'; }
+            },
+            [&out](const shapes::PointPath2d<F>& pp) {
+                out << "POINT_PATH " << (pp.closed ? "CLOSED" : "OPEN") << '\n';
+                for (const auto& p : pp.vertices) { out << p.x << ' ' << p.y << '\n'; }
+            },
+            [&out](const shapes::PointPath3d<F>& pp) {
+                out << "POINT_PATH " << (pp.closed ? "CLOSED" : "OPEN") << '\n';
+                for (const auto& p : pp.vertices) { out << p.x << ' ' << p.y << ' ' << p.z << '\n'; }
+            },
+            [&out](const shapes::CubicBezierPath2d<F>& cbp) {
+                out << "CUBIC_BEZIER_PATH " << (cbp.closed ? "CLOSED" : "OPEN") << '\n';
+                for (const auto& p : cbp.vertices) { out << p.x << ' ' << p.y << '\n'; }
+            },
+            [&out](const shapes::CubicBezierPath3d<F>& cbp) {
+                out << "CUBIC_BEZIER_PATH " << (cbp.closed ? "CLOSED" : "OPEN") << '\n';
+                for (const auto& p : cbp.vertices) { out << p.x << ' ' << p.y << ' ' << p.z << '\n'; }
+            },
+            [&err_handler](const shapes::Triangles2d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Triangles2d not written to DAT stream"); },
+            [&err_handler](const shapes::Triangles3d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Triangles3d not written to DAT stream"); },
+            [](const auto&) { assert(0); }
+        }, shape);
+    }
+    out << std::setprecision(initial_fp_digits);
+}
+
 } // Anonymous namespace
 
 ShapeAggregate<double> parse_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
@@ -237,6 +277,26 @@ ShapeAggregate<double> parse_shapes_from_file(std::filesystem::path filepath, co
 {
     return stdutils::io::open_and_parse_file<ShapeAggregate<double>, char>(filepath, parse_shapes_from_stream_gen<double>, err_handler);
 }
+
+void save_shapes_as_stream(std::ostream& outputstream, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept
+{
+    try
+    {
+        save_shapes_as_stream_gen<double>(outputstream, shapes, err_handler);
+    }
+    catch (const std::exception& e)
+    {
+        std::stringstream oss;
+        oss << "Exception: " << e.what();
+        err_handler(stdutils::io::Severity::EXCPT, oss.str());
+    }
+}
+
+void save_shapes_as_file(std::filesystem::path filepath, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept
+{
+    stdutils::io::save_file<ShapeAggregate<double>, char>(filepath, save_shapes_as_stream_gen<double>, shapes, err_handler);
+}
+
 } // namespace dat
 
 /**

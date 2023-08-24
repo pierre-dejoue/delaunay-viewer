@@ -160,7 +160,7 @@ void ShapeWindow::recompute_triangulations(const stdutils::io::ErrorHandler& err
                 if (shape_control_ptr->active)
                     active_shapes.emplace_back(shape_control_ptr.get());
             }
-            if (m_steiner_shape_control.active)
+            if (m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
             {
                 active_shapes.emplace_back(&m_steiner_shape_control);
             }
@@ -203,7 +203,7 @@ void ShapeWindow::build_draw_lists(const Settings& settings)
             if (shape_control_ptr->active)
                 draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings));
         }
-        if(m_steiner_shape_control.active)
+        if(m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
         {
             draw_command_list.emplace_back(m_steiner_shape_control.to_draw_command(settings));
         }
@@ -227,7 +227,32 @@ void ShapeWindow::build_draw_lists(const Settings& settings)
                 draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings, true));
             }
         }
+        if(m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
+        {
+            draw_command_list.emplace_back(m_steiner_shape_control.to_draw_command(settings));
+        }
     }
+}
+
+shapes::io::ShapeAggregate<ShapeWindow::scalar> ShapeWindow::get_triangulation_input_aggregate() const
+{
+    shapes::io::ShapeAggregate<ShapeWindow::scalar> result;
+    for (const auto& shape_control : m_input_shape_controls)
+    {
+        if (shape_control.active)
+            result.emplace_back(shape_control.shape);
+    }
+    for (const auto& shape_control_ptr : m_sampled_shape_controls)
+    {
+        assert(shape_control_ptr);
+        if (shape_control_ptr->active)
+            result.emplace_back(shape_control_ptr->shape);
+    }
+    if(m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
+    {
+        result.emplace_back(m_steiner_shape_control.shape);
+    }
+    return result;
 }
 
 ShapeWindow::ShapeControl* ShapeWindow::allocate_new_sampled_shape(const ShapeControl& parent, shapes::AllShapes<scalar>&& shape)
