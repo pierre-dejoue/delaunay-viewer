@@ -208,7 +208,7 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, Key& s
         const auto& tabs = !m_tabs.empty() ? m_tabs : s_default_tabs;
         assert(!tabs.empty());
         for (const auto& tab_name : tabs)
-            if (ImGui::BeginTabItem(tab_name.c_str(), nullptr, ImGuiTabItemFlags_None))
+            if (ImGui::BeginTabItem(tab_name.c_str()))
             {
                 selected_key = tab_name;
 

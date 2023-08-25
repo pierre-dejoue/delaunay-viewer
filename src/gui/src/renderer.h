@@ -39,11 +39,12 @@ struct DrawList
 
     static const DrawList& empty();
     void clear();
+    void reset();
 
     std::vector<VertexData>     m_vertices;
     std::vector<HWindex>        m_indices;
     std::vector<DrawCall>       m_draw_calls;
-    Version                     m_buffer_version = 0u;          // Use to knwow when to call glBufferData
+    Version                     m_buffer_version = 0u;          // Used to knwow when to call glBufferData
 };
 
 struct Flag

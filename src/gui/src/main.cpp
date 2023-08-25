@@ -236,6 +236,7 @@ int main(int argc, char *argv[])
                 if (!shapes.empty())
                 {
                     viewport_window.reset();
+                    draw_2d_renderer.draw_list().reset();
                     shape_control_window = std::make_unique<ShapeWindow>(filename, initial_window_pos, std::move(shapes), viewport_window);
                 }
                 ImGui::Separator();
@@ -289,6 +290,7 @@ int main(int argc, char *argv[])
             {
                 shape_control_window.reset();           // Close window
                 viewport_window.reset();                // Not closed, just reset
+                draw_2d_renderer.draw_list().reset();
                 previously_selected_tab = "";
             }
         }
@@ -311,13 +313,15 @@ int main(int argc, char *argv[])
         viewport_window.visit(can_be_erased, settings, selected_tab);
 
         draw_2d_renderer.set_background_color(viewport_window.get_background_color());
-        if (shape_control_window && !imgui_rendering)
+        if (shape_control_window)
         {
             const auto& dcls = shape_control_window->get_draw_command_lists();
             const auto draw_commands_it = std::find_if(std::cbegin(dcls), std::cend(dcls), [&selected_tab](const auto& kvp) { return kvp.first == selected_tab; });
-            assert(draw_commands_it != std::cend(dcls));
-            update_opengl_draw_list<scalar>(draw_2d_renderer.draw_list(), draw_commands_it->second, (geometry_has_changed || (selected_tab != previously_selected_tab)), settings);
-            previously_selected_tab = selected_tab;
+            if (draw_commands_it != std::cend(dcls))
+            {
+                update_opengl_draw_list<scalar>(draw_2d_renderer.draw_list(), draw_commands_it->second, (geometry_has_changed || (selected_tab != previously_selected_tab)), settings);
+                previously_selected_tab = selected_tab;
+            }
         }
 
 #if DELAUNAY_VIEWER_IMGUI_DEMO_FLAG

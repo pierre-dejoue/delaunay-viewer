@@ -79,6 +79,12 @@ void DrawList::clear()
     m_draw_calls.clear();
 }
 
+void DrawList::reset()
+{
+    clear();
+    m_buffer_version++;
+}
+
 // OpenGL Implementation
 struct Draw2D::Impl
 {
