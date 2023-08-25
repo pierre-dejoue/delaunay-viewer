@@ -1,6 +1,6 @@
 #pragma once
 
-#include "canvas.h"
+#include "window_layout.h"
 
 #include <string>
 
@@ -13,7 +13,7 @@ public:
     SettingsWindow(const SettingsWindow&) = delete;
     SettingsWindow& operator=(const SettingsWindow&) = delete;
 
-    void visit(bool& can_be_erased, ScreenPos& initial_pos);
+    void visit(bool& can_be_erased, const WindowLayout& win_pos_sz);
 
 private:
     Settings& m_settings;

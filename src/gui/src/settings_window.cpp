@@ -14,21 +14,22 @@ SettingsWindow::SettingsWindow(Settings& settings)
 {
 }
 
-void SettingsWindow::visit(bool& can_be_erased, ScreenPos& initial_pos)
+void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
 {
     can_be_erased = false;        // Cannot close
 
-    const float max_width = 350.f;
-    ImGui::SetNextWindowSizeConstraints(ImVec2(200.f, 200.f), ImVec2(max_width, FLT_MAX));
-    ImGui::SetNextWindowPos(to_imgui_vec2(initial_pos), ImGuiCond_Once);
-    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+    ImGui::SetNextWindowPosAndSize(win_pos_sz);
+    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoCollapse
+                                         | ImGuiWindowFlags_NoMove
+                                         | ImGuiWindowFlags_NoResize
+                                         | ImGuiWindowFlags_NoSavedSettings;
+
     if (!ImGui::Begin(m_title.c_str(), nullptr, win_flags))
     {
         // Collapsed
         ImGui::End();
         return;
     }
-    initial_pos.x += ImGui::GetWindowPos().x + max_width;
 
     const ImVec2 spacing = { 10.f, 10.f };
     Settings::General* general_settings = m_settings.get_general_settings();

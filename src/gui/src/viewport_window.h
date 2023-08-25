@@ -3,6 +3,7 @@
 #include "canvas.h"
 #include "draw_command.h"
 #include "renderer.h"
+#include "window_layout.h"
 
 #include <shapes/bounding_box.h>
 #include <shapes/point.h>
@@ -35,9 +36,7 @@ public:
 
     void reset();
 
-    void set_initial_window_pos_size(ScreenPos pos, ScreenPos size);
-
-    void visit(bool& can_be_erased, const Settings& settings, Key& selected_key);
+    void visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz,  Key& selected_key);
 
     void set_draw_commands(Key key, const DrawCommands<scalar>& draw_commands);
     void set_draw_commands(Key key, DrawCommands<scalar>&& draw_commands);
@@ -69,8 +68,6 @@ private:
     static TabList s_default_tabs;
 
     const std::string m_title;
-    ScreenPos m_initial_pos;
-    ScreenPos m_initial_size;
     GeometryBB m_geometry_bounding_box;
     GeometryBB m_canvas_bounding_box;
     MouseInCanvas<scalar> m_prev_mouse_in_canvas;

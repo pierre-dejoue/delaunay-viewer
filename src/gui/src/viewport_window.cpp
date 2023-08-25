@@ -33,8 +33,6 @@ ViewportWindow::TabList ViewportWindow::s_default_tabs = { "<empty>" };
 
 ViewportWindow::ViewportWindow()
     : m_title("Viewport")
-    , m_initial_pos()
-    , m_initial_size()
     , m_geometry_bounding_box()
     , m_canvas_bounding_box()
     , m_prev_mouse_in_canvas(Canvas<scalar>())
@@ -93,12 +91,6 @@ void ViewportWindow::pan(const shapes::Vect2d<scalar>& dir)
     m_canvas_bounding_box = shapes::BoundingBox2d<scalar>().add(tl_pan).add(br_pan);
 }
 
-void ViewportWindow::set_initial_window_pos_size(ScreenPos pos, ScreenPos size)
-{
-    m_initial_pos = pos;
-    m_initial_size = size;
-}
-
 void ViewportWindow::set_draw_commands(Key key, const DrawCommands<scalar>& draw_commands)
 {
     // The tabs are arranged in the order they are initially received
@@ -117,7 +109,7 @@ void ViewportWindow::set_draw_commands(Key key, DrawCommands<scalar>&& draw_comm
     m_draw_command_lists[key] = std::move(draw_commands);
 }
 
-void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, Key& selected_key)
+void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz, Key& selected_key)
 {
     can_be_erased = false; // Always ON
 
@@ -127,12 +119,13 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, Key& s
     options.path_settings = settings.read_path_settings();
     options.surface_settings = settings.read_surface_settings();
 
-    m_initial_size = to_screen_pos(ImGui::GetMainViewport()->WorkSize);
-    m_initial_size.x -= m_initial_pos.x;
-    m_initial_size.y -= m_initial_pos.y;
-    ImGui::SetNextWindowPos(to_imgui_vec2(m_initial_pos), ImGuiCond_Once);
-    ImGui::SetNextWindowSize(to_imgui_vec2(m_initial_size), ImGuiCond_Once);
-    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground;
+    ImGui::SetNextWindowPosAndSize(win_pos_sz);
+    ImGui::SetNextWindowBgAlpha(0.f);           // Not using ImGuiWindowFlags_NoBackground here because this also removes the window outer border
+    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoBringToFrontOnFocus
+                                         | ImGuiWindowFlags_NoCollapse
+                                         | ImGuiWindowFlags_NoMove
+                                         | ImGuiWindowFlags_NoResize
+                                         | ImGuiWindowFlags_NoSavedSettings;
 
     if (!ImGui::Begin(m_title.c_str(), nullptr, win_flags))
     {

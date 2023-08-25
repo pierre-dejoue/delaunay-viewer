@@ -100,11 +100,9 @@ DrawCommand<ShapeWindow::scalar> ShapeWindow::ShapeControl::to_draw_command(cons
 
 ShapeWindow::ShapeWindow(
         std::string_view name,
-        ScreenPos initial_pos,
         std::vector<shapes::AllShapes<scalar>>&& shapes,
         ViewportWindow& viewport_window)
     : m_title(std::string(name) + " Controls")
-    , m_initial_pos(2.f, initial_pos.y + 350.f)
     , m_input_shape_controls()
     , m_sampled_shape_controls()
     , m_steiner_shape_control(shapes::PointCloud2d<scalar>())
@@ -377,7 +375,7 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
     ImGui::TreePop();
 }
 
-void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geometry_has_changed)
+void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz, bool& geometry_has_changed)
 {
     UNUSED(settings);
     geometry_has_changed = m_first_visit;
@@ -385,9 +383,11 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, bool& geo
 
     stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
 
-    ImGui::SetNextWindowSizeConstraints(ImVec2(200.f, 200.f), ImVec2(FLT_MAX, FLT_MAX));
-    ImGui::SetNextWindowPos(to_imgui_vec2(m_initial_pos), ImGuiCond_Once);
-    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize;
+    ImGui::SetNextWindowPosAndSize(win_pos_sz);
+    constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoCollapse
+                                         | ImGuiWindowFlags_NoMove
+                                         | ImGuiWindowFlags_NoResize
+                                         | ImGuiWindowFlags_NoSavedSettings;;
 
     bool is_window_open = true;
     if (!ImGui::Begin(m_title.c_str(), &is_window_open, win_flags))

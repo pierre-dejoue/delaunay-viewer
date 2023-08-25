@@ -1,8 +1,6 @@
 #pragma once
 
-#include "canvas.h"
 #include "parameter.h"
-#include "settings_window.h"
 
 #include <memory>
 
@@ -73,16 +71,9 @@ public:
     const Surface& read_surface_settings() const;
     static const SurfaceLimits& read_surface_limits();
 
-    void open_window();
-    void visit_window(bool& can_be_erased, ScreenPos& initial_pos);
-
-private:
-    SettingsWindow& get_settings_window();
-
 private:
     mutable std::unique_ptr<General> general_settings;
     mutable std::unique_ptr<Point> point_settings;
     mutable std::unique_ptr<Path> path_settings;
     mutable std::unique_ptr<Surface> surface_settings;
-    std::unique_ptr<SettingsWindow> settings_window;
 };

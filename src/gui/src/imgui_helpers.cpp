@@ -31,4 +31,14 @@ void HelpMarker(const char* desc)
     }
 }
 
+// Place the window in the working area, that is the position of the viewport minus task bars, menus bars, status bars, etc.
+void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond)
+{
+    const auto work_tl_corner = ImGui::GetMainViewport()->WorkPos;
+    const auto work_size = ImGui::GetMainViewport()->WorkSize;
+    const ImVec2 tl_corner(window_layout.m_position.x + work_tl_corner.x, window_layout.m_position.y + work_tl_corner.y);
+    ImGui::SetNextWindowPos(tl_corner, cond);
+    ImGui::SetNextWindowSize(to_imgui_vec2(window_layout.window_size(to_screen_size(work_size))), cond);
+}
+
 }

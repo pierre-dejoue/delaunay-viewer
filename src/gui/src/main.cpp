@@ -9,8 +9,10 @@
 #include "draw_shape.h"
 #include "renderer.h"
 #include "settings.h"
+#include "settings_window.h"
 #include "shape_control_window.h"
 #include "version.h"
+#include "window_layout.h"
 
 #include <dt/dt_impl.h>
 #include <lin/mat.h>
@@ -118,19 +120,34 @@ int main(int argc, char *argv[])
     bool imgui_dark_mode = false;
     imgui_set_style(imgui_dark_mode);
 
-    // Open settings window
+    // Application Settings
     Settings settings;
-    settings.open_window();
 
-    // Viewport window
-    ViewportWindow viewport_window;
-
-    using scalar = ViewportWindow::scalar;
+    // Application Windows
+    struct AppWindows
+    {
+        std::unique_ptr<SettingsWindow> settings;
+        std::unique_ptr<ViewportWindow> viewport;
+        std::unique_ptr<ShapeWindow> shape_control;
+        struct
+        {
+            WindowLayout settings;
+            WindowLayout viewport;
+            WindowLayout shape_control;
+        } layout;
+    } windows;
+    windows.settings = std::make_unique<SettingsWindow>(settings);
+    windows.viewport = std::make_unique<ViewportWindow>();
+    constexpr float WINDOW_SETTINGS_WIDTH = 400.f;
+    constexpr float WINDOW_SETTINGS_HEIGHT = 400.f;
+    windows.layout.settings      = WindowLayout(0.f,                   0.f,                    WINDOW_SETTINGS_WIDTH, WINDOW_SETTINGS_HEIGHT);
+    windows.layout.viewport      = WindowLayout(WINDOW_SETTINGS_WIDTH, 0.f,                    -1.f,                  -1.f);
+    windows.layout.shape_control = WindowLayout(0.f,                   WINDOW_SETTINGS_HEIGHT, WINDOW_SETTINGS_WIDTH, -1.f);
 
     // Steiner callback
-    std::unique_ptr<ShapeWindow> shape_control_window;
-    viewport_window.set_steiner_callback([&shape_control_window](const shapes::Point2d<scalar>& p) {
-        if (shape_control_window) { shape_control_window->add_steiner_point(p); }
+    using scalar = ViewportWindow::scalar;
+    windows.viewport->set_steiner_callback([&windows](const shapes::Point2d<scalar>& p) {
+        if (windows.shape_control) { windows.shape_control->add_steiner_point(p); }
         else { std::cerr << "Could not add steiner point: No control window" << std::endl; }
     });
 
@@ -148,7 +165,6 @@ int main(int argc, char *argv[])
         return 1;
 
     // Main loop
-    ScreenPos initial_window_pos(2.f, 2.f);
     ViewportWindow::Key previously_selected_tab;
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
@@ -230,17 +246,16 @@ int main(int argc, char *argv[])
                             shapes.emplace_back(std::move(pp));
                         for (const auto& cbp : file_paths.cubic_bezier_paths)
                             shapes.emplace_back(std::move(cbp));
-
                     }
                 }
-                if (!shapes.empty())
+                if (!shapes.empty() && windows.viewport)
                 {
-                    viewport_window.reset();
+                    windows.viewport->reset();
                     draw_2d_renderer.draw_list().reset();
-                    shape_control_window = std::make_unique<ShapeWindow>(filename, initial_window_pos, std::move(shapes), viewport_window);
+                    windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), *windows.viewport);
                 }
                 ImGui::Separator();
-                bool save_menu_enabled = static_cast<bool>(shape_control_window);
+                bool save_menu_enabled = static_cast<bool>(windows.shape_control);
                 if (ImGui::MenuItem("Save as DAT", "", false, save_menu_enabled))
                 {
                     const auto filepath = pfd::save_file(
@@ -250,7 +265,7 @@ int main(int argc, char *argv[])
 
                     if (!filepath.empty())
                     {
-                        shapes::io::dat::save_shapes_as_file(filepath, shape_control_window->get_triangulation_input_aggregate(), err_handler);
+                        shapes::io::dat::save_shapes_as_file(filepath, windows.shape_control->get_triangulation_input_aggregate(), err_handler);
                     }
                 }
                 ImGui::Separator();
@@ -269,53 +284,60 @@ int main(int argc, char *argv[])
                 }
                 ImGui::EndMenu();
             }
-            initial_window_pos.y = ImGui::GetWindowHeight() + 2.f;
             ImGui::EndMainMenuBar();
         }
 
-        // Settings window (always ON)
+        // Settings window
+        if (windows.settings)
         {
             bool can_be_erased = false;
-            settings.visit_window(can_be_erased, initial_window_pos);
+            windows.settings->visit(can_be_erased, windows.layout.settings);
+            assert(!can_be_erased); // Always ON
         }
-        viewport_window.set_initial_window_pos_size(initial_window_pos, ScreenPos());
 
         // Shape control window
         bool geometry_has_changed = false;
-        if(shape_control_window)
+        if (windows.shape_control)
         {
+            assert(windows.viewport);
             bool can_be_erased = false;
-            shape_control_window->visit(can_be_erased, settings, geometry_has_changed);
+            windows.shape_control->visit(can_be_erased, settings, windows.layout.shape_control, geometry_has_changed);
             if (can_be_erased)
             {
-                shape_control_window.reset();           // Close window
-                viewport_window.reset();                // Not closed, just reset
+                windows.shape_control.reset();              // Close window
+                windows.viewport->reset();                  // Not closed, just reset
                 draw_2d_renderer.draw_list().reset();
                 previously_selected_tab = "";
             }
         }
 
         // Fwd draw commands to Viewport
-        const bool imgui_rendering = settings.get_general_settings()->imgui_renderer;
-        if(shape_control_window)
+        if (windows.shape_control)
         {
-            for (const auto& [key, cmds] : shape_control_window->get_draw_command_lists())
+            assert(windows.viewport);
+            const bool imgui_rendering = settings.get_general_settings()->imgui_renderer;
+            for (const auto& [key, cmds] : windows.shape_control->get_draw_command_lists())
             {
                 DrawCommands<scalar> filtered_cmds;
                 std::copy_if(std::cbegin(cmds), std::cend(cmds), std::back_inserter(filtered_cmds), [imgui_rendering](const auto& cmd) { return imgui_rendering || is_bezier_path(*cmd.shape); });
-                viewport_window.set_draw_commands(key, std::move(filtered_cmds));
+                windows.viewport->set_draw_commands(key, std::move(filtered_cmds));
             }
         }
 
         // Viewport window
-        bool can_be_erased = false;
         ViewportWindow::Key selected_tab;
-        viewport_window.visit(can_be_erased, settings, selected_tab);
-
-        draw_2d_renderer.set_background_color(viewport_window.get_background_color());
-        if (shape_control_window)
+        if (windows.viewport)
         {
-            const auto& dcls = shape_control_window->get_draw_command_lists();
+            bool can_be_erased = false;
+            windows.viewport->visit(can_be_erased, settings, windows.layout.viewport, selected_tab);
+            assert(!can_be_erased);     // Always ON
+            draw_2d_renderer.set_background_color(windows.viewport->get_background_color());
+        }
+
+        // Transfer draw lists to OpenGL renderer
+        if (windows.shape_control)
+        {
+            const auto& dcls = windows.shape_control->get_draw_command_lists();
             const auto draw_commands_it = std::find_if(std::cbegin(dcls), std::cend(dcls), [&selected_tab](const auto& kvp) { return kvp.first == selected_tab; });
             if (draw_commands_it != std::cend(dcls))
             {
@@ -341,16 +363,16 @@ int main(int argc, char *argv[])
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Viewport rendering
-        if (display_w > 0 && display_h > 0)
+        if (windows.viewport && display_w > 0 && display_h > 0)
         {
             // Rendering flags
             renderer::Flag::type flags = 0;
             if (settings.get_general_settings()->flip_y) { flags |= renderer::Flag::FlipYAxis; }
-            if (!shape_control_window || settings.get_general_settings()->imgui_renderer) { flags |= renderer::Flag::OnlyBackground; }
+            if (!windows.shape_control || settings.get_general_settings()->imgui_renderer) { flags |= renderer::Flag::OnlyBackground; }
 
             // Render
-            const auto target_bb = shapes::cast<float, scalar>(viewport_window.get_canvas_bounding_box());
-            const auto screen_bb = viewport_window.get_viewport_bounding_box();
+            const auto target_bb = shapes::cast<float, scalar>(windows.viewport->get_canvas_bounding_box());
+            const auto screen_bb = windows.viewport->get_viewport_bounding_box();
             const auto canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
             draw_2d_renderer.render(canvas, static_cast<float>(display_h), flags);
         }

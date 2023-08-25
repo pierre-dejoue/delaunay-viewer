@@ -58,11 +58,11 @@ namespace
 } // Anonymous namespace
 
 Settings::Settings()
-    : general_settings()
-    , point_settings()
-    , path_settings()
-    , surface_settings()
 {
+    read_general_settings();
+    read_point_settings();
+    read_surface_settings();
+    read_surface_settings();
 }
 
 Settings::General* Settings::get_general_settings()
@@ -159,37 +159,4 @@ const Settings::SurfaceLimits& Settings::read_surface_limits()
 {
     static Settings::SurfaceLimits result = surface_settings_limits();
     return result;
-}
-
-void Settings::open_window()
-{
-    get_settings_window();
-
-    read_general_settings();
-    read_point_settings();
-    read_surface_settings();
-    read_surface_settings();
-}
-
-void Settings::visit_window(bool& can_be_erased, ScreenPos& initial_pos)
-{
-    can_be_erased = false;
-    if (general_settings || point_settings || path_settings || surface_settings || settings_window)
-    {
-        auto& settings_window_ref = get_settings_window();
-        bool window_can_be_erased = false;
-        settings_window_ref.visit(window_can_be_erased, initial_pos);
-        assert(!window_can_be_erased); // Do not erase settings window once open
-        can_be_erased &= window_can_be_erased;
-    }
-}
-
-SettingsWindow& Settings::get_settings_window()
-{
-    if (!settings_window)
-    {
-        settings_window = std::make_unique<SettingsWindow>(*this);
-    }
-    assert(settings_window);
-    return *settings_window;
 }

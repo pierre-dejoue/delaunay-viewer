@@ -5,6 +5,7 @@
 #include "renderer.h"
 #include "settings.h"
 #include "viewport_window.h"
+#include "window_layout.h"
 
 #include <dt/dt_impl.h>
 #include <shapes/bounding_box.h>
@@ -57,14 +58,13 @@ public:
 
     ShapeWindow(
         std::string_view name,
-        ScreenPos initial_pos,
         std::vector<shapes::AllShapes<scalar>>&& shapes,
         ViewportWindow& viewport_window);
     ~ShapeWindow();
     ShapeWindow(const ShapeWindow&) = delete;
     ShapeWindow& operator=(const ShapeWindow&) = delete;
 
-    void visit(bool& can_be_erased, const Settings& settings, bool& input_has_changed);
+    void visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz, bool& input_has_changed);
 
     const DrawCommandLists& get_draw_command_lists() const;
 
@@ -82,7 +82,6 @@ private:
     void shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool& in_out_trash, bool& input_has_changed);
 
     const std::string m_title;
-    ScreenPos m_initial_pos;
     std::vector<ShapeControl> m_input_shape_controls;
     std::vector<std::unique_ptr<ShapeControl>> m_sampled_shape_controls;
     ShapeControl m_steiner_shape_control;

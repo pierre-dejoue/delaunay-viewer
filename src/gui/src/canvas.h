@@ -8,6 +8,7 @@
 
 
 using ScreenPos = shapes::Vect2d<float>;
+using ScreenSize = shapes::Vect2d<float>;
 
 /**
  * Canvas
@@ -34,7 +35,7 @@ public:
         // NB: The default Canvas is invalid
     }
 
-    Canvas(ScreenPos tl_corner, ScreenPos size, const shapes::BoundingBox2d<F>& bb, bool flip_y = false)
+    Canvas(ScreenPos tl_corner, ScreenSize size, const shapes::BoundingBox2d<F>& bb, bool flip_y = false)
         : tl_corner(tl_corner)
         , size(size)
         , bb_corner()
@@ -65,7 +66,7 @@ public:
     }
 
     Canvas(float x, float y, float width, float height, const shapes::BoundingBox2d<F>& bb, bool flip_y = false)
-        : Canvas(ScreenPos(x, y), ScreenPos(width, height), bb, flip_y)
+        : Canvas(ScreenPos(x, y), ScreenSize(width, height), bb, flip_y)
     {}
 
     F get_scale() const
@@ -83,7 +84,7 @@ public:
         return ScreenPos(tl_corner.x + size.x, tl_corner.y + size.y);
     }
 
-    ScreenPos get_size() const
+    ScreenSize get_size() const
     {
         return size;
     }
@@ -145,7 +146,7 @@ public:
 private:
     // Drawing canvas coordinates on the screen
     ScreenPos tl_corner;
-    ScreenPos size;
+    ScreenSize size;
     ScreenPos bb_corner;       // /!\ Not the br_corner
     bool flip_y;            // If false, the Y-axis of the world space is in the "up" direction.
 
