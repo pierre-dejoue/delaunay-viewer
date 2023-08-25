@@ -20,6 +20,7 @@ namespace io
 
 namespace
 {
+
 ssvg::ShapeAttributes init_default_shape_attr()
 {
     ssvg::ShapeAttributes defaultAttrs;
@@ -73,13 +74,13 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
     bool can_import_path = true;
     unsigned int count_lineto = 0;
     unsigned int count_cubicto = 0;
-    std::string WARN_msg = "";
+    std::string warning_msg = "";
     for (unsigned int idx = idx_start; idx < idx_end; idx++)
     {
         const auto cmd_type = path.m_Commands[idx].m_Type;
         if (idx == idx_start && cmd_type != ssvg::PathCmdType::Enum::MoveTo)
         {
-            WARN_msg = "Path should start with a MoveTo command";
+            warning_msg = "Path should start with a MoveTo command";
             can_import_path = false;
         }
         switch (cmd_type)
@@ -111,7 +112,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
 
             default:
                 assert(0);
-                WARN_msg = "Unknown ssvg::PathCmdType::Enum";
+                warning_msg = "Unknown ssvg::PathCmdType::Enum";
                 can_import_path = false;
                 break;
         }
@@ -214,8 +215,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                     break;
             }
         }
-        assert(shapes::valid_size(new_cbp));
-        assert(std::all_of(new_cbp.vertices.begin(), new_cbp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); }));
+        assert(shapes::is_valid(new_cbp));
     }
     else if (can_import_path)
     {
@@ -240,7 +240,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                     break;
 
                 case ssvg::PathCmdType::Enum::ClosePath:
-                    new_pp.closed = true;
+                    new_pp.closed = new_pp.vertices.size() > 2;
                     break;
 
                 default:
@@ -248,14 +248,14 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                     break;
             }
         }
-        assert(std::all_of(new_pp.vertices.begin(), new_pp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); }));
+        assert(shapes::is_valid(new_pp));
     }
     else
     {
         assert(!can_import_path);
-        assert(!WARN_msg.empty());
+        assert(!warning_msg.empty());
         std::ostringstream oss;
-        oss << "Could not import SVG shape of type Path: " << WARN_msg;
+        oss << "Could not import SVG shape of type Path: " << warning_msg;
         err_handler(stdutils::io::Severity::WARN, oss.str());
     }
 }

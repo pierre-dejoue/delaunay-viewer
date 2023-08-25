@@ -2,6 +2,7 @@
 
 #include <shapes/point.h>
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <vector>
@@ -34,6 +35,12 @@ template <typename P>
 bool valid_size(const PointPath<P>& pp)
 {
     return !pp.closed || pp.vertices.size() > 2;
+}
+
+template <typename P>
+bool is_valid(const PointPath<P>& pp)
+{
+    return valid_size(pp) && std::all_of(pp.vertices.begin(), pp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); });
 }
 
 template <typename P>
@@ -72,6 +79,12 @@ template <typename P>
 bool valid_size(const CubicBezierPath<P>& cbp)
 {
     return (cbp.vertices.size() % 3) == (cbp.closed ? 0u : 1u);
+}
+
+template <typename P>
+bool is_valid(const CubicBezierPath<P>& cbp)
+{
+    return valid_size(cbp) && std::all_of(cbp.vertices.begin(), cbp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); });
 }
 
 template <typename P>

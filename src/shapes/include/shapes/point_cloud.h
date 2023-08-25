@@ -2,6 +2,7 @@
 
 #include <shapes/point.h>
 
+#include <algorithm>
 #include <vector>
 
 
@@ -24,5 +25,11 @@ using PointCloud2d = PointCloud<Point2d<F>>;
 
 template <typename F>
 using PointCloud3d = PointCloud<Point3d<F>>;
+
+template <typename P>
+bool is_valid(const PointCloud<P>& pc)
+{
+    return std::all_of(pc.vertices.begin(), pc.vertices.end(), [](const auto& p) { return shapes::isfinite(p); });
+}
 
 } // namespace shapes
