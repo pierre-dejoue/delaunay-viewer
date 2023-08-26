@@ -6,12 +6,14 @@
  * Copyright (c) 2023 Pierre DEJOUE
  ******************************************************************************/
 
+#include "argagg_wrap.h"
 #include "draw_shape.h"
+#include "project.h"
 #include "renderer.h"
 #include "settings.h"
 #include "settings_window.h"
 #include "shape_control_window.h"
-#include "version.h"
+#include "style.h"
 #include "window_layout.h"
 
 #include <dt/dt_impl.h>
@@ -19,20 +21,21 @@
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
 #include <shapes/io.h>
-#include <svg/svg.h>
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
+#include <stdutils/platform.h>
+#include <svg/svg.h>
 
 // Order matters in this section
 #include <imgui_wrap.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
+#include "imgui_helpers.h"
 #include <pfd_wrap.h>
 #include "opengl_and_glfw.h"
 
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
@@ -50,92 +53,213 @@
 namespace
 {
 
-const ImColor WindowBackgroundColor_Classic(29, 75, 99, 255);
-const ImColor WindowBackgroundColor_Dark(4, 8, 25, 255);
-const ImColor WindowMainBackgroundColor_Classic(35, 92, 121, 255);
-const ImColor WindowMainBackgroundColor_Dark(10, 25, 50, 255);
-
-void imgui_set_style(bool dark_mode)
-{
-    if (dark_mode)
-    {
-        ImGui::StyleColorsDark();
-        ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = WindowBackgroundColor_Dark;
-    }
-    else
-    {
-        ImGui::StyleColorsClassic();
-        ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = WindowBackgroundColor_Classic;
-    }
-}
-
 void err_callback(stdutils::io::SeverityCode sev, std::string_view msg)
 {
     std::cerr << stdutils::io::str_severity_code(sev) << ": " << msg << std::endl;
+}
+
+std::string project_title()
+{
+    std::stringstream title;
+    title << project::get_short_desc() << ' ' << project::get_version_string();
+    return title.str();
+}
+
+argagg::parser argparser{ {
+    { "help", { "-h", "--help" }, "Print usage note and exit", 0 },
+    { "version", { "--version" }, "Print version and exit", 0 }
+} };
+
+void usage_notes(std::ostream& out)
+{
+    out << project_title() << "\n\n";
+    out << "Options:\n\n";
+    out << argparser;
+}
+
+argagg::parser_results parse_command_line(int argc, char *argv[])
+{
+    argagg::parser_results args;
+    try
+    {
+        args = argparser.parse(argc, argv);
+    }
+    catch (const std::exception& e)
+    {
+        usage_notes(std::cerr);
+        std::stringstream out;
+        out << "While parsing arguments: " << e.what();
+        err_callback(stdutils::io::Severity::EXCPT, out.str());
+        std::exit(EXIT_FAILURE);
+    }
+    return args;
+}
+
+// Application windows
+struct AppWindows
+{
+    std::unique_ptr<SettingsWindow> settings;
+    std::unique_ptr<ViewportWindow> viewport;
+    std::unique_ptr<ShapeWindow> shape_control;
+    struct
+    {
+        WindowLayout settings;
+        WindowLayout viewport;
+        WindowLayout shape_control;
+    } layout;
+};
+
+void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& application_should_close, bool& gui_dark_mode)
+{
+    application_should_close = false;
+    if (ImGui::BeginMainMenuBar())
+    {
+        const stdutils::io::ErrorHandler io_err_handler(err_callback);
+        if (ImGui::BeginMenu("File"))
+        {
+            shapes::io::ShapeAggregate<double> shapes;
+            std::string filename = "no_file";
+            if (ImGui::MenuItem("Open CDT"))
+            {
+                const auto paths = pfd::open_file("Select a CDT file", "",
+                    { "CDT file", "*.cdt", "All files", "*.*" }).result();
+                for (const auto& path : paths)
+                {
+                    std::cout << "User selected CDT file " << path << std::endl;
+                    if (shapes::io::cdt::peek_point_dimension(path, io_err_handler) == 2)
+                    {
+                        auto cdt_shapes = shapes::io::cdt::parse_2d_shapes_from_file(path, io_err_handler);
+                        filename = std::filesystem::path(path).filename().string();
+                        shapes.clear();
+                        if (!cdt_shapes.point_cloud.vertices.empty())
+                        {
+                            shapes.emplace_back(std::move(cdt_shapes.point_cloud));
+                        }
+                        if (!cdt_shapes.edges.vertices.empty())
+                        {
+                            auto point_paths = shapes::extract_paths(cdt_shapes.edges);
+                            for (auto& pp: point_paths) { shapes.emplace_back(std::move(pp)); }
+                        }
+                        // Ignore Triangles2d
+                    }
+                    else
+                    {
+                        io_err_handler(stdutils::io::Severity::ERR, "Only support 2D points");
+                    }
+                }
+            }
+            if (ImGui::MenuItem("Open DAT"))
+            {
+                const auto paths = pfd::open_file("Select a DAT file", "",
+                    { "DAT file", "*.dat", "All files", "*.*" }).result();
+                for (const auto& path : paths)
+                {
+                    std::cout << "User selected DAT file " << path << std::endl;
+                    filename = std::filesystem::path(path).filename().string();
+                    shapes = shapes::io::dat::parse_shapes_from_file(path, io_err_handler);
+                }
+            }
+            if (ImGui::MenuItem("Open SVG"))
+            {
+                const auto paths = pfd::open_file("Select a SVG file", "",
+                    { "SVG file", "*.svg" }).result();
+                for (const auto& path : paths)
+                {
+                    std::cout << "User selected SVG file " << path << std::endl;
+                    auto file_paths = svg::io::parse_svg_paths(path, io_err_handler);
+                    std::cout << "Nb of point paths: " << file_paths.point_paths.size() << ". Nb of cubic bezier paths: " << file_paths.cubic_bezier_paths.size() << "." << std::endl;
+                    filename = std::filesystem::path(path).filename().string();
+                    shapes.clear();
+                    shapes.reserve(file_paths.point_paths.size() + file_paths.cubic_bezier_paths.size());
+                    for (const auto& pp : file_paths.point_paths)
+                        shapes.emplace_back(std::move(pp));
+                    for (const auto& cbp : file_paths.cubic_bezier_paths)
+                        shapes.emplace_back(std::move(cbp));
+                }
+            }
+            if (!shapes.empty() && windows.viewport)
+            {
+                windows.viewport->reset();
+                renderer.draw_list().reset();
+                windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), *windows.viewport);
+            }
+            ImGui::Separator();
+            bool save_menu_enabled = static_cast<bool>(windows.shape_control);
+            if (ImGui::MenuItem("Save as DAT", "", false, save_menu_enabled))
+            {
+                const auto filepath = pfd::save_file(
+                    "Select a file", "",
+                    { "DAT", "*.dat" },
+                    pfd::opt::force_overwrite).result();
+
+                if (!filepath.empty())
+                {
+                    shapes::io::dat::save_shapes_as_file(filepath, windows.shape_control->get_triangulation_input_aggregate(), io_err_handler);
+                }
+            }
+            ImGui::Separator();
+            if (ImGui::BeginMenu("Options"))
+            {
+                if (ImGui::MenuItem("Dark Mode", "", &gui_dark_mode))
+                {
+                    imgui_set_style(gui_dark_mode);
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::Separator();
+            application_should_close = ImGui::MenuItem("Quit", "Alt+F4");
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
+    }
 }
 
 } // Anonymous namespace
 
 int main(int argc, char *argv[])
 {
-    UNUSED(argc);
-    UNUSED(argv);
+    // Parse command line
+    const auto args = parse_command_line(argc, argv);
+    if (args["help"])
+    {
+        usage_notes(std::cout);
+        return EXIT_SUCCESS;
+    }
+    if (args["version"])
+    {
+        std::cout << project_title() << std::endl;
+        stdutils::platform::print_compiler_all_info(std::cout);
+        return EXIT_SUCCESS;
+    }
 
-    // Window size
+    // Create GLFW window and load OpenGL
     constexpr int WINDOW_WIDTH = 1280;
     constexpr int WINDOW_HEIGHT = 720;
-
-    // Window title
-    std::stringstream window_title;
-    window_title << "Delaunay Viewer " << get_version_string();
-    std::cout << window_title.str() << std::endl;
-
-    // Setup GLFW window and OpenGL
     stdutils::io::ErrorHandler err_handler(err_callback);
-    GLFWWindowContext glfw_context(WINDOW_WIDTH, WINDOW_HEIGHT, window_title.str(), &err_handler);
-    if (glfw_context.window() == nullptr)
-        return 1;
-    glfwSwapInterval(1);
-    if (!load_opengl(&err_handler))
-        return 1;
-    gl_enable_debug(err_handler);
+    bool any_fatal_err = false;
+    GLFWWindowContext glfw_context = create_glfw_window_load_opengl(WINDOW_WIDTH, WINDOW_HEIGHT, project_title(), any_fatal_err, &err_handler);
+    if (any_fatal_err)
+        return EXIT_FAILURE;
+    assert(glfw_context.window() != nullptr);
 
     // Setup Dear ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    UNUSED(io);
+    const DearImGuiContext dear_imgui_context(glfw_context.window(), any_fatal_err);
+    if (any_fatal_err)
+        return EXIT_FAILURE;
 
-    // Setup Platform/Renderer backends
-    ImGui_ImplGlfw_InitForOpenGL(glfw_context.window(), true);
-    ImGui_ImplOpenGL3_Init(glsl_version());
+    // Print out project version and backend information
+    std::cout << project_title() << std::endl;
+    dear_imgui_context.backend_info(std::cout);
 
-    // Print out version information
-    std::cout << "Dear ImGui " << IMGUI_VERSION << std::endl;
-    std::cout << "GLFW " << GLFW_VERSION_MAJOR << "." << GLFW_VERSION_MINOR << "." << GLFW_VERSION_REVISION << std::endl;
-    std::cout << "OpenGL Version " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "OpenGL Renderer " << glGetString(GL_RENDERER) << std::endl;
-
-    // Style
-    bool imgui_dark_mode = false;
-    imgui_set_style(imgui_dark_mode);
+    // GUI Style
+    bool gui_dark_mode = false;
+    imgui_set_style(gui_dark_mode);
 
     // Application Settings
     Settings settings;
 
     // Application Windows
-    struct AppWindows
-    {
-        std::unique_ptr<SettingsWindow> settings;
-        std::unique_ptr<ViewportWindow> viewport;
-        std::unique_ptr<ShapeWindow> shape_control;
-        struct
-        {
-            WindowLayout settings;
-            WindowLayout viewport;
-            WindowLayout shape_control;
-        } layout;
-    } windows;
+    AppWindows windows;
     windows.settings = std::make_unique<SettingsWindow>(settings);
     windows.viewport = std::make_unique<ViewportWindow>();
     constexpr float WINDOW_SETTINGS_WIDTH = 400.f;
@@ -146,23 +270,25 @@ int main(int argc, char *argv[])
 
     // Steiner callback
     using scalar = ViewportWindow::scalar;
-    windows.viewport->set_steiner_callback([&windows](const shapes::Point2d<scalar>& p) {
+    windows.viewport->set_steiner_callback([&windows, &err_handler](const shapes::Point2d<scalar>& p) {
         if (windows.shape_control) { windows.shape_control->add_steiner_point(p); }
-        else { std::cerr << "Could not add steiner point: No control window" << std::endl; }
+        else { err_handler(stdutils::io::Severity::WARN, "Could not add steiner point: No control window"); }
     });
 
     // Register the Delaunay triangulation implementations
+    if (!delaunay::register_all_implementations())
     {
-        const bool registered_delaunay_impl = delaunay::register_all_implementations();
-        assert(registered_delaunay_impl);
-        if (!registered_delaunay_impl)
-            std::cerr << "Error during Delaunay implementations' registration" << std::endl;
+        err_handler(stdutils::io::Severity::FATAL, "Issue during Delaunay implementations' registration");
+        return EXIT_FAILURE;
     }
 
     // Renderer
     renderer::Draw2D draw_2d_renderer(&err_handler);
     if (!draw_2d_renderer.init())
-        return 1;
+    {
+        err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the renderer");
+        return EXIT_FAILURE;
+    }
 
     // Main loop
     ViewportWindow::Key previously_selected_tab;
@@ -178,113 +304,14 @@ int main(int argc, char *argv[])
         //int iconified = glfwGetWindowAttrib(glfw_context.window(), GLFW_ICONIFIED);
 
         // Start the Dear ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
+        dear_imgui_context.new_frame();
 
         // Main menu
-        if (ImGui::BeginMainMenuBar())
         {
-            const stdutils::io::ErrorHandler io_err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
-            if (ImGui::BeginMenu("File"))
-            {
-                shapes::io::ShapeAggregate<double> shapes;
-                std::string filename = "no_file";
-                if (ImGui::MenuItem("Open CDT"))
-                {
-                    const auto paths = pfd::open_file("Select a CDT file", "",
-                        { "CDT file", "*.cdt", "All files", "*.*" }).result();
-                    for (const auto& path : paths)
-                    {
-                        std::cout << "User selected CDT file " << path << std::endl;
-                        if (shapes::io::cdt::peek_point_dimension(path, io_err_handler) == 2)
-                        {
-                            auto cdt_shapes = shapes::io::cdt::parse_2d_shapes_from_file(path, io_err_handler);
-                            filename = std::filesystem::path(path).filename().string();
-                            shapes.clear();
-                            if (!cdt_shapes.point_cloud.vertices.empty())
-                            {
-                                shapes.emplace_back(std::move(cdt_shapes.point_cloud));
-                            }
-                            if (!cdt_shapes.edges.vertices.empty())
-                            {
-                                auto point_paths = shapes::extract_paths(cdt_shapes.edges);
-                                for (auto& pp: point_paths) { shapes.emplace_back(std::move(pp)); }
-                            }
-                            // Ignore Triangles2d
-                        }
-                        else
-                        {
-                            io_err_handler(stdutils::io::Severity::ERR, "Only support 2D points");
-                        }
-                    }
-                }
-                if (ImGui::MenuItem("Open DAT"))
-                {
-                    const auto paths = pfd::open_file("Select a DAT file", "",
-                        { "DAT file", "*.dat", "All files", "*.*" }).result();
-                    for (const auto& path : paths)
-                    {
-                        std::cout << "User selected DAT file " << path << std::endl;
-                        filename = std::filesystem::path(path).filename().string();
-                        shapes = shapes::io::dat::parse_shapes_from_file(path, io_err_handler);
-                    }
-                }
-                if (ImGui::MenuItem("Open SVG"))
-                {
-                    const auto paths = pfd::open_file("Select a SVG file", "",
-                        { "SVG file", "*.svg" }).result();
-                    for (const auto& path : paths)
-                    {
-                        std::cout << "User selected SVG file " << path << std::endl;
-                        auto file_paths = svg::io::parse_svg_paths(path, io_err_handler);
-                        std::cout << "Nb of point paths: " << file_paths.point_paths.size() << ". Nb of cubic bezier paths: " << file_paths.cubic_bezier_paths.size() << "." << std::endl;
-                        filename = std::filesystem::path(path).filename().string();
-                        shapes.clear();
-                        shapes.reserve(file_paths.point_paths.size() + file_paths.cubic_bezier_paths.size());
-                        for (const auto& pp : file_paths.point_paths)
-                            shapes.emplace_back(std::move(pp));
-                        for (const auto& cbp : file_paths.cubic_bezier_paths)
-                            shapes.emplace_back(std::move(cbp));
-                    }
-                }
-                if (!shapes.empty() && windows.viewport)
-                {
-                    windows.viewport->reset();
-                    draw_2d_renderer.draw_list().reset();
-                    windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), *windows.viewport);
-                }
-                ImGui::Separator();
-                bool save_menu_enabled = static_cast<bool>(windows.shape_control);
-                if (ImGui::MenuItem("Save as DAT", "", false, save_menu_enabled))
-                {
-                    const auto filepath = pfd::save_file(
-                        "Select a file", "",
-                        { "DAT", "*.dat" },
-                        pfd::opt::force_overwrite).result();
-
-                    if (!filepath.empty())
-                    {
-                        shapes::io::dat::save_shapes_as_file(filepath, windows.shape_control->get_triangulation_input_aggregate(), err_handler);
-                    }
-                }
-                ImGui::Separator();
-                if (ImGui::BeginMenu("Options"))
-                {
-                    if (ImGui::MenuItem("Dark Mode", "", &imgui_dark_mode))
-                    {
-                        imgui_set_style(imgui_dark_mode);
-                    }
-                    ImGui::EndMenu();
-                }
-                ImGui::Separator();
-                if (ImGui::MenuItem("Quit", "Alt+F4"))
-                {
-                    glfwSetWindowShouldClose(glfw_context.window(), 1);
-                }
-                ImGui::EndMenu();
-            }
-            ImGui::EndMainMenuBar();
+            bool app_should_close = false;
+            main_menu_bar(windows, draw_2d_renderer, app_should_close, gui_dark_mode);
+            if (app_should_close)
+                glfwSetWindowShouldClose(glfw_context.window(), 1);
         }
 
         // Settings window
@@ -311,7 +338,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        // Fwd draw commands to Viewport
+        // Forward a selection of draw commands to the Viewport. Those will be rendered by ImGui on top of our rendering.
         if (windows.shape_control)
         {
             assert(windows.viewport);
@@ -334,14 +361,15 @@ int main(int argc, char *argv[])
             draw_2d_renderer.set_background_color(windows.viewport->get_background_color());
         }
 
-        // Transfer draw lists to OpenGL renderer
+        // Transfer draw lists to our renderer
         if (windows.shape_control)
         {
             const auto& dcls = windows.shape_control->get_draw_command_lists();
             const auto draw_commands_it = std::find_if(std::cbegin(dcls), std::cend(dcls), [&selected_tab](const auto& kvp) { return kvp.first == selected_tab; });
             if (draw_commands_it != std::cend(dcls))
             {
-                update_opengl_draw_list<scalar>(draw_2d_renderer.draw_list(), draw_commands_it->second, (geometry_has_changed || (selected_tab != previously_selected_tab)), settings);
+                const bool update_buffers = geometry_has_changed || (selected_tab != previously_selected_tab);
+                update_opengl_draw_list<scalar>(draw_2d_renderer.draw_list(), draw_commands_it->second, update_buffers, settings);
                 previously_selected_tab = selected_tab;
             }
         }
@@ -351,19 +379,17 @@ int main(int argc, char *argv[])
         ImGui::ShowDemoWindow();
 #endif
 
-        // Prepare ImGui rendering
-        ImGui::Render();
-
         // OpenGL frame setup
         int display_w, display_h;
         glfwGetFramebufferSize(glfw_context.window(), &display_w, &display_h);
+        const bool is_minimized = (display_w <= 0 || display_h <= 0);
         glViewport(0, 0, display_w, display_h);
-        const auto clear_color = static_cast<ImVec4>(imgui_dark_mode ? WindowMainBackgroundColor_Dark : WindowMainBackgroundColor_Classic);
-        glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+        const auto clear_color = get_background_color(gui_dark_mode);
+        glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Viewport rendering
-        if (windows.viewport && display_w > 0 && display_h > 0)
+        if (windows.viewport && !is_minimized)
         {
             // Rendering flags
             renderer::Flag::type flags = 0;
@@ -378,17 +404,12 @@ int main(int argc, char *argv[])
         }
 
         // Imgui rendering (always on top of the viewport rendering)
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        dear_imgui_context.render();
 
         // End frame
         glfwSwapBuffers(glfw_context.window());
-    } // while (!glfwWindowShouldClose(window))
+    } // while (!glfwWindowShouldClose(glfw_context.window()))
 
-    // Cleanup
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    return 0;
+    return EXIT_SUCCESS;
 }
 

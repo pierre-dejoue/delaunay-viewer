@@ -57,6 +57,9 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
 lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox3d<float>& bb, bool flip_y = false);
 lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox2d<float>& bb, bool flip_y = false, float n = 1.f, float f = -1.f);
 
+// Factory for the GLFW context that also load opengl and enable debugging
+GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const std::string_view& title, bool& any_fatal_error, const stdutils::io::ErrorHandler* err_handler = nullptr);
+
 // Helpers
 template <typename T>
 class GLoffset

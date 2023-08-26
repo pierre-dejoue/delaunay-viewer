@@ -47,7 +47,7 @@ template <typename F, typename I>
 void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& draw_list, const DrawingOptions& options);
 
 template <typename F>
-void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool geometry_has_changed, const Settings& settings);
+void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool update_buffers, const Settings& settings);
 
 //
 // Implementations
@@ -310,7 +310,7 @@ namespace
 }
 
 template <typename F>
-void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool geometry_has_changed, const Settings& settings)
+void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool update_buffers, const Settings& settings)
 {
     DrawingOptions options;
     options.point_settings = settings.read_point_settings();
@@ -322,7 +322,7 @@ void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F
     for (const auto& cmd : draw_commands)
         to_opengl_draw_commands<F>(cmd, draw_list, options);
 
-    if (geometry_has_changed)
+    if (update_buffers)
         draw_list.m_buffer_version++;
 }
 

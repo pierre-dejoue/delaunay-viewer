@@ -3,22 +3,24 @@
 #
 
 # Dependencies
+include(argagg)
 include(pfd)
 add_subdirectory(gl3w)
 add_subdirectory(imgui)
 
-configure_file(src/version.h.in version.h @ONLY)
+configure_file(src/project.h.in project.h @ONLY)
 
 set(GUI_SOURCES
     src/imgui_helpers.cpp
     src/main.cpp
     src/opengl_and_glfw.cpp
+    src/project.cpp
     src/renderer.cpp
     src/settings.cpp
     src/settings_window.cpp
     src/shape_control_window.cpp
+    src/style.cpp
     src/viewport_window.cpp
-    src/version.cpp
 )
 
 file(GLOB GUI_HEADERS src/*.h)
@@ -54,9 +56,14 @@ target_link_libraries(delaunay_viewer
     gl3w
     imgui
     pfd
+    argagg-lib
     stdutils
     lin
     svg
 )
 
 install(TARGETS delaunay_viewer)
+
+add_custom_target(delaunay_viewer_version
+    $<TARGET_FILE:delaunay_viewer> --version
+)

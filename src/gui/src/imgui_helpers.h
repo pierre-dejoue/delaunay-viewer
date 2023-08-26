@@ -8,6 +8,9 @@
 
 #include <imgui_wrap.h>
 
+#include <ostream>
+
+
 template <typename F>
 Canvas<F> build_canvas(ImVec2 tl_corner, ImVec2 size, shapes::BoundingBox2d<F> bb, bool flip_y = false)
 {
@@ -38,3 +41,20 @@ namespace ImGui
 void HelpMarker(const char* desc);          // Function taken from imgui_demo.cpp
 void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond = 0);
 }
+
+// Do not call this class ImGuiContext because this is an internal class of Dear ImGui
+struct GLFWwindow;
+class DearImGuiContext
+{
+public:
+    explicit DearImGuiContext(GLFWwindow* glfw_window, bool& any_fatal_error) noexcept;
+    ~DearImGuiContext();
+    DearImGuiContext(const DearImGuiContext&) = delete;
+    DearImGuiContext(DearImGuiContext&&) = delete;
+    DearImGuiContext& operator=(const DearImGuiContext&) = delete;
+    DearImGuiContext& operator=(DearImGuiContext&&) = delete;
+
+    void new_frame() const;
+    void render() const;
+    void backend_info(std::ostream& out) const;
+};

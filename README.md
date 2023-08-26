@@ -21,6 +21,7 @@ In addition to the triangulation libraries themselves:
 * [Portable File Dialogs](https://github.com/samhocevar/portable-file-dialogs)
 * [simple-svg](https://github.com/jdryg/simple-svg)
 * [bx](https://github.com/bkaradzic/bx) (A dependency of simple-svg)
+* [Argagg](https://github.com/vietjtnguyen/argagg)
 
 ### Other Third Parties
 

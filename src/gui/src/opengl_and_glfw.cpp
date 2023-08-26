@@ -63,7 +63,7 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const std::string_vi
     }
     if (!glfwInit())
     {
-       if (err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "GLFW failed to initialize"); }
+        if (err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "GLFW failed to initialize"); }
         return;
     }
     m_glfw_init = true;
@@ -83,6 +83,7 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const std::string_vi
         return;
     }
     glfwMakeContextCurrent(m_window_ptr);
+    glfwSwapInterval(1);
 }
 
 GLFWWindowContext::~GLFWWindowContext()
@@ -495,6 +496,19 @@ lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox2d<float>& bb, bool flip_y,
     auto bb3d = shapes::BoundingBox3d<float>().add(bb.min().x, bb.min().y, z_range.first).add(bb.max().x, bb.max().y, z_range.second);
     lin::mat4f proj = gl_orth_proj_mat(bb3d, flip_y);
     return proj;
+}
+
+GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const std::string_view& title, bool& any_fatal_error, const stdutils::io::ErrorHandler* err_handler)
+{
+    any_fatal_error = false;
+    GLFWWindowContext glfw_context(width, height, title, err_handler);
+    if (glfw_context.window() == nullptr)
+        any_fatal_error = true;
+    if (!load_opengl(err_handler))
+        any_fatal_error = true;
+    if (err_handler)
+        gl_enable_debug(*err_handler);
+    return glfw_context;
 }
 
 #ifdef _WIN32

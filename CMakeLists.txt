@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(delaunay_viewer
+    DESCRIPTION "Delaunay Viewer"
     VERSION 0.1.0
 )
 
