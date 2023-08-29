@@ -209,6 +209,12 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
                 assert(draw_list);
                 ImVec2 tl_corner = ImGui::GetCursorScreenPos();
                 ImVec2 canvas_sz = ImGui::GetContentRegionAvail();
+                if (canvas_sz.x <= 0.f || canvas_sz.y <= 0.f)
+                {
+                    // Most likely scenario is the window is iconified.
+                    ImGui::EndTabItem();
+                    continue;
+                }
                 ImVec2 br_corner = ImVec2(tl_corner.x + canvas_sz.x, tl_corner.y + canvas_sz.y);
 
                 // Canvas
