@@ -11,11 +11,13 @@ public:
     {
         Parameter::Limits<bool> flip_y;
         Parameter::Limits<bool> imgui_renderer;
+        Parameter::Limits<bool> cdt;
     };
     struct General
     {
         bool flip_y;        // If false, the Y-axis is in the "up" direction.
         bool imgui_renderer;
+        bool cdt;
     };
     struct PointLimits
     {

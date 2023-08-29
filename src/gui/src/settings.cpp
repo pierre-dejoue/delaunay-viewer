@@ -12,6 +12,7 @@ namespace
 
         result.flip_y = Parameter::limits_true;
         result.imgui_renderer = Parameter::limits_true;
+        result.cdt = Parameter::limits_true;
 
         return result;
     }
@@ -78,6 +79,7 @@ const Settings::General& Settings::read_general_settings() const
         general_settings = std::make_unique<General>();
         general_settings->flip_y = read_general_limits().flip_y.def;
         general_settings->imgui_renderer = read_general_limits().imgui_renderer.def;
+        general_settings->cdt = read_general_limits().cdt.def;
     }
     assert(general_settings);
     return *general_settings;

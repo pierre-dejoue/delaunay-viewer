@@ -74,7 +74,7 @@ public:
 
 private:
     void init_bounding_box();
-    void recompute_triangulations(const stdutils::io::ErrorHandler& err_handler);
+    void recompute_triangulations(delaunay::TriangulationPolicy policy, const stdutils::io::ErrorHandler& err_handler);
     void build_draw_lists(const Settings& settings);
     ShapeControl* allocate_new_sampled_shape(const ShapeControl& parent, shapes::AllShapes<scalar>&& shape);
     void delete_sampled_shape(ShapeControl** sc);
@@ -86,6 +86,7 @@ private:
     std::vector<std::unique_ptr<ShapeControl>> m_sampled_shape_controls;
     ShapeControl m_steiner_shape_control;
     std::optional<shapes::Point2d<scalar>> m_new_steiner_pt;
+    delaunay::TriangulationPolicy m_triangulation_policy;
     std::map<std::string, ShapeControl> m_triangulation_shape_controls;
     shapes::BoundingBox2d<scalar> m_geometry_bounding_box;
     DrawCommandLists m_draw_command_lists;

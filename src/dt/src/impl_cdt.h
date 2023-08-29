@@ -18,33 +18,38 @@ template <typename Fc, typename F, typename I = std::uint32_t>
 class CDTImpl : public Interface<F, I>
 {
 public:
-    CDTImpl();
+    CDTImpl(const stdutils::io::ErrorHandler* err_handler = nullptr);
 
-    void add_path(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler) override;
-    void add_hole(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler) override;
-    void add_steiner(const shapes::PointCloud2d<F>& pc, const stdutils::io::ErrorHandler& err_handler) override;
-
-    shapes::Triangles2d<F, I> triangulate(const stdutils::io::ErrorHandler& err_handler) const override;
+    void add_path(const shapes::PointPath2d<F>& pp) override;
+    void add_hole(const shapes::PointPath2d<F>& pp) override;
+    void add_steiner(const shapes::PointCloud2d<F>& pc) override;
 
 private:
+    void triangulate_impl(TriangulationPolicy policy, shapes::Triangles2d<F, I>& result) const override;
+
     std::vector<shapes::Point2d<F>> m_points;
     std::vector<std::pair<I, I>> m_polylines_indices;
     std::vector<bool> m_polylines_closed;
+
+    using Interface<F, I>::m_err_handler;
 };
 
 template <typename Fc, typename F, typename I>
-std::unique_ptr<Interface<F, I>> get_cdt_impl()
+std::unique_ptr<Interface<F, I>> get_cdt_impl(const stdutils::io::ErrorHandler* err_handler)
 {
-    return std::make_unique<CDTImpl<Fc, F, I>>();
+    return std::make_unique<CDTImpl<Fc, F, I>>(err_handler);
 }
 
 //
 // Implementation
 //
-namespace
+namespace details
 {
+namespace cdt
+{
+
     template <typename Fc, typename F>
-    std::vector<CDT::V2d<Fc>> copy_cdt_vertices(const std::vector<shapes::Point2d<F>>& points)
+    std::vector<CDT::V2d<Fc>> copy_vertices(const std::vector<shapes::Point2d<F>>& points)
     {
         std::vector<CDT::V2d<Fc>> result;
         result.reserve(points.size());
@@ -53,17 +58,25 @@ namespace
         });
         return result;
     }
-}
+
+} // namespace cdt
+} // namespace details
 
 template <typename Fc, typename F, typename I>
-CDTImpl<Fc, F, I>::CDTImpl() = default;
+CDTImpl<Fc, F, I>::CDTImpl(const stdutils::io::ErrorHandler* err_handler)
+    : Interface<F,I>(err_handler)
+    , m_points()
+    , m_polylines_indices()
+    , m_polylines_closed()
+{ }
 
 template <typename Fc, typename F, typename I>
-void CDTImpl<Fc, F, I>::add_path(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler)
+void CDTImpl<Fc, F, I>::add_path(const shapes::PointPath2d<F>& pp)
 {
-    if (pp.vertices.size() < 3)
+    assert(shapes::is_valid(pp));
+    if (pp.closed && pp.vertices.size() < 3)
     {
-        err_handler(stdutils::io::Severity::WARN, "Ignored polyline with less than 3 vertices");
+        if (m_err_handler) { m_err_handler(stdutils::io::Severity::WARN, "Ignoring a closed polyline with less than 3 vertices"); }
         return;
     }
 
@@ -77,35 +90,33 @@ void CDTImpl<Fc, F, I>::add_path(const shapes::PointPath2d<F>& pp, const stdutil
 }
 
 template <typename Fc, typename F, typename I>
-void CDTImpl<Fc, F, I>::add_hole(const shapes::PointPath2d<F>& pp, const stdutils::io::ErrorHandler& err_handler)
+void CDTImpl<Fc, F, I>::add_hole(const shapes::PointPath2d<F>& pp)
 {
-    add_path(pp, err_handler);
+    add_path(pp);
 }
 
 template <typename Fc, typename F, typename I>
-void CDTImpl<Fc, F, I>::add_steiner(const shapes::PointCloud2d<F>& pc, const stdutils::io::ErrorHandler& err_handler)
+void CDTImpl<Fc, F, I>::add_steiner(const shapes::PointCloud2d<F>& pc)
 {
     m_points.reserve(m_points.size() + pc.vertices.size());
     m_points.insert(m_points.end(), pc.vertices.begin(), pc.vertices.end());
 }
 
 template <typename Fc, typename F, typename I>
-shapes::Triangles2d<F, I> CDTImpl<Fc, F, I>::triangulate(const stdutils::io::ErrorHandler& err_handler) const
+void CDTImpl<Fc, F, I>::triangulate_impl(TriangulationPolicy policy, shapes::Triangles2d<F, I>& result) const
 {
-    shapes::Triangles2d<F, I> result;
     if (m_points.size() < 3)
     {
-        err_handler(stdutils::io::Severity::ERR, "Not enough points to triangulate. The output will be empty.");
-        return result;
+        if (m_err_handler) { m_err_handler(stdutils::io::Severity::WARN, "Not enough points to triangulate. The output will be empty."); }
+        return;
     }
-    try
+
+    CDT::Triangulation<Fc> cdt;
+    std::vector<CDT::V2d<Fc>> vertices = details::cdt::copy_vertices<Fc, F>(m_points);
+    cdt.insertVertices(vertices);
+    CDT::EdgeVec edges;
+    if (policy == TriangulationPolicy::CDT)
     {
-        CDT::Triangulation<Fc> cdt;
-
-        std::vector<CDT::V2d<Fc>> vertices = copy_cdt_vertices<Fc, F>(m_points);
-        cdt.insertVertices(vertices);
-
-        CDT::EdgeVec edges;
         assert(m_polylines_indices.size() == m_polylines_closed.size());
         std::size_t polyline_idx = 0;
         for (const auto& [begin, end] : m_polylines_indices)
@@ -118,44 +129,34 @@ shapes::Triangles2d<F, I> CDTImpl<Fc, F, I>::triangulate(const stdutils::io::Err
             }
             if (m_polylines_closed.at(polyline_idx++))
             {
-                assert(begin != (end-1));        // polylines with size <= 2 are rejected in add_path/add_hole
+                assert(begin != (end-1));        // closed polylines with size < 3 are rejected in add_path/add_hole
                 edges.emplace_back(static_cast<CDT::VertInd>(end - 1), static_cast<CDT::VertInd>(begin));
             }
         }
         cdt.insertEdges(edges);
-        if (edges.empty())
-        {
-            // Delaunay triangulation of a point cloud
-            cdt.eraseSuperTriangle();
-        }
-        else
-        {
-            // Constrained Delaunay triangulation
-            cdt.eraseOuterTrianglesAndHoles();
-        }
-        const auto cdt_triangles = cdt.triangles;
-
-        result.vertices = m_points;
-        result.faces.reserve(cdt_triangles.size());
-        for (const auto& triangle : cdt_triangles)
-        {
-            result.faces.emplace_back(
-                static_cast<I>(triangle.vertices[0]),
-                static_cast<I>(triangle.vertices[1]),
-                static_cast<I>(triangle.vertices[2])
-            );
-        }
     }
-    catch(const std::exception& e)
+    if (edges.empty())
     {
-        result.vertices.clear();
-        result.faces.clear();
-        std::stringstream out;
-        out << "CDT exception: " << e.what();
-        err_handler(stdutils::io::Severity::EXCPT, out.str());
+        // Delaunay triangulation of a point cloud
+        cdt.eraseSuperTriangle();
     }
-    assert(is_valid(result));
-    return result;
+    else
+    {
+        // Constrained Delaunay triangulation
+        cdt.eraseOuterTrianglesAndHoles();
+    }
+    const auto cdt_triangles = cdt.triangles;
+
+    result.vertices = m_points;
+    result.faces.reserve(cdt_triangles.size());
+    for (const auto& triangle : cdt_triangles)
+    {
+        result.faces.emplace_back(
+            static_cast<I>(triangle.vertices[0]),
+            static_cast<I>(triangle.vertices[1]),
+            static_cast<I>(triangle.vertices[2])
+        );
+    }
 }
 
 } // namespace delaunay

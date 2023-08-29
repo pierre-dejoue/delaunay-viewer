@@ -107,6 +107,7 @@ ShapeWindow::ShapeWindow(
     , m_sampled_shape_controls()
     , m_steiner_shape_control(shapes::PointCloud2d<scalar>())
     , m_new_steiner_pt()
+    , m_triangulation_policy(delaunay::TriangulationPolicy::PointCloud)
     , m_triangulation_shape_controls()
     , m_geometry_bounding_box()
     , m_draw_command_lists()
@@ -134,7 +135,7 @@ void ShapeWindow::init_bounding_box()
     shapes::ensure_min_extent(m_geometry_bounding_box);
 }
 
-void ShapeWindow::recompute_triangulations(const stdutils::io::ErrorHandler& err_handler)
+void ShapeWindow::recompute_triangulations(delaunay::TriangulationPolicy policy, const stdutils::io::ErrorHandler& err_handler)
 {
     std::chrono::duration<float, std::milli> duration;
     for (const auto& algo : delaunay::get_impl_list<double>())
@@ -143,7 +144,7 @@ void ShapeWindow::recompute_triangulations(const stdutils::io::ErrorHandler& err
             stdutils::chrono::DurationMeas meas(duration);
 
             // Setup triangulation
-            auto triangulation_algo = algo.impl_factory();
+            auto triangulation_algo = delaunay::make_dt_algo(algo, &err_handler);
             assert(triangulation_algo);
             bool first_path = true;
             std::vector<const ShapeControl*> active_shapes;
@@ -165,17 +166,17 @@ void ShapeWindow::recompute_triangulations(const stdutils::io::ErrorHandler& err
             for (const auto* shape_control_ptr : active_shapes)
             {
                 std::visit(stdutils::Overloaded {
-                    [&triangulation_algo, &err_handler](const shapes::PointCloud2d<scalar>& pc) { triangulation_algo->add_steiner(pc, err_handler); },
-                    [&triangulation_algo, &err_handler, &first_path](const shapes::PointPath2d<scalar>& pp) {
-                        if (first_path && pp.vertices.size() >= 3) { triangulation_algo->add_path(pp, err_handler); first_path = false; }
-                        else { triangulation_algo->add_hole(pp, err_handler); }
+                    [&triangulation_algo](const shapes::PointCloud2d<scalar>& pc) { triangulation_algo->add_steiner(pc); },
+                    [&triangulation_algo, &first_path](const shapes::PointPath2d<scalar>& pp) {
+                        if (first_path) { triangulation_algo->add_path(pp); first_path = false; }
+                        else { triangulation_algo->add_hole(pp); }
                     },
                     [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
                     [](const auto&) { assert(0); }
                 }, shape_control_ptr->shape);
             }
             // Triangulate
-            auto triangulation = triangulation_algo->triangulate(err_handler);
+            auto triangulation = triangulation_algo->triangulate(policy);
             if (m_triangulation_shape_controls.count(algo.name) > 0)
                 m_triangulation_shape_controls.at(algo.name).update(std::move(triangulation));
             else
@@ -206,23 +207,28 @@ void ShapeWindow::build_draw_lists(const Settings& settings)
             draw_command_list.emplace_back(m_steiner_shape_control.to_draw_command(settings));
         }
     }
+    const auto triangulation_policy = settings.read_general_settings().cdt ? delaunay::TriangulationPolicy::CDT :  delaunay::TriangulationPolicy::PointCloud;
+    constexpr bool CONSTRAINED_EDGES = true;
     for (const auto& [algo_name, shape_control_delaunay] : m_triangulation_shape_controls)
     {
         auto& draw_command_list = m_draw_command_lists.emplace_back(algo_name, DrawCommands<scalar>()).second;
         draw_command_list.emplace_back(shape_control_delaunay.to_draw_command(settings));
-        for (const auto& shape_control : m_input_shape_controls)
+        if (triangulation_policy == delaunay::TriangulationPolicy::CDT)
         {
-            if (shape_control.active && !shapes::is_bezier_path(shape_control.shape))
+            for (const auto& shape_control : m_input_shape_controls)
             {
-                draw_command_list.emplace_back(shape_control.to_draw_command(settings, true));
+                if (shape_control.active && !shapes::is_bezier_path(shape_control.shape))
+                {
+                    draw_command_list.emplace_back(shape_control.to_draw_command(settings, CONSTRAINED_EDGES));
+                }
             }
-        }
-        for (const auto& shape_control_ptr : m_sampled_shape_controls)
-        {
-            if (shape_control_ptr->active)
+            for (const auto& shape_control_ptr : m_sampled_shape_controls)
             {
-                assert(!shapes::is_bezier_path(shape_control_ptr->shape));
-                draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings, true));
+                if (shape_control_ptr->active)
+                {
+                    assert(!shapes::is_bezier_path(shape_control_ptr->shape));
+                    draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings, CONSTRAINED_EDGES));
+                }
             }
         }
         if(m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
@@ -377,11 +383,13 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
 
 void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz, bool& geometry_has_changed)
 {
-    UNUSED(settings);
     geometry_has_changed = m_first_visit;
     m_first_visit = false;
 
-    stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode, std::string_view msg) { std::cerr << msg << std::endl; };
+    stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode code, std::string_view msg) { std::cout << stdutils::io::str_severity_code(code) << ": " << msg << std::endl; };
+
+    const auto triangulation_policy = settings.read_general_settings().cdt ? delaunay::TriangulationPolicy::CDT :  delaunay::TriangulationPolicy::PointCloud;
+    geometry_has_changed |= triangulation_policy != m_triangulation_policy;
 
     ImGui::SetNextWindowPosAndSize(win_pos_sz);
     constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoCollapse
@@ -505,7 +513,10 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const Win
 
     // Triangulate
     if (geometry_has_changed)
-        recompute_triangulations(err_handler);
+    {
+        recompute_triangulations(triangulation_policy, err_handler);
+        m_triangulation_policy = triangulation_policy;
+    }
 
     // Triangulation shapes
     for (auto& triangulation_shape_control_pair : m_triangulation_shape_controls)
