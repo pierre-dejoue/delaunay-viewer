@@ -309,6 +309,26 @@ TEST_CASE("EdgeSoup: nb_vertices and remap indices", "[graphs]")
     }
 }
 
+TEST_CASE("Algo: Extract paths of empty edge soup", "[graphs]")
+{
+    EdgeSoup<> test;
+    REQUIRE(is_valid(test) == true);
+    const auto paths = extract_paths(test);
+    CHECK(paths.empty());
+}
+
+TEST_CASE("Algo: Extract paths of a edge soup with a single edge", "[graphs]")
+{
+    using I = std::uint32_t;
+    EdgeSoup<I> test;
+    test.push_back(std::make_pair<I, I>(2, 4));
+    REQUIRE(is_valid(test) == true);
+    const auto paths = extract_paths(test);
+    REQUIRE(paths.size() == 1);
+    CHECK(paths[0].closed == false);
+    CHECK(paths[0].vertices.size() == 2);
+}
+
 TEST_CASE("Algo: Extract paths from edge soup", "[graphs]")
 {
     struct TestCase

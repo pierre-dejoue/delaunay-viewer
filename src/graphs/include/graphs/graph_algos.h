@@ -611,6 +611,9 @@ std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges)
 {
     assert(is_valid(edges));
     std::vector<Path<I>> result;
+    if (edges.empty())
+        return result;
+
     std::vector<std::pair<I, std::size_t>> degrees = details::vertex_degree(edges);
     const auto max_deg = std::max_element(std::cbegin(degrees), std::cend(degrees), [](const auto& a, const auto& b) { return a.second < b.second; })->second;
 
