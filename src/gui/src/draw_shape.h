@@ -107,8 +107,29 @@ void draw_point_cloud(const shapes::PointCloud2d<F>& pc, ImDrawList* draw_list, 
 template <typename F>
 void draw_point_cloud(const shapes::PointCloud2d<F>& pc, renderer::DrawList& draw_list, const DrawingOptions& options)
 {
-    UNUSED(pc); UNUSED(draw_list); UNUSED(options);
-    // TBI
+    const auto begin_vertex_idx = draw_list.m_vertices.size();
+    const std::size_t nb_vertices = pc.vertices.size();
+    draw_list.m_vertices.reserve(begin_vertex_idx + nb_vertices);
+    std::transform(std::cbegin(pc.vertices), std::cend(pc.vertices), std::back_inserter(draw_list.m_vertices), [](const shapes::Point2d<F>& p) {
+        return renderer::DrawList::VertexData{ static_cast<float>(p.x), static_cast<float>(p.y), 0.f };
+    });
+    const auto begin_indices_idx = draw_list.m_indices.size();
+    draw_list.m_indices.reserve(begin_indices_idx + nb_vertices);
+    for (std::size_t idx = 0; idx < nb_vertices; idx++)
+    {
+        draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + idx));
+    }
+    const auto end_indices_idx = draw_list.m_indices.size();
+
+    // Show/no_show is decided by the presence of a DrawCmd (do not modify the vertices and indices buffers)
+    if (options.point_settings.show)
+    {
+        auto& draw_call = draw_list.m_draw_calls.emplace_back();
+        draw_call.m_range = std::make_pair(begin_indices_idx, end_indices_idx);
+        draw_call.m_uniform_color = options.point_color;
+        draw_call.m_uniform_point_size = std::max(1.f, options.point_settings.size);
+        draw_call.m_cmd = renderer::DrawCmd::Points;
+    }
 }
 
 template <typename F>
@@ -118,9 +139,10 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, ImDrawList* draw_list, co
     const std::size_t nb_vertices = pp.vertices.size();
     if (options.path_settings.show)
     {
-        assert(shapes::nb_edges(pp) <= nb_vertices);
+        const auto nb_edges = shapes::nb_edges(pp);
+        assert(nb_edges <= nb_vertices);
         const ImU32 color = details::to_compact_color(options.edge_color);
-        for (std::size_t idx = 0; idx < shapes::nb_edges(pp); idx++)
+        for (std::size_t idx = 0; idx < nb_edges; idx++)
         {
             const shapes::Point2d<F>& p0 = pp.vertices[idx];
             const shapes::Point2d<F>& p1 = pp.vertices[(idx + 1) % nb_vertices];
@@ -145,23 +167,38 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, renderer::DrawList& draw_
     std::transform(std::cbegin(pp.vertices), std::cend(pp.vertices), std::back_inserter(draw_list.m_vertices), [](const shapes::Point2d<F>& p) {
         return renderer::DrawList::VertexData{ static_cast<float>(p.x), static_cast<float>(p.y), 0.f };
     });
-    assert(shapes::nb_edges(pp) <= pp.vertices.size());
-    const auto begin_indices_idx = draw_list.m_indices.size();
-    draw_list.m_indices.reserve(begin_indices_idx + 2 * shapes::nb_edges(pp));
-    for (std::size_t idx = 0; idx < shapes::nb_edges(pp); idx++)
+    const auto nb_edges = shapes::nb_edges(pp);
+    assert(nb_edges <= pp.vertices.size());
+    const auto begin_edge_indices_idx = draw_list.m_indices.size();
+    draw_list.m_indices.reserve(begin_edge_indices_idx + 2 * nb_edges + nb_vertices);
+    for (std::size_t idx = 0; idx < nb_edges; idx++)
     {
         draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + idx));
         draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + ((idx + 1) % nb_vertices)));
     }
-    const auto end_indices_idx = draw_list.m_indices.size();
+    const auto end_edge_indices_idx = draw_list.m_indices.size();
+    const auto begin_point_indices_idx = end_edge_indices_idx;
+    for (std::size_t idx = 0; idx < nb_vertices; idx++)
+    {
+        draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + idx));
+    }
+    const auto end_point_indices_idx = draw_list.m_indices.size();
 
     // Show/no_show is decided by the presence of a DrawCmd (do not modify the vertices and indices buffers)
     if (options.path_settings.show)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
-        draw_call.m_range = std::make_pair(begin_indices_idx, end_indices_idx);
+        draw_call.m_range = std::make_pair(begin_edge_indices_idx, end_edge_indices_idx);
         draw_call.m_uniform_color = options.edge_color;
         draw_call.m_cmd = renderer::DrawCmd::Lines;
+    }
+    if (options.point_settings.show)
+    {
+        auto& draw_call = draw_list.m_draw_calls.emplace_back();
+        draw_call.m_range = std::make_pair(begin_point_indices_idx, end_point_indices_idx);
+        draw_call.m_uniform_color = options.point_color;
+        draw_call.m_uniform_point_size = std::max(1.f, options.point_settings.size);
+        draw_call.m_cmd = renderer::DrawCmd::Points;
     }
 }
 
@@ -172,7 +209,8 @@ void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList*
     if (options.path_settings.show)
     {
         const ImU32 color = details::to_compact_color(options.edge_color);
-        for (std::size_t idx = 0; idx < shapes::nb_edges(cbp); idx++)
+        const auto nb_edges = shapes::nb_edges(cbp);
+        for (std::size_t idx = 0; idx < nb_edges; idx++)
         {
             assert(3 * idx + 2 < cbp.vertices.size());
             const shapes::Point2d<F>& p0 = cbp.vertices[3 * idx];
@@ -198,7 +236,8 @@ template <typename F>
 void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, renderer::DrawList& draw_list, const DrawingOptions& options)
 {
     UNUSED(cbp); UNUSED(draw_list); UNUSED(options);
-    // TBI
+    // To be implemented
+    // For now, the cubic Bezier curves are rendered thanks to ImGui primitives, on top of our rendering of the other shapes.
 }
 
 template <typename F, typename I>
@@ -253,7 +292,7 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
         return renderer::DrawList::VertexData{ static_cast<float>(p.x), static_cast<float>(p.y), 0.f };
     });
     const auto begin_face_indices_idx = draw_list.m_indices.size();
-    draw_list.m_indices.reserve(begin_face_indices_idx + 9 * tri.faces.size());
+    draw_list.m_indices.reserve(begin_face_indices_idx + 9 * tri.faces.size() + nb_vertices);
     for (const auto& face : tri.faces)
     {
         draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + face[0]));
@@ -272,6 +311,12 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
         draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + face[0]));
     }
     const auto end_edge_indices_idx = draw_list.m_indices.size();
+    const auto begin_point_indices_idx = end_edge_indices_idx;
+    for (std::size_t idx = 0; idx < nb_vertices; idx++)
+    {
+        draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + idx));
+    }
+    const auto end_point_indices_idx = draw_list.m_indices.size();
 
     // Show/no_show is decided by the presence of a DrawCmd (do not modify the vertices and indices buffers)
     if (options.surface_settings.show)
@@ -287,6 +332,14 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
         draw_call.m_range = std::make_pair(begin_edge_indices_idx, end_edge_indices_idx);
         draw_call.m_uniform_color = options.edge_color;
         draw_call.m_cmd = renderer::DrawCmd::Lines;
+    }
+    if (options.point_settings.show)
+    {
+        auto& draw_call = draw_list.m_draw_calls.emplace_back();
+        draw_call.m_range = std::make_pair(begin_point_indices_idx, end_point_indices_idx);
+        draw_call.m_uniform_color = options.point_color;
+        draw_call.m_uniform_point_size = std::max(1.f, options.point_settings.size);
+        draw_call.m_cmd = renderer::DrawCmd::Points;
     }
 }
 

@@ -19,6 +19,7 @@ using ColorData = std::array<float, 4>;                     // r, g, b, a
 
 enum class DrawCmd
 {
+    Points,
     Lines,
     Triangles,
 };
@@ -34,6 +35,7 @@ struct DrawList
         DrawCall();
         IndexRange  m_range;
         ColorData   m_uniform_color;
+        float       m_uniform_point_size;
         DrawCmd     m_cmd;
     };
 

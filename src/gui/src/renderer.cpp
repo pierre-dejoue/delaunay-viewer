@@ -22,12 +22,14 @@ namespace
 const char* vertex_shader_source = R"SRC(
 
 layout (location = 0) in vec3 v_pos;
-uniform vec4 uni_color;
 uniform mat4 mat_proj;
+uniform vec4 uni_color;
+uniform float pt_size;
 out vec4 color;
 void main()
 {
     gl_Position = mat_proj * vec4(v_pos, 1.0);
+    gl_PointSize = pt_size;
     color = uni_color;
 }
 
@@ -48,6 +50,8 @@ unsigned int to_gl_draw_cmd(DrawCmd cmd)
 {
     switch (cmd)
     {
+        case renderer::DrawCmd::Points:
+            return GL_POINTS;
         case renderer::DrawCmd::Lines:
             return GL_LINES;
         case renderer::DrawCmd::Triangles:
@@ -63,6 +67,7 @@ unsigned int to_gl_draw_cmd(DrawCmd cmd)
 DrawList::DrawCall::DrawCall()
     : m_range(0, 0)
     , m_uniform_color({1.f, 0.f, 0.f, 1.f})
+    , m_uniform_point_size(1.f)
     , m_cmd(renderer::DrawCmd::Lines)
 {}
 
@@ -95,6 +100,7 @@ struct Draw2D::Impl
     {
         GLuint mat_proj = 0u;
         GLuint uni_color = 0u;
+        GLuint pt_size = 0u;
         GLuint v_pos = 0u;
     };
 
@@ -128,6 +134,7 @@ struct Draw2D::Impl
         bool success = true;
         success &= gl_get_uniform_location(gl_program_id, "mat_proj", &gl_locations.mat_proj, err_handler);
         success &= gl_get_uniform_location(gl_program_id, "uni_color", &gl_locations.uni_color, err_handler);
+        success &= gl_get_uniform_location(gl_program_id, "pt_size", &gl_locations.pt_size, err_handler);
         success &= gl_get_attrib_location(gl_program_id, "v_pos", &gl_locations.v_pos, err_handler);
 
         glGenVertexArrays(N_VAOS, &gl_vaos[0]);
@@ -139,6 +146,8 @@ struct Draw2D::Impl
         glDisable(GL_CULL_FACE);
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_STENCIL_TEST);
+
+        glEnable(GL_PROGRAM_POINT_SIZE);
 
         return success;
     }
@@ -162,6 +171,7 @@ struct Draw2D::Impl
         glUseProgram(gl_program_id);
         glUniformMatrix4fv(static_cast<GLint>(gl_locations.mat_proj), 1, GL_TRUE, mat_proj.data());
         glUniform4fv(static_cast<GLint>(gl_locations.uni_color), 1, background_color.data());
+        glUniform1f(static_cast<GLint>(gl_locations.pt_size), 1.f);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glUseProgram(0);
         glBindVertexArray(0);
@@ -193,6 +203,7 @@ struct Draw2D::Impl
             assert(draw_call.m_range.first <= draw_call.m_range.second);
             const auto count = static_cast<GLsizei>(draw_call.m_range.second - draw_call.m_range.first);
             glUniform4fv(static_cast<GLint>(gl_locations.uni_color), 1, draw_call.m_uniform_color.data());
+            glUniform1f(static_cast<GLint>(gl_locations.pt_size), draw_call.m_uniform_point_size);
             glDrawElements(to_gl_draw_cmd(draw_call.m_cmd), count, GL_UNSIGNED_INT, GLoffsetui(draw_call.m_range.first));
         }
         glUseProgram(0);
@@ -235,7 +246,7 @@ struct Draw2D::Impl
 
 Draw2D::Draw2D(const stdutils::io::ErrorHandler* err_handler)
     : p_impl(std::make_unique<Impl>(err_handler))
-{}
+{ }
 
 Draw2D::~Draw2D() = default;
 
