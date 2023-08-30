@@ -375,7 +375,7 @@ int main(int argc, char *argv[])
         }
 
 #if DELAUNAY_VIEWER_IMGUI_DEMO_FLAG
-        // Dear Imgui Demo
+        // Dear ImGui Demo
         ImGui::ShowDemoWindow();
 #endif
 
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
             draw_2d_renderer.render(canvas, static_cast<float>(display_h), flags);
         }
 
-        // Imgui rendering (always on top of the viewport rendering)
+        // ImGui rendering (always on top of the viewport rendering)
         dear_imgui_context.render();
 
         // End frame

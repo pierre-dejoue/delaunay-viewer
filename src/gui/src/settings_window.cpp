@@ -40,7 +40,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
         ImGui::BulletText("General");
         ImGui::Indent();
         ImGui::Checkbox("Flip Y-axis", &(general_settings->flip_y));
-        ImGui::Checkbox("Imgui Renderer", &(general_settings->imgui_renderer));
+        ImGui::Checkbox("Use ImGui Shape Renderer", &(general_settings->imgui_renderer));
         ImGui::Checkbox("Constrained Delaunay", &(general_settings->cdt));
         ImGui::Unindent();
     }

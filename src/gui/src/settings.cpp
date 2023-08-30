@@ -11,7 +11,7 @@ namespace
         Settings::GeneralLimits result;
 
         result.flip_y = Parameter::limits_true;
-        result.imgui_renderer = Parameter::limits_true;
+        result.imgui_renderer = Parameter::limits_false;
         result.cdt = Parameter::limits_true;
 
         return result;
