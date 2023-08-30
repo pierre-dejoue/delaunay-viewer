@@ -138,51 +138,56 @@ void ShapeWindow::init_bounding_box()
 void ShapeWindow::recompute_triangulations(delaunay::TriangulationPolicy policy, const stdutils::io::ErrorHandler& err_handler)
 {
     std::chrono::duration<float, std::milli> duration;
+    shapes::Triangles2d<scalar> triangulation;
     for (const auto& algo : delaunay::get_impl_list<double>())
     {
+        // Setup triangulation
+        m_triangulation_shape_controls.try_emplace(algo.name);
+        auto triangulation_algo = delaunay::make_dt_algo(algo, &err_handler);
+        assert(triangulation_algo);
+        bool first_path = true;
+        std::vector<const ShapeControl*> active_shapes;
+        for (const auto& shape_control : m_input_shape_controls)
+        {
+            if (shape_control.active)
+                active_shapes.emplace_back(&shape_control);
+        }
+        for (const auto& shape_control_ptr : m_sampled_shape_controls)
+        {
+            assert(shape_control_ptr);
+            if (shape_control_ptr->active)
+                active_shapes.emplace_back(shape_control_ptr.get());
+        }
+        if (m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
+        {
+            active_shapes.emplace_back(&m_steiner_shape_control);
+        }
+        for (const auto* shape_control_ptr : active_shapes)
+        {
+            std::visit(stdutils::Overloaded {
+                [&triangulation_algo](const shapes::PointCloud2d<scalar>& pc) { triangulation_algo->add_steiner(pc); },
+                [&triangulation_algo, &first_path](const shapes::PointPath2d<scalar>& pp) {
+                    if (first_path) { triangulation_algo->add_path(pp); first_path = false; }
+                    else { triangulation_algo->add_hole(pp); }
+                },
+                [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
+                [](const auto&) { assert(0); }
+            }, shape_control_ptr->shape);
+        }
+
+        // Triangulate
         {
             stdutils::chrono::DurationMeas meas(duration);
-
-            // Setup triangulation
-            auto triangulation_algo = delaunay::make_dt_algo(algo, &err_handler);
-            assert(triangulation_algo);
-            bool first_path = true;
-            std::vector<const ShapeControl*> active_shapes;
-            for (const auto& shape_control : m_input_shape_controls)
-            {
-                if (shape_control.active)
-                    active_shapes.emplace_back(&shape_control);
-            }
-            for (const auto& shape_control_ptr : m_sampled_shape_controls)
-            {
-                assert(shape_control_ptr);
-                if (shape_control_ptr->active)
-                    active_shapes.emplace_back(shape_control_ptr.get());
-            }
-            if (m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
-            {
-                active_shapes.emplace_back(&m_steiner_shape_control);
-            }
-            for (const auto* shape_control_ptr : active_shapes)
-            {
-                std::visit(stdutils::Overloaded {
-                    [&triangulation_algo](const shapes::PointCloud2d<scalar>& pc) { triangulation_algo->add_steiner(pc); },
-                    [&triangulation_algo, &first_path](const shapes::PointPath2d<scalar>& pp) {
-                        if (first_path) { triangulation_algo->add_path(pp); first_path = false; }
-                        else { triangulation_algo->add_hole(pp); }
-                    },
-                    [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
-                    [](const auto&) { assert(0); }
-                }, shape_control_ptr->shape);
-            }
-            // Triangulate
-            auto triangulation = triangulation_algo->triangulate(policy);
-            if (m_triangulation_shape_controls.count(algo.name) > 0)
-                m_triangulation_shape_controls.at(algo.name).update(std::move(triangulation));
-            else
-                m_triangulation_shape_controls.emplace(algo.name, std::move(triangulation));
+            triangulation = triangulation_algo->triangulate(policy);
         }
-        m_triangulation_shape_controls.at(algo.name).latest_computation_time_ms = duration.count();
+
+        // Update or create the output shape controls
+        if (m_triangulation_shape_controls.at(algo.name).delaunay_triangulation)
+            m_triangulation_shape_controls.at(algo.name).delaunay_triangulation->update(std::move(triangulation));
+        else
+            m_triangulation_shape_controls.at(algo.name).delaunay_triangulation = std::make_unique<ShapeControl>(std::move(triangulation));
+        assert(m_triangulation_shape_controls.at(algo.name).delaunay_triangulation);
+        m_triangulation_shape_controls.at(algo.name).delaunay_triangulation->latest_computation_time_ms = duration.count();
     }
 }
 
@@ -209,8 +214,11 @@ void ShapeWindow::build_draw_lists(const Settings& settings)
     }
     const auto triangulation_policy = settings.read_general_settings().cdt ? delaunay::TriangulationPolicy::CDT :  delaunay::TriangulationPolicy::PointCloud;
     constexpr bool CONSTRAINED_EDGES = true;
-    for (const auto& [algo_name, shape_control_delaunay] : m_triangulation_shape_controls)
+    for (const auto& [algo_name, triangulation_output] : m_triangulation_shape_controls)
     {
+        if (!triangulation_output.delaunay_triangulation)
+            continue;
+        const auto& shape_control_delaunay = *triangulation_output.delaunay_triangulation;
         auto& draw_command_list = m_draw_command_lists.emplace_back(algo_name, DrawCommands<scalar>()).second;
         draw_command_list.emplace_back(shape_control_delaunay.to_draw_command(settings));
         if (triangulation_policy == delaunay::TriangulationPolicy::CDT)
@@ -519,10 +527,11 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const Win
     }
 
     // Triangulation shapes
-    for (auto& triangulation_shape_control_pair : m_triangulation_shape_controls)
+    for (auto& [algo_name, triangulation_output] : m_triangulation_shape_controls)
     {
-        const std::string& algo_name = triangulation_shape_control_pair.first;
-        auto& triangulation_shape_control = triangulation_shape_control_pair.second;
+        if (!triangulation_output.delaunay_triangulation)
+            continue;
+        auto& triangulation_shape_control = *triangulation_output.delaunay_triangulation;
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
         if (ImGui::TreeNode(algo_name.c_str()))
         {

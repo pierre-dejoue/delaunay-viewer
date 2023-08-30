@@ -29,6 +29,27 @@ class ShapeWindow
 {
 public:
     using scalar = ViewportWindow::scalar;
+    using Key = typename ViewportWindow::Key;
+    using DrawCommandListKVP = std::pair<Key, DrawCommands<scalar>>;
+    using DrawCommandLists = std::vector<DrawCommandListKVP>;
+
+    ShapeWindow(
+        std::string_view name,
+        std::vector<shapes::AllShapes<scalar>>&& shapes,
+        ViewportWindow& viewport_window);
+    ~ShapeWindow();
+    ShapeWindow(const ShapeWindow&) = delete;
+    ShapeWindow& operator=(const ShapeWindow&) = delete;
+
+    void visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz, bool& input_has_changed);
+
+    const DrawCommandLists& get_draw_command_lists() const;
+
+    shapes::io::ShapeAggregate<scalar> get_triangulation_input_aggregate() const;
+
+    void add_steiner_point(const shapes::Point2d<scalar>& pt);
+
+private:
     struct ShapeControl
     {
         ShapeControl(shapes::AllShapes<scalar>&& shape);
@@ -51,28 +72,13 @@ public:
         float sampling_length;
         ShapeControl* sampled_shape;
     };
+    using ShapeControlPtr = std::unique_ptr<ShapeControl>;
 
-    using Key = typename ViewportWindow::Key;
-    using DrawCommandListKVP = std::pair<Key, DrawCommands<scalar>>;
-    using DrawCommandLists = std::vector<DrawCommandListKVP>;
+    struct TriangulationOutput
+    {
+        ShapeControlPtr delaunay_triangulation;
+    };
 
-    ShapeWindow(
-        std::string_view name,
-        std::vector<shapes::AllShapes<scalar>>&& shapes,
-        ViewportWindow& viewport_window);
-    ~ShapeWindow();
-    ShapeWindow(const ShapeWindow&) = delete;
-    ShapeWindow& operator=(const ShapeWindow&) = delete;
-
-    void visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz, bool& input_has_changed);
-
-    const DrawCommandLists& get_draw_command_lists() const;
-
-    shapes::io::ShapeAggregate<scalar> get_triangulation_input_aggregate() const;
-
-    void add_steiner_point(const shapes::Point2d<scalar>& pt);
-
-private:
     void init_bounding_box();
     void recompute_triangulations(delaunay::TriangulationPolicy policy, const stdutils::io::ErrorHandler& err_handler);
     void build_draw_lists(const Settings& settings);
@@ -87,7 +93,7 @@ private:
     ShapeControl m_steiner_shape_control;
     std::optional<shapes::Point2d<scalar>> m_new_steiner_pt;
     delaunay::TriangulationPolicy m_triangulation_policy;
-    std::map<std::string, ShapeControl> m_triangulation_shape_controls;
+    std::map<std::string, TriangulationOutput> m_triangulation_shape_controls;
     shapes::BoundingBox2d<scalar> m_geometry_bounding_box;
     DrawCommandLists m_draw_command_lists;
     bool m_first_visit;
