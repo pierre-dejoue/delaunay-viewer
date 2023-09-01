@@ -173,7 +173,7 @@ Ret open_and_parse_file(const std::filesystem::path& filepath, const StreamParse
     catch(const std::exception& e)
     {
         std::stringstream oss;
-        oss << "Exception: " << e.what();
+        oss << "stdutils::io::open_and_parse_file(): " << e.what();
         err_handler(stdutils::io::Severity::EXCPT, oss.str());
     }
     return Ret();
@@ -199,7 +199,7 @@ void save_file(const std::filesystem::path& filepath, const StreamWriter<Obj, Ch
     catch(const std::exception& e)
     {
         std::stringstream oss;
-        oss << "Exception: " << e.what();
+        oss << "stdutils::io::save_file(): " << e.what();
         err_handler(stdutils::io::Severity::EXCPT, oss.str());
     }
 }
