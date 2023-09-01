@@ -177,6 +177,17 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
                         shapes.emplace_back(std::move(cbp));
                 }
             }
+            const auto filtered_out = std::remove_if(std::begin(shapes), std::end(shapes), [](const auto& shape) {
+                if (shapes::get_dimension(shape) != 2)
+                {
+                    std::stringstream out;
+                    out << "Input shape of type " << shapes::get_type_str(shape) << " is not supported and was filtered out";
+                    err_callback(stdutils::io::Severity::ERR, out.str());
+                    return true;
+                }
+                return false;
+            });
+            shapes.erase(filtered_out, shapes.end());
             if (!shapes.empty() && windows.viewport)
             {
                 windows.viewport->reset();
@@ -187,13 +198,13 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
             bool save_menu_enabled = static_cast<bool>(windows.shape_control);
             if (ImGui::MenuItem("Save as DAT", "", false, save_menu_enabled))
             {
-                const auto filepath = pfd::save_file(
+                std::filesystem::path filepath = pfd::save_file(
                     "Select a file", "",
                     { "DAT", "*.dat" },
                     pfd::opt::force_overwrite).result();
-
                 if (!filepath.empty())
                 {
+                    if (!filepath.has_extension()) { filepath.replace_extension("dat"); }
                     shapes::io::dat::save_shapes_as_file(filepath, windows.shape_control->get_triangulation_input_aggregate(), io_err_handler);
                 }
             }
