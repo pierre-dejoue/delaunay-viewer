@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shapes/path.h>
+#include <shapes/path_algos.h>
 #include <shapes/point_cloud.h>
 #include <shapes/triangle.h>
 #include <stdutils/visit.h>
@@ -119,6 +120,31 @@ bool is_bezier_path(const AllShapes<F>& shape)
         [](const shapes::CubicBezierPath2d<F>&)     { return true; },
         [](const shapes::CubicBezierPath3d<F>&)     { return true; },
         [](const auto&)                             { return false; }
+    }, shape);
+}
+
+template <typename F>
+bool is_closed(const AllShapes<F>& shape)
+{
+    return std::visit(stdutils::Overloaded {
+        [](const shapes::PointPath2d<F>& pp)            { return pp.closed; },
+        [](const shapes::PointPath3d<F>& pp)            { return pp.closed; },
+        [](const shapes::CubicBezierPath2d<F>& cbp)     { return cbp.closed; },
+        [](const shapes::CubicBezierPath3d<F>& cbp)     { return cbp.closed; },
+        [](const auto&)                                 { return false; }
+    }, shape);
+}
+
+// Return true iff the 'closed' boolean was actually flipped
+template <typename F>
+bool flip_open_closed(AllShapes<F>& shape)
+{
+    return std::visit(stdutils::Overloaded {
+        [](shapes::PointPath2d<F>& pp)          { return flip_open_closed(pp); },
+        [](shapes::PointPath3d<F>& pp)          { return flip_open_closed(pp); },
+        [](shapes::CubicBezierPath2d<F>&)       { /* Cannot changed the topology of a CBP without adding/removing a control point */ return false; },
+        [](shapes::CubicBezierPath3d<F>&)       { /* Cannot changed the topology of a CBP without adding/removing a control point */ return false; },
+        [](const auto&)                         { return false; }
     }, shape);
 }
 

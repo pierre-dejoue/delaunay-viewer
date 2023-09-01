@@ -17,9 +17,15 @@ PointPath<P> extract_endpoints(const CubicBezierPath<P>& cbp);
 template <typename P, typename I>
 std::vector<PointPath<P>> extract_paths(const Edges<P, I>& edges);
 
+// Flip the 'closed' boolean of the point path. Return true iff it was actualy flipped.
+template <typename P>
+bool flip_open_closed(PointPath<P>& pp);
+
+
 //
 // Implementations
 //
+
 
 template <typename P>
 PointPath<P> extract_endpoints(const CubicBezierPath<P>& cbp)
@@ -54,6 +60,15 @@ std::vector<PointPath<P>> extract_paths(const Edges<P, I>& edges)
         std::transform(std::cbegin(graph_path.vertices), std::cend(graph_path.vertices), std::back_inserter(pp.vertices), [&edges](const I& idx) { return edges.vertices[idx]; });
     }
     return result;
+}
+
+template <typename P>
+bool flip_open_closed(PointPath<P>& pp)
+{
+    const bool pre_closed = pp.closed;
+    pp.closed = !pre_closed && (pp.vertices.size() > 2);
+    assert(is_valid(pp));
+    return pp.closed != pre_closed;
 }
 
 } // namespace shapes
