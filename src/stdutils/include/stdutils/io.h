@@ -53,6 +53,21 @@ template <typename F, typename CharT>
 int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out);
 
 /**
+ * RAII class to save/restore stream format for numerical values
+ */
+template <typename CharT = char>
+class SaveNumericFormat
+{
+public:
+    SaveNumericFormat(std::basic_ostream<CharT, std::char_traits<CharT>>& out);
+    ~SaveNumericFormat();
+private:
+    std::basic_ostream<CharT, std::char_traits<CharT>>& m_out;
+    std::ios_base::fmtflags m_flags;
+    std::streamsize m_precision;
+};
+
+/**
  * Pass a file to a parser of std::basic_istream
  */
 template <typename Ret, typename CharT>
@@ -150,6 +165,20 @@ int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& ou
     const int initial_fp_digits = static_cast<int>(out.precision());
     out << std::setprecision(max_fp_digits);
     return initial_fp_digits;
+}
+
+template <typename CharT>
+SaveNumericFormat<CharT>::SaveNumericFormat(std::basic_ostream<CharT, std::char_traits<CharT>>& out)
+    : m_out(out)
+    , m_flags(out.flags())
+    , m_precision(out.precision())
+{ }
+
+template <typename CharT>
+SaveNumericFormat<CharT>::~SaveNumericFormat()
+{
+    m_out.flags(m_flags);
+    m_out.precision(m_precision);
 }
 
 template <typename Ret, typename CharT>
