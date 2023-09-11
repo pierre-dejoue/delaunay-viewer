@@ -23,6 +23,8 @@ target_include_directories(dt
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+set_target_warnings(dt ON)
+
 if (DELAUNAY_VIEWER_BUILD_POLY2TRI)
     target_compile_definitions(dt
         PRIVATE

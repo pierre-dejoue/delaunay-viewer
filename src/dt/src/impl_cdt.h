@@ -2,7 +2,7 @@
 
 #include <dt/dt_interface.h>
 
-#include <CDT.h>
+#include "cdt_wrap.h"
 
 #include <cstdint>
 #include <exception>

@@ -198,7 +198,7 @@ void Poly2triImpl<F, I>::triangulate_impl(TriangulationPolicy policy, shapes::Tr
         bool valid_range = true;
         for (unsigned int i = 0; i < 3; i++)
         {
-            face[i] = std::distance(begin_point, triangle->GetPoint(i));
+            face[i] = static_cast<I>(std::distance(begin_point, triangle->GetPoint(static_cast<int>(i))));
             valid_range &= (face[i] < nb_vertices);
         }
         if (valid_range && graphs::is_valid(face)) { result.faces.emplace_back(std::move(face)); }
