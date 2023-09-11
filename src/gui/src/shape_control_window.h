@@ -11,7 +11,7 @@
 #include <shapes/bounding_box.h>
 #include <shapes/io.h>
 #include <shapes/point.h>
-#include <shapes/sampling.h>
+#include <shapes/sampling_interface.h>
 #include <shapes/shapes.h>
 
 #include <map>

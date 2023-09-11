@@ -94,7 +94,9 @@ TEST_CASE("Sample a CubicbezierCurve2d", "[sampling]")
     REQUIRE(nb_edges(cbp) == 1);
 
     // Sampler
-    UniformSamplingCubicBezier2d<FP> sampler(cbp);
+    UniformSamplingCubicBezier2d<FP>::InitTraceInfo trace_info;
+    UniformSamplingCubicBezier2d<FP> sampler(cbp, &trace_info);
+    CHECK(!trace_info.iterations.empty());
 
     // Curve length
     const auto curve_length = sampler.max_segment_length();
@@ -146,7 +148,9 @@ TEST_CASE("Sample cubic Bezier curves and measure accuracy", "[sampling]")
         shapes::io::dat::save_shapes_as_oneliner_stream(trace_out, { cbp }, "END\n");
 
         // Sampler
-        UniformSamplingCubicBezier2d<FP> sampler(cbp);
+        UniformSamplingCubicBezier2d<FP>::InitTraceInfo trace_info;
+        UniformSamplingCubicBezier2d<FP> sampler(cbp, &trace_info);
+        CHECK(!trace_info.iterations.empty());
 
         const auto curve_length = sampler.max_segment_length();
 
