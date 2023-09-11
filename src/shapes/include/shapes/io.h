@@ -32,6 +32,9 @@ namespace dat
 
     void save_shapes_as_stream(std::ostream& outputstream, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept;
     void save_shapes_as_file(std::filesystem::path filepath, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept;
+
+    // Use for logs, trace files...
+    void save_shapes_as_oneliner_stream(std::ostream& outputstream, const ShapeAggregate<double>& shapes, std::string_view postfix = "") noexcept;
 }
 
 //
