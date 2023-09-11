@@ -1,0 +1,24 @@
+CUBIC_BEZIER_PATH OPEN 1 0 3 1 4 -1 5 0 END
+edges:    50  normalized_range: 8.064e-04 normalized_stdev: 2.250e-04
+edges:   100  normalized_range: 4.555e-04 normalized_stdev: 1.257e-04
+edges:   500  normalized_range: 2.398e-02 normalized_stdev: 3.497e-03
+edges:  1000  normalized_range: 2.705e-02 normalized_stdev: 3.551e-03
+edges:  2000  normalized_range: 2.858e-02 normalized_stdev: 3.566e-03
+CUBIC_BEZIER_PATH OPEN 25 5 28 5 28.34375 5.03125 31.632809999999999 6.3359399999999999 END
+edges:    50  normalized_range: 1.604e-04 normalized_stdev: 3.437e-05
+edges:   100  normalized_range: 2.251e-04 normalized_stdev: 4.365e-05
+edges:   500  normalized_range: 1.273e-02 normalized_stdev: 3.638e-03
+edges:  1000  normalized_range: 1.464e-02 normalized_stdev: 3.702e-03
+edges:  2000  normalized_range: 1.695e-02 normalized_stdev: 3.743e-03
+CUBIC_BEZIER_PATH OPEN 25 5 25 5 28.34375 5.03125 31.632809999999999 6.3359399999999999 END
+edges:    50  normalized_range: 7.905e-03 normalized_stdev: 1.103e-03
+edges:   100  normalized_range: 1.480e-02 normalized_stdev: 1.469e-03
+edges:   500  normalized_range: 1.600e+00 normalized_stdev: 5.803e-02
+edges:  1000  normalized_range: 1.800e+00 normalized_stdev: 5.893e-02
+edges:  2000  normalized_range: 1.900e+00 normalized_stdev: 5.915e-02
+CUBIC_BEZIER_PATH OPEN 25 5 25 5 31.632809999999999 6.3359399999999999 31.632809999999999 6.3359399999999999 END
+edges:    50  normalized_range: 1.135e-02 normalized_stdev: 2.205e-03
+edges:   100  normalized_range: 2.113e-02 normalized_stdev: 2.944e-03
+edges:   500  normalized_range: 1.599e+00 normalized_stdev: 8.191e-02
+edges:  1000  normalized_range: 1.799e+00 normalized_stdev: 8.318e-02
+edges:  2000  normalized_range: 1.899e+00 normalized_stdev: 8.350e-02

@@ -1,0 +1,5 @@
+#pragma once
+
+#include <stdutils/trace_file.h>
+
+#define STDUTILS_TRACE_FILE_FOLDER "@CMAKE_CURRENT_SOURCE_DIR@/trace"

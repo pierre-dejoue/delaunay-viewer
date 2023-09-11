@@ -5,6 +5,7 @@
 #include <shapes/shapes.h>
 #include <stdutils/algorithm.h>
 #include <stdutils/macros.h>
+#include <stdutils/mini_stats.h>
 
 #include <algorithm>
 #include <cassert>
@@ -99,6 +100,13 @@ private:
 
 template <typename F>
 using UniformSamplingCubicBezier2d = UniformSamplingCubicBezier<F, Point2d>;
+
+/**
+ * Output statistics related to how uniform a point path is. The result is normalized on the average edge length
+ */
+template <typename F, template<typename> typename P>
+stdutils::stats::Result<F> path_normalized_uniformity_stats(const shapes::PointPath<P<F>>& pp);
+
 
 //
 //
@@ -330,7 +338,7 @@ void UniformSamplingCubicBezier<F, Point2d>::one_iteration(bool trace)
         F& seg_length = m_segment_total_length[seg];
         seg_length = F{0};
         for(idx = 0; idx < SAMPLING_BASE_N; idx++)
-            seg_length += sample_dl[idx] = sample_v_norm_avg[idx] * static_cast<double>(begin_sample_t[idx+1] - begin_sample_t[idx]);
+            seg_length += sample_dl[idx] = sample_v_norm_avg[idx] * static_cast<F>(begin_sample_t[idx+1] - begin_sample_t[idx]);
 
         // 3. The target delta length (the desired curve length between two samples)
         const F target_dl = seg_length / static_cast<F>(SAMPLING_BASE_N);
@@ -371,6 +379,27 @@ void UniformSamplingCubicBezier<F, Point2d>::one_iteration(bool trace)
         std::copy(std::cbegin(m_segment_total_length), std::cend(m_segment_total_length), std::back_inserter(m_trace_iterations.back().total_length));
 
     m_max_segment_length = *std::max_element(std::cbegin(m_segment_total_length), std::cend(m_segment_total_length));
+}
+
+template <typename F, template<typename> typename P>
+stdutils::stats::Result<F> path_normalized_uniformity_stats(const shapes::PointPath<P<F>>& pp)
+{
+    if (pp.vertices.empty())
+        return stdutils::stats::Result<F>{};
+
+    const auto nb_vertices = pp.vertices.size();
+    const auto nb_edges = shapes::nb_edges(pp);
+    std::vector<F> edge_lengths;
+    edge_lengths.reserve(nb_edges);
+    for (std::size_t v_idx = 0u; v_idx < nb_edges; v_idx++)
+    {
+        const auto p0 = pp.vertices[v_idx];
+        const auto p1 = pp.vertices[(v_idx + 1) % nb_vertices];
+        edge_lengths.emplace_back(shapes::norm(p1 - p0));
+    }
+    stdutils::stats::CumulSamples<F> stats;
+    stats.add_samples(edge_lengths.cbegin(), edge_lengths.cend());
+    return stats.get_result().normalize_to_mean();
 }
 
 } // namespace shapes

@@ -3,17 +3,26 @@
 #
 include(catch2)
 
+configure_file(src/trace.h.in trace.h @ONLY)
+
 set(UTESTS_SOURCES
     src/test_bounding_box.cpp
     src/test_graphs.cpp
     src/test_sampling.cpp
     src/test_shapes.cpp
     src/test_vect.cpp
+    src/trace.cpp
 )
 
 add_executable(utests_shapes ${UTESTS_SOURCES})
 
 set_target_warnings(utests_shapes ON)
+
+target_include_directories(utests_shapes
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 target_link_libraries(utests_shapes
     PRIVATE
