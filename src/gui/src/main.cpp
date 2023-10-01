@@ -67,7 +67,8 @@ std::string project_title()
 
 argagg::parser argparser{ {
     { "help", { "-h", "--help" }, "Print usage note and exit", 0 },
-    { "version", { "--version" }, "Print version and exit", 0 }
+    { "version", { "--version" }, "Print version and exit", 0 },
+    { "platform", { "--platform" }, "Print platform information and exit", 0 }
 } };
 
 void usage_notes(std::ostream& out)
@@ -240,6 +241,11 @@ int main(int argc, char *argv[])
     {
         std::cout << project_title() << std::endl;
         stdutils::platform::print_compiler_all_info(std::cout);
+        return EXIT_SUCCESS;
+    }
+    if (args["platform"])
+    {
+        stdutils::platform::print_platform_info(std::cout);
         return EXIT_SUCCESS;
     }
 
