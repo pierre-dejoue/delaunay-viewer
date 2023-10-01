@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-#define DT_POLY2TRI_ORIGINAL_API 1
+#define DT_POLY2TRI_ORIGINAL_API 0
 
 namespace delaunay
 {
