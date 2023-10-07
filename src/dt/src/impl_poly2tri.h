@@ -223,41 +223,55 @@ void Poly2triImpl<F, I>::triangulate_impl(TriangulationPolicy policy, shapes::Tr
 
     p2t::CDT cdt;
 
-    // As per poly2tri documentation:
-    // Initialize CDT with a simple polyline (this defines the constrained edges)
-    if(!m_polylines_indices.empty())
+    if (policy == TriangulationPolicy::CDT)
     {
-        const auto& range = m_polylines_indices.front();
-        assert(range.first <= range.second);
-        assert(range.second <= p2t_points.size());
-        if (m_polyline_is_closed.front())
-            cdt.AddPolyline(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
-        else
-            cdt.AddOpenPolyline(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
+        // As per poly2tri documentation:
+        // Initialize CDT with a simple polyline (this defines the constrained edges)
+        if(!m_polylines_indices.empty())
+        {
+            const auto& range = m_polylines_indices.front();
+            assert(range.first <= range.second);
+            assert(range.second <= p2t_points.size());
+            if (m_polyline_is_closed.front())
+                cdt.AddPolyline(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
+            else
+                cdt.AddOpenPolyline(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
+        }
+
+        // Add holes and open polylines
+        for (unsigned int path_idx = 1; path_idx < m_polylines_indices.size(); path_idx++)
+        {
+            const auto& range = m_polylines_indices.at(path_idx);
+            assert(range.first <= range.second);
+            assert(range.second <= p2t_points.size());
+            if (m_polyline_is_closed.at(path_idx))
+                cdt.AddHole(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
+            else
+                cdt.AddOpenPolyline(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
+        }
+
+        // Add Steiner points
+        for (const auto& range : m_steiner_indices)
+        {
+            assert(range.first <= range.second);
+            assert(range.second <= p2t_points.size());
+            cdt.AddPoints(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
+        }
+
+        // Triangulate
+        cdt.Triangulate(p2t::Policy::OuterPolygon);
+    }
+    else
+    {
+        assert(policy == TriangulationPolicy::PointCloud);
+
+        // Add Steiner points
+        cdt.AddPoints(p2t_points.data(), p2t_points.size());
+
+        // Triangulate
+        cdt.Triangulate(p2t::Policy::ConvexHull);
     }
 
-    // Add holes and open polylines
-    for (unsigned int path_idx = 1; path_idx < m_polylines_indices.size(); path_idx++)
-    {
-        const auto& range = m_polylines_indices.at(path_idx);
-        assert(range.first <= range.second);
-        assert(range.second <= p2t_points.size());
-        if (m_polyline_is_closed.at(path_idx))
-            cdt.AddHole(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
-        else
-            cdt.AddOpenPolyline(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
-    }
-
-    // Add Steiner points
-    for (const auto& range : m_steiner_indices)
-    {
-        assert(range.first <= range.second);
-        assert(range.second <= p2t_points.size());
-        cdt.AddPoints(p2t_points.data() + static_cast<std::size_t>(range.first), static_cast<std::size_t>(range.second - range.first));
-    }
-
-    // Triangulate
-    cdt.Triangulate(policy == TriangulationPolicy::CDT ? p2t::Policy::OuterPolygon : p2t::Policy::ConvexHull);
     const auto& p2t_triangles = cdt.GetTriangles();
 #endif
 
