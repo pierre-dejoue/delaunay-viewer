@@ -10,7 +10,7 @@ FetchContent_Declare(
 #    GIT_REPOSITORY https://github.com/jhasse/poly2tri.git
 #    GIT_TAG 81612cb108b54c14c695808f494f432990b279fd
     GIT_REPOSITORY https://github.com/pierre-dejoue/poly2tri.git
-    GIT_TAG a146dd028e92f4a6bbec9166862e72f10b53a901
+    GIT_TAG 5d3795006bd5b79ee8da9c79eba743191c8f9bfe
 )
 FetchContent_Populate(poly2tri)
 
