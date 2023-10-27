@@ -159,11 +159,11 @@ void ShapeWindow::recompute_triangulations(delaunay::TriangulationPolicy policy,
 {
     std::chrono::duration<float, std::milli> duration;
     shapes::Triangles2d<scalar> triangulation;
-    for (const auto& algo : delaunay::get_impl_list<double>().algos)
+    for (const auto& algo : delaunay::get_impl_list<scalar>().algos)
     {
         // Setup triangulation
         m_triangulation_shape_controls.try_emplace(algo.name);
-        auto triangulation_algo = delaunay::make_dt_algo(algo, &err_handler);
+        auto triangulation_algo = delaunay::get_impl(algo, &err_handler);
         assert(triangulation_algo);
         bool first_path = true;
         std::vector<const ShapeControl*> active_shapes;

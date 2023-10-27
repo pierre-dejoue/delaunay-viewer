@@ -4,6 +4,7 @@
 #include <stdutils/io.h>
 
 #include <algorithm>
+#include <exception>
 #include <functional>
 #include <iterator>
 #include <map>
@@ -24,21 +25,24 @@ using ImplFactory = std::function<std::unique_ptr<Interface<F, I>>(const stdutil
 template <typename F, typename I>
 struct RegisteredImpl
 {
+    using scalar = F;
+    using index = I;
+
     std::string name;
-    int confidence_score;
+    int priority_score;
     ImplFactory<F, I> impl_factory;
 };
 
 template <typename F, typename I>
 struct RegisteredImplList
 {
-    std::string reference;
+    std::string reference;                      // The reference implementation is the one with the highest priority score
     std::vector<RegisteredImpl<F, I>> algos;
 };
 
 // Registration
 template <typename F, typename I>
-bool register_impl(std::string_view name, const ImplFactory<F, I>& impl_factory);
+bool register_impl(std::string_view name, int score, const ImplFactory<F, I>& impl_factory);
 
 // Should be called once
 bool register_all_implementations();
@@ -49,11 +53,11 @@ RegisteredImplList<F, I> get_impl_list();
 
 // Convenience function to build the algorithm implementation with appropriate error handling
 template <typename F, typename I = std::uint32_t>
-std::unique_ptr<Interface<F, I>> make_dt_algo(const RegisteredImpl<F, I>& registered_impl, const stdutils::io::ErrorHandler* err_handler = nullptr);
+std::unique_ptr<Interface<F, I>> get_impl(const RegisteredImpl<F, I>& registered_impl, const stdutils::io::ErrorHandler* err_handler = nullptr);
 
-// Same for the reference implementation
+// Convenience function to build the reference implementation, meaning the one with the highest priority score
 template <typename F, typename I = std::uint32_t>
-std::pair<const std::string, std::unique_ptr<Interface<F, I>>> make_ref_dt_algo(const stdutils::io::ErrorHandler* err_handler = nullptr);
+std::pair<std::string, std::unique_ptr<Interface<F, I>>> get_ref_impl(const stdutils::io::ErrorHandler* err_handler = nullptr);
 
 //
 // Implementation
@@ -87,7 +91,7 @@ template <typename F, typename I>
 bool register_impl(std::string_view name, int score, const ImplFactory<F, I>& impl_factory)
 {
     auto& impl_map = details::get_impl_map<F, I>();
-    if (std::any_of(std::cbegin(impl_map), std::cend(impl_map), [score](const auto& kvp){ return kvp.second.confidence_score == score; }))
+    if (std::any_of(std::cbegin(impl_map), std::cend(impl_map), [score](const auto& kvp){ return kvp.second.priority_score == score; }))
     {
         assert(0);  // Don't reuse scores
         return false;
@@ -116,7 +120,7 @@ RegisteredImplList<F, I> get_impl_list()
 }
 
 template <typename F, typename I>
-std::unique_ptr<Interface<F, I>> make_dt_algo(const RegisteredImpl<F, I>& registered_impl, const stdutils::io::ErrorHandler* err_handler)
+std::unique_ptr<Interface<F, I>> get_impl(const RegisteredImpl<F, I>& registered_impl, const stdutils::io::ErrorHandler* err_handler)
 {
     if (err_handler == nullptr)
         return registered_impl.impl_factory(nullptr);
@@ -131,13 +135,26 @@ std::unique_ptr<Interface<F, I>> make_dt_algo(const RegisteredImpl<F, I>& regist
 }
 
 template <typename F, typename I>
-std::pair<const std::string, std::unique_ptr<Interface<F, I>>> make_ref_dt_algo(const stdutils::io::ErrorHandler* err_handler)
+std::pair<std::string, std::unique_ptr<Interface<F, I>>> get_ref_impl(const stdutils::io::ErrorHandler* err_handler)
 {
-    auto ref_algo_name = details::get_ref_impl<F, I>().name;
-    return std::make_pair<std::string, std::unique_ptr<Interface<F, I>>>(
-        std::move(ref_algo_name),
-        make_dt_algo(details::get_impl_map<F, I>().at(ref_algo_name), err_handler)
-    );
+    try
+    {
+        auto ref_algo_name = details::get_ref_impl<F, I>().name;
+        return std::make_pair<std::string, std::unique_ptr<Interface<F, I>>>(
+            std::move(ref_algo_name),
+            get_impl(details::get_impl_map<F, I>().at(ref_algo_name), err_handler)
+        );
+    }
+    catch (const std::exception& e)
+    {
+        if (err_handler)
+        {
+            std::stringstream oss;
+            oss << "Exception in delaunay::get_ref_impl<>: " << e.what();
+            (*err_handler)(stdutils::io::Severity::EXCPT, oss.str());
+        }
+    }
+    return std::make_pair<std::string, std::unique_ptr<Interface<F, I>>>("", nullptr);
 }
 
 } // namespace delaunay

@@ -22,6 +22,9 @@ template <typename F, typename I>
 class Interface
 {
 public:
+    using scalar = F;
+    using index = I;
+
     Interface(const stdutils::io::ErrorHandler* err_handler);
     virtual ~Interface() = default;
 

@@ -12,24 +12,26 @@ namespace delaunay
 {
 namespace
 {
-    bool static_register_all_implementations()
-    {
-        bool success = true;
+
+bool static_register_all_implementations()
+{
+    bool success = true;
 
 #if BUILD_POLY2TRI
-        // Poly2tri (only supports double)
-        success &= register_impl<double, std::uint32_t>("Poly2tri", 1, &get_poly2tri_impl<double, std::uint32_t>);
+    // Poly2tri (the library only supports double)
+    success &= register_impl<double, std::uint32_t>("Poly2tri", 3, &get_poly2tri_impl<double, std::uint32_t>);
 #endif
 
 #if BUILD_CDT
-        // CDT float
-        success &= register_impl<double, std::uint32_t>("CDT_fp32", 2, &get_cdt_impl<float, double, std::uint32_t>);
-        // CDT double
-        success &= register_impl<double, std::uint32_t>("CDT_fp64", 3, &get_cdt_impl<double, double, std::uint32_t>);
+    // CDT double
+    success &= register_impl<double, std::uint32_t>("CDT_fp64", 2, &get_cdt_impl<double, double, std::uint32_t>);
+    // CDT float
+    success &= register_impl<double, std::uint32_t>("CDT_fp32", 1, &get_cdt_impl<float, double, std::uint32_t>);
 #endif
 
-        return success;
-    }
+    return success;
+}
+
 }
 
 bool register_all_implementations()
