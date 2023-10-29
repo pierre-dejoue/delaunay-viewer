@@ -9,9 +9,9 @@ CDT test files: https://github.com/artem-ogre/CDT/tree/master/CDT/tests/inputs
 
 Poly2tri test files: https://github.com/jhasse/poly2tri/tree/master/testbed/data
 
-## bunny.svg
+## bunny.svg, cat.svg, crocodile.dat, mushroom.dat
 
-Of unknown origin
+https://github.com/stefango74/hnn-crust-sgp16
 
 ## icons8-futurama-leela.svg
 
