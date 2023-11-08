@@ -42,6 +42,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
         ImGui::Checkbox("Flip Y-axis", &(general_settings->flip_y));
         ImGui::Checkbox("Use ImGui Shape Renderer", &(general_settings->imgui_renderer));
         ImGui::Checkbox("Constrained Delaunay", &(general_settings->cdt));
+        ImGui::Checkbox("Proximity Graphs", &(general_settings->proximity_graphs));
         ImGui::Unindent();
     }
 

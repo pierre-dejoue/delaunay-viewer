@@ -79,11 +79,23 @@ private:
         ShapeControlPtr delaunay_triangulation;
     };
 
+    struct ProximityGraphs
+    {
+        ShapeControlPtr nn_graph;
+        ShapeControlPtr mst_graph;
+        ShapeControlPtr rng_graph;
+        ShapeControlPtr gg_graph;
+        ShapeControlPtr dt_graph;
+    };
+
     void init_bounding_box();
+    std::vector<const ShapeControl*> get_active_shapes() const;
     void recompute_triangulations(delaunay::TriangulationPolicy policy, const stdutils::io::ErrorHandler& err_handler);
+    void compute_proximity_graphs(const stdutils::io::ErrorHandler& err_handler);
     void build_draw_lists(const Settings& settings);
     ShapeControl* allocate_new_sampled_shape(const ShapeControl& parent, shapes::AllShapes<scalar>&& shape);
     void delete_sampled_shape(ShapeControl** sc);
+    static bool active_button(std::string_view subid, unsigned int idx, ShapeControl& shape_control);
     static constexpr bool ALLOW_SAMPLING = true;
     static constexpr bool ALLOW_TINKERING = true;
     void shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool allow_tinkering, bool& in_out_trash, bool& input_has_changed);
@@ -95,7 +107,9 @@ private:
     std::optional<shapes::Point2d<scalar>> m_new_steiner_pt;
     delaunay::TriangulationPolicy m_triangulation_policy;
     std::map<std::string, TriangulationOutput> m_triangulation_shape_controls;
+    ProximityGraphs m_proximity_graphs_controls;
     shapes::BoundingBox2d<scalar> m_geometry_bounding_box;
     DrawCommandLists m_draw_command_lists;
+    Settings::General m_prev_general_settings;
     bool m_first_visit;
 };

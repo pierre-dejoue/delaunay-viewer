@@ -10,6 +10,7 @@ set(UTESTS_SOURCES
     src/test_graphs.cpp
     src/test_sampling.cpp
     src/test_shapes.cpp
+    src/test_union_find.cpp
     src/test_vect.cpp
     src/trace.cpp
 )

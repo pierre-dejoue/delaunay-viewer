@@ -3,6 +3,7 @@
 #include <graphs/index.h>
 
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <set>
 #include <utility>

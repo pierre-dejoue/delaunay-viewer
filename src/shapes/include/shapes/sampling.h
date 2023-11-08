@@ -177,6 +177,8 @@ AllShapes<F> trivial_sampling(const AllShapes<F>& shape)
         [&result](const shapes::PointPath3d<F>& pp)         { result = pp; },
         [&result](const shapes::CubicBezierPath2d<F>& cbp)  { result = extract_endpoints(cbp); },
         [&result](const shapes::CubicBezierPath3d<F>& cbp)  { result = extract_endpoints(cbp); },
+        [&result](const shapes::Edges2d<F>& es)             { result = es; },
+        [&result](const shapes::Edges3d<F>& es)             { result = es; },
         [](const shapes::Triangles2d<F>&)                   { /* TBD */ },
         [](const shapes::Triangles3d<F>&)                   { /* TBD */ },
         [](const auto&) { assert(0); }

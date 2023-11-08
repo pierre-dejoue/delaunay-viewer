@@ -1,5 +1,6 @@
 #pragma once
 
+#include <shapes/edge.h>
 #include <shapes/path.h>
 #include <shapes/path_algos.h>
 #include <shapes/point_cloud.h>
@@ -23,6 +24,8 @@ using AllShapes = std::variant<
     shapes::PointPath3d<F>,
     shapes::CubicBezierPath2d<F>,
     shapes::CubicBezierPath3d<F>,
+    shapes::Edges2d<F>,
+    shapes::Edges3d<F>,
     shapes::Triangles2d<F>,
     shapes::Triangles3d<F>
 >;
@@ -38,6 +41,8 @@ std::string_view get_type_str(const AllShapes<F>& shape)
         [&result](const shapes::PointPath3d<F>&)       { result = "shapes::PointPath3d<F>"; },
         [&result](const shapes::CubicBezierPath2d<F>&) { result = "shapes::CubicBezierPath2d<F>"; },
         [&result](const shapes::CubicBezierPath3d<F>&) { result = "shapes::CubicBezierPath3d<F>"; },
+        [&result](const shapes::Edges2d<F>&)           { result = "shapes::Edges2d<F>"; },
+        [&result](const shapes::Edges3d<F>&)           { result = "shapes::Edges3d<F>"; },
         [&result](const shapes::Triangles2d<F>&)       { result = "shapes::Triangles2d<F>"; },
         [&result](const shapes::Triangles3d<F>&)       { result = "shapes::Triangles3d<F>"; },
         [](const auto&) { assert(0); }
@@ -68,6 +73,8 @@ std::size_t nb_edges(const AllShapes<F>& shape)
         [&result](const shapes::PointPath3d<F>& s)       { result = nb_edges(s); },
         [&result](const shapes::CubicBezierPath2d<F>& s) { result = nb_edges(s); },
         [&result](const shapes::CubicBezierPath3d<F>& s) { result = nb_edges(s); },
+        [&result](const shapes::Edges2d<F>& s)           { result = nb_edges(s); },
+        [&result](const shapes::Edges3d<F>& s)           { result = nb_edges(s); },
         [&result](const shapes::Triangles2d<F>& s)       { result = nb_edges(s); },
         [&result](const shapes::Triangles3d<F>& s)       { result = nb_edges(s); },
         [](const auto&) { assert(0); }
@@ -86,6 +93,8 @@ std::size_t nb_faces(const AllShapes<F>& shape)
         [](const shapes::PointPath3d<F>&)               { /* Do nothing */ },
         [](const shapes::CubicBezierPath2d<F>&)         { /* Do nothing */ },
         [](const shapes::CubicBezierPath3d<F>&)         { /* Do nothing */ },
+        [](const shapes::Edges2d<F>&)                   { /* Do nothing */ },
+        [](const shapes::Edges3d<F>&)                   { /* Do nothing */ },
         [&result](const shapes::Triangles2d<F>& s)      { result = s.faces.size(); },
         [&result](const shapes::Triangles3d<F>& s)      { result = s.faces.size(); },
         [](const auto&) { assert(0); }

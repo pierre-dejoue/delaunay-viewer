@@ -13,6 +13,7 @@ namespace
         result.flip_y = Parameter::limits_true;
         result.imgui_renderer = Parameter::limits_false;
         result.cdt = Parameter::limits_true;
+        result.proximity_graphs = Parameter::limits_false;
 
         return result;
     }
@@ -80,6 +81,7 @@ const Settings::General& Settings::read_general_settings() const
         general_settings->flip_y = read_general_limits().flip_y.def;
         general_settings->imgui_renderer = read_general_limits().imgui_renderer.def;
         general_settings->cdt = read_general_limits().cdt.def;
+        general_settings->proximity_graphs = read_general_limits().proximity_graphs.def;
     }
     assert(general_settings);
     return *general_settings;

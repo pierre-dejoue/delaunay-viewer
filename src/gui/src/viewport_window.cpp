@@ -276,6 +276,7 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
                         [&draw_list, &canvas, &options](const shapes::PointCloud2d<scalar>& pc) { draw_point_cloud(pc, draw_list, canvas, options); },
                         [&draw_list, &canvas, &options](const shapes::PointPath2d<scalar>& pp) { draw_point_path(pp, draw_list, canvas, options); },
                         [&draw_list, &canvas, &options](const shapes::CubicBezierPath2d<scalar>& cbp) { draw_cubic_bezier_path(cbp, draw_list, canvas, options); },
+                        [&draw_list, &canvas, &options](const shapes::Edges2d<scalar>& es) { draw_edge_soup(es, draw_list, canvas, options); },
                         [&draw_list, &canvas, &options](const shapes::Triangles2d<scalar>& tri) { draw_triangles(tri, draw_list, canvas, options); },
                         [](const auto&) { assert(0); }
                     }, *draw_command.shape);

@@ -420,7 +420,6 @@ VertexSet<I> to_vertex_set(const TriangleSoup<I>& triangles)
         result.insert(t[1]);
         result.insert(t[2]);
     }
-    assert(is_valid(result));
     return result;
 }
 

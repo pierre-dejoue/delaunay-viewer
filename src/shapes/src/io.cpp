@@ -257,6 +257,8 @@ void save_shapes_as_stream_gen(std::ostream& out, const StreamWriterInput<F>& in
                 out << "CUBIC_BEZIER_PATH " << (cbp.closed ? "CLOSED" : "OPEN") << sep;
                 for (const auto& p : cbp.vertices) { out << p.x << ' ' << p.y << ' ' << p.z << sep; }
             },
+            [&err_handler](const shapes::Edges2d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Edges2d not written to DAT stream"); },
+            [&err_handler](const shapes::Edges3d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Edges3d not written to DAT stream"); },
             [&err_handler](const shapes::Triangles2d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Triangles2d not written to DAT stream"); },
             [&err_handler](const shapes::Triangles3d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Triangles3d not written to DAT stream"); },
             [](const auto&) { assert(0); }

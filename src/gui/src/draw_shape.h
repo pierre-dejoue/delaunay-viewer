@@ -6,6 +6,7 @@
 #include "renderer.h"
 #include "settings.h"
 
+#include <shapes/edge.h>
 #include <shapes/point_cloud.h>
 #include <shapes/path.h>
 #include <shapes/path_algos.h>
@@ -40,6 +41,11 @@ template <typename F>
 void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options);
 template <typename F>
 void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, renderer::DrawList& draw_list,  const DrawingOptions& options);
+
+template <typename F>
+void draw_edge_soup(const shapes::Edges2d<F>& pp, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options);
+template <typename F>
+void draw_edge_soup(const shapes::Edges2d<F>& pp, renderer::DrawList& draw_list, const DrawingOptions& options);
 
 template <typename F, typename I>
 void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options);
@@ -240,6 +246,81 @@ void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, renderer::D
     // For now, the cubic Bezier curves are rendered thanks to ImGui primitives, on top of our rendering of the other shapes.
 }
 
+template <typename F>
+void draw_edge_soup(const shapes::Edges2d<F>& es, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options)
+{
+    assert(draw_list);
+    const std::size_t nb_vertices = es.vertices.size();
+    if (options.path_settings.show)
+    {
+        const ImU32 color = details::to_compact_color(options.edge_color);
+        for (const auto& edge : es.indices)
+        {
+            const std::size_t i = static_cast<std::size_t>(edge.first);
+            const std::size_t j = static_cast<std::size_t>(edge.second);
+            assert(i < nb_vertices);
+            assert(j < nb_vertices);
+            const shapes::Point2d<F>& p0 = es.vertices[i];
+            const shapes::Point2d<F>& p1 = es.vertices[j];
+            const auto cp0 = canvas.to_screen(p0);
+            const auto cp1 = canvas.to_screen(p1);
+            details::custom_add_line(draw_list, to_imgui_vec2(cp0), to_imgui_vec2(cp1), color, options.path_settings.width);
+        }
+    }
+    if (options.point_settings.show)
+    {
+        const ImU32 color = details::to_compact_color(options.point_color);
+        details::draw_points(es, draw_list, canvas, color, options.point_settings.size);
+    }
+}
+
+template <typename F>
+void draw_edge_soup(const shapes::Edges2d<F>& es, renderer::DrawList& draw_list, const DrawingOptions& options)
+{
+    const auto begin_vertex_idx = draw_list.m_vertices.size();
+    const std::size_t nb_vertices = es.vertices.size();
+    draw_list.m_vertices.reserve(begin_vertex_idx + nb_vertices);
+    std::transform(std::cbegin(es.vertices), std::cend(es.vertices), std::back_inserter(draw_list.m_vertices), [](const shapes::Point2d<F>& p) {
+        return renderer::DrawList::VertexData{ static_cast<float>(p.x), static_cast<float>(p.y), 0.f };
+    });
+    const std::size_t nb_edges = es.indices.size();
+    const auto begin_edge_indices_idx = draw_list.m_indices.size();
+    draw_list.m_indices.reserve(begin_edge_indices_idx + 2 * nb_edges + nb_vertices);
+    for (const auto& edge : es.indices)
+    {
+        const std::size_t i = static_cast<std::size_t>(edge.first);
+        const std::size_t j = static_cast<std::size_t>(edge.second);
+        assert(i < nb_vertices);
+        assert(j < nb_vertices);
+        draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + i));
+        draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + j));
+    }
+    const auto end_edge_indices_idx = draw_list.m_indices.size();
+    const auto begin_point_indices_idx = end_edge_indices_idx;
+    for (std::size_t i = 0; i < nb_vertices; i++)
+    {
+        draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + i));
+    }
+    const auto end_point_indices_idx = draw_list.m_indices.size();
+
+    // Show/no_show is decided by the presence of a DrawCmd (do not modify the vertices and indices buffers)
+    if (options.path_settings.show)
+    {
+        auto& draw_call = draw_list.m_draw_calls.emplace_back();
+        draw_call.m_range = std::make_pair(begin_edge_indices_idx, end_edge_indices_idx);
+        draw_call.m_uniform_color = options.edge_color;
+        draw_call.m_cmd = renderer::DrawCmd::Lines;
+    }
+    if (options.point_settings.show)
+    {
+        auto& draw_call = draw_list.m_draw_calls.emplace_back();
+        draw_call.m_range = std::make_pair(begin_point_indices_idx, end_point_indices_idx);
+        draw_call.m_uniform_color = options.point_color;
+        draw_call.m_uniform_point_size = std::max(1.f, options.point_settings.size);
+        draw_call.m_cmd = renderer::DrawCmd::Points;
+    }
+}
+
 template <typename F, typename I>
 void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options)
 {
@@ -356,6 +437,7 @@ namespace
             [&draw_list, &options](const shapes::PointCloud2d<F>& pc) { draw_point_cloud(pc, draw_list, options); },
             [&draw_list, &options](const shapes::PointPath2d<F>& pp) { draw_point_path(pp, draw_list, options); },
             [&draw_list, &options](const shapes::CubicBezierPath2d<F>& cbp) { draw_cubic_bezier_path(cbp, draw_list, options); },
+            [&draw_list, &options](const shapes::Edges2d<F>& es) { draw_edge_soup(es, draw_list, options); },
             [&draw_list, &options](const shapes::Triangles2d<F>& tri) { draw_triangles(tri, draw_list, options); },
             [](const auto&) { assert(0); }
         }, *draw_command.shape);
