@@ -1,3 +1,5 @@
+// Copyright (c) 2023 Pierre DEJOUE
+// This code is distributed under the terms of the MIT License
 #include <dt/dt_impl.h>
 
 #if BUILD_POLY2TRI
