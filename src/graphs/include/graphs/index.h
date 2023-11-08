@@ -15,7 +15,7 @@ struct IndexTraits
 {
     static constexpr bool is_valid() { return std::is_integral_v<I> && std::is_unsigned_v<I>; }
     static constexpr I undef() { return std::numeric_limits<I>::max(); }
-    static constexpr I max_index() { return std::numeric_limits<I>::max() - I{1}; }
+    static constexpr I max_valid_index() { return std::numeric_limits<I>::max() - I{1}; }
 };
 
 } // namespace graphs

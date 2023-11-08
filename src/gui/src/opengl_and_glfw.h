@@ -12,6 +12,12 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
+// Prevent namespace pollution
+#ifdef _WIN32
+#undef min
+#undef max
+#endif
+
 #include <string_view>
 
 

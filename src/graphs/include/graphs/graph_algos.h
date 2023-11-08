@@ -497,7 +497,7 @@ namespace details
             assert(is_valid(edges));
             assert(!edges.empty());
             std::tie(m_min_idx, m_max_idx) = minmax_indices(edges);
-            assert(m_max_idx <= IndexTraits<I>::max_index());
+            assert(m_max_idx <= IndexTraits<I>::max_valid_index());
             const std::size_t sz = 1u + m_max_idx - m_min_idx;
             if (m_max_deg == 0u) { m_max_deg = max_degree(edges); }
             assert(m_max_deg != 0u);

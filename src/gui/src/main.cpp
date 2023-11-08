@@ -17,7 +17,6 @@
 #include "window_layout.h"
 
 #include <dt/dt_impl.h>
-#include <lin/mat.h>
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
 #include <shapes/io.h>
@@ -43,12 +42,6 @@
 #include <sstream>
 #include <string>
 #include <vector>
-
-
-#ifdef _WIN32
-#undef min
-#undef max
-#endif
 
 namespace
 {

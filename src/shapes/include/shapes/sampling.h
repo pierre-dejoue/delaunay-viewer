@@ -5,7 +5,7 @@
 #include <shapes/sampling_interface.h>
 #include <shapes/shapes.h>
 #include <stdutils/algorithm.h>
-#include <stdutils/mini_stats.h>
+#include <stdutils/stats.h>
 
 #include <algorithm>
 #include <cassert>

@@ -1,7 +1,10 @@
+// Copyright (c) 2023 Pierre DEJOUE
+// This code is distributed under the terms of the MIT License
 #pragma once
 
 #include <lin/vect.h>
 
+#include <algorithm>
 #include <cassert>
 #include <initializer_list>
 
@@ -21,11 +24,6 @@ public:
 
     mat();
     mat(std::initializer_list<F> init_list);
-
-    //explicit mat(const container& arr) : m_values(arr) {}
-    //explicit mat(container&& arr) : m_values(std::move(arr)) {}
-    //mat operator=(const container& arr) { m_values = arr; }
-    //mat operator=(container&& arr) { m_values = std::move(arr); }
 
     container& values() { return m_values; }
     const container& values() const { return m_values; }
@@ -58,9 +56,24 @@ using mat2d = mat2<double>;
 using mat3d = mat3<double>;
 using mat4d = mat4<double>;
 
+// Compute the determinant
+template <typename F>
+F determinant(const mat2<F>& m);
+
+// Matrix inverse. Check the determinant: If zero, then the inverse matric is irrelevant and should not be used.
+template <typename F>
+mat2<F> get_inverse(const mat2<F>& m, F* det_ptr = nullptr);
+
+// In place inverse
+template <typename F>
+mat2<F>& inverse(mat2<F>& m, F* det_ptr = nullptr);
+
+
 //
 // Implementations
 //
+
+
 template <typename F, index N, index M>
 mat<F, N, M>::mat()
     : m_values()
@@ -85,6 +98,40 @@ mat<F, N, N> identity()
     for (index i = 0; i < N; i++)
         result[i][i] = F{1};
     return result;
+}
+
+template <typename F>
+F determinant(const mat2<F>& m)
+{
+    return m[0][0] * m[1][1] - m[0][1] * m[1][0];
+}
+
+template <typename F>
+mat2<F> get_inverse(const mat2<F>& m, F* det_ptr)
+{
+    mat2<F> result = m;
+    inverse(result, det_ptr);
+    return result;
+}
+
+template <typename F>
+mat2<F>& inverse(mat2<F>& m, F* det_ptr)
+{
+    const F det = determinant(m);
+    if (det_ptr != nullptr) { *det_ptr = det; }
+    std::swap(m[0][0], m[1][1]);
+    m[0][1] = - m[0][1];
+    m[1][0] = - m[1][0];
+    if (det != F{0})
+    {
+        const F inv_det = F{1} / det;
+        auto& vals = m.values();
+        vals[0] *= inv_det;
+        vals[1] *= inv_det;
+        vals[2] *= inv_det;
+        vals[3] *= inv_det;
+    }
+    return m;
 }
 
 } // namespace lin

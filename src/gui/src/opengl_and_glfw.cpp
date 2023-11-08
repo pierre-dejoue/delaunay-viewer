@@ -462,12 +462,6 @@ void gl_enable_debug(const stdutils::io::ErrorHandler& err_handler)
     //glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
 }
 
-
-#ifdef _WIN32
-#undef min
-#undef max
-#endif
-
 lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox3d<float>& bb, bool flip_y)
 {
     const float& l = bb.min().x;

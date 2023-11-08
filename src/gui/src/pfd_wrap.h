@@ -5,3 +5,9 @@
 #endif
 
 #include <portable-file-dialogs.h>
+
+// Prevent namespace pollution
+#ifdef _WIN32
+#undef min
+#undef max
+#endif
