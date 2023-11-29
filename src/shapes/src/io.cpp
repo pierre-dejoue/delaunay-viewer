@@ -374,7 +374,7 @@ template <typename I>
 void warn_eliminated_edge(const graphs::Edge<I>& edge, std::string_view reason, const stdutils::io::ErrorHandler& err_handler)
 {
     std::stringstream out;
-    out << "Eliminated invalid edge [ " << edge.first << ", " << edge.second << " ]: " << reason;
+    out << "Eliminated invalid edge [ " << edge[0] << ", " << edge[1] << " ]: " << reason;
     err_handler(stdutils::io::Severity::WARN, out.str());
 }
 
@@ -540,8 +540,8 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
         result.edges.indices.reserve(edges.size());
         std::set<graphs::Edge<I>> ordered_edges;
         std::copy_if(edges.cbegin(), edges.cend(), std::back_inserter(result.edges.indices), [&err_handler, &ordered_edges, nb_vertices](const auto& e) {
-            if (e.first == e.second) { warn_eliminated_edge(e, "loop edge", err_handler); return false; }
-            if (e.first >= nb_vertices || e.second >= nb_vertices) { warn_eliminated_edge(e, "out of bound index", err_handler); return false; }
+            if (e[0] == e[1]) { warn_eliminated_edge(e, "loop edge", err_handler); return false; }
+            if (e[0] >= nb_vertices || e[1] >= nb_vertices) { warn_eliminated_edge(e, "out of bound index", err_handler); return false; }
             if (!ordered_edges.insert(graphs::ordered_edge(e)).second) { warn_eliminated_edge(e, "duplicated edge", err_handler); return false; }
             return true;
         });
@@ -563,8 +563,8 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
     std::vector<I> vertices_in_edges(nb_vertices + 1, I{0});            // Also used to remap the indices
     std::vector<I> vertices_in_triangles(nb_vertices + 1, I{0});        // Also used to remap the indices
     std::for_each(result.edges.indices.cbegin(), result.edges.indices.cend(), [&vertices_in_edges](const auto& e) {
-        vertices_in_edges[e.first + 1] = 1;
-        vertices_in_edges[e.second + 1] = 1; });
+        vertices_in_edges[e[0] + 1] = 1;
+        vertices_in_edges[e[1] + 1] = 1; });
     std::for_each(result.triangles.faces.cbegin(), result.triangles.faces.cend(), [&vertices_in_triangles](const auto& t) {
         vertices_in_triangles[t[0] + 1] = 1;
         vertices_in_triangles[t[1] + 1] = 1;
@@ -588,8 +588,8 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
     std::partial_sum(vertices_in_triangles.cbegin(), vertices_in_triangles.cend(), vertices_in_triangles.begin());
     for (auto& e : result.edges.indices)
     {
-        e.first = vertices_in_edges[e.first];
-        e.second = vertices_in_edges[e.second];
+        e[0] = vertices_in_edges[e[0]];
+        e[1] = vertices_in_edges[e[1]];
     }
     for (auto& t : result.triangles.faces)
     {

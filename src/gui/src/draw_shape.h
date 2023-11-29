@@ -256,8 +256,8 @@ void draw_edge_soup(const shapes::Edges2d<F>& es, ImDrawList* draw_list, const C
         const ImU32 color = details::to_compact_color(options.edge_color);
         for (const auto& edge : es.indices)
         {
-            const std::size_t i = static_cast<std::size_t>(edge.first);
-            const std::size_t j = static_cast<std::size_t>(edge.second);
+            const std::size_t i = static_cast<std::size_t>(edge[0]);
+            const std::size_t j = static_cast<std::size_t>(edge[1]);
             assert(i < nb_vertices);
             assert(j < nb_vertices);
             const shapes::Point2d<F>& p0 = es.vertices[i];
@@ -288,8 +288,8 @@ void draw_edge_soup(const shapes::Edges2d<F>& es, renderer::DrawList& draw_list,
     draw_list.m_indices.reserve(begin_edge_indices_idx + 2 * nb_edges + nb_vertices);
     for (const auto& edge : es.indices)
     {
-        const std::size_t i = static_cast<std::size_t>(edge.first);
-        const std::size_t j = static_cast<std::size_t>(edge.second);
+        const std::size_t i = static_cast<std::size_t>(edge[0]);
+        const std::size_t j = static_cast<std::size_t>(edge[1]);
         assert(i < nb_vertices);
         assert(j < nb_vertices);
         draw_list.m_indices.emplace_back(static_cast<renderer::DrawList::HWindex>(begin_vertex_idx + i));

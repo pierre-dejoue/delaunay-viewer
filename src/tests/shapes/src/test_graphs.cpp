@@ -116,6 +116,41 @@ EdgeSoup<I> test_edge_soup_non_manifold_five_star()
     return out;
 }
 
+TEST_CASE("Edge: basic tests", "[graphs]")
+{
+    using I = std::uint16_t;
+
+    // The default ctor for Edge<I> generates an invalid/undefined edge
+    Edge<I> dflt_edge;
+    CHECK_FALSE(is_defined(dflt_edge));
+    CHECK_FALSE(is_valid(dflt_edge));
+    CHECK(dflt_edge[0] == IndexTraits<I>::undef());
+    CHECK(dflt_edge[1] == IndexTraits<I>::undef());
+
+    // Loop edge
+    Edge<I> loop_edge(4, 4);
+    CHECK(is_defined(loop_edge));
+    CHECK(is_loop(loop_edge));
+    CHECK_FALSE(is_valid(loop_edge));
+    CHECK(loop_edge[0] == 4);
+    CHECK(loop_edge.orig() == 4);
+    CHECK(loop_edge[1] == 4);
+    CHECK(loop_edge.dest() == 4);
+
+    // Some legit edge
+    Edge<I> edge(3, 5);
+    CHECK(is_defined(edge));
+    CHECK_FALSE(is_loop(edge));
+    CHECK(is_valid(edge));
+    CHECK(edge[0] == 3);
+    CHECK(edge.orig() == 3);
+    CHECK(edge[1] == 5);
+    CHECK(edge.dest() == 5);
+
+    CHECK_FALSE(loop_edge == edge);
+    CHECK(loop_edge != edge);
+}
+
 TEST_CASE("Invalid paths: A closed path must have at least 3 vertices", "[graphs]")
 {
     Path<> path;
@@ -165,6 +200,18 @@ TEST_CASE("Closed paths", "[graphs]")
     REQUIRE(is_valid(path));
     CHECK(nb_vertices(path) == 3);
     CHECK(nb_edges(path) == 3);
+}
+
+TEST_CASE("Path compact indexing", "[graphs]")
+{
+    using I = std::uint8_t;
+    auto path = test_closed_path<I>();
+    REQUIRE(is_valid(path));
+    const auto [min_idx, max_idx] = minmax_indices(path);
+    CHECK(min_idx == 2);
+    CHECK(max_idx == 6);
+    compact_indexing(path);
+    CHECK(path.vertices == std::vector<I> { 0, 1, 2 });
 }
 
 TEST_CASE("Edge soup from open path", "[graphs]")
@@ -280,7 +327,7 @@ TEST_CASE("EdgeSoup: minmax_indices", "[graphs]")
     }
 }
 
-TEST_CASE("EdgeSoup: nb_vertices and remap indices", "[graphs]")
+TEST_CASE("EdgeSoup: nb_vertices and compact indexing", "[graphs]")
 {
     using I = std::uint16_t;
     struct TestCase
@@ -303,7 +350,7 @@ TEST_CASE("EdgeSoup: nb_vertices and remap indices", "[graphs]")
         CAPTURE(test_loop_idx);
         REQUIRE(is_valid(test.edge_soup) == true);
         CHECK(nb_vertices(test.edge_soup) == test.expected_nb_vertices);
-        remap_indices(test.edge_soup);
+        compact_indexing(test.edge_soup);
         const auto min_max = minmax_indices(test.edge_soup);
         CHECK(min_max.first == 0);
         CHECK(min_max.second + 1 == test.expected_nb_vertices);

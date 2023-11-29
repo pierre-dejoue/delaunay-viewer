@@ -70,7 +70,7 @@ Edges<P, I> generic_proximity_graph(const Triangles<P, I>& triangles, Func func)
         std::for_each(std::cbegin(edge_soup), std::cend(edge_soup), [&triangles, &result](const auto& e) {
             auto& w_edge = result.emplace_back();
             w_edge.m_edge = e;
-            w_edge.m_length = shapes::norm(triangles.vertices[e.second] - triangles.vertices[e.first]);
+            w_edge.m_length = shapes::norm(triangles.vertices[e.dest()] - triangles.vertices[e.orig()]);
         });
         return result;
     }();

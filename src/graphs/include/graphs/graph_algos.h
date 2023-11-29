@@ -73,12 +73,14 @@ template <typename I>
 std::pair<I, I> minmax_indices(const TriangleSoup<I>& triangles);
 
 // Reindex to interval [0; n-1]. Preserve vertex order
+template <typename InputIt>
+void compact_indexing(InputIt index_begin, InputIt index_end);
 template <typename I>
-void remap_indices(EdgeSoup<I>& edges);
+void compact_indexing(EdgeSoup<I>& edges);
 template <typename I>
-void remap_indices(Path<I>& path);
+void compact_indexing(Path<I>& path);
 template <typename I>
-void remap_indices(TriangleSoup<I>& triangles);
+void compact_indexing(TriangleSoup<I>& triangles);
 
 // Conversions. The otput is_valid providing the input is.
 template <typename I>
@@ -170,7 +172,7 @@ bool is_valid(const TriangleSoup<I>& triangles)
 template <typename I>
 constexpr Edge<I> ordered_edge(const Edge<I>& edge)
 {
-    return std::minmax(edge.first, edge.second);
+    return std::minmax(edge[0], edge[1]);
 }
 
 template <typename I>
@@ -183,11 +185,10 @@ template <typename I>
 void filter_out_duplicates(EdgeSoup<I>& edges)
 {
     std::set<Edge<I>> ordered_edges;
-    const auto past_kept_edges = std::remove_if(std::begin(edges), std::end(edges), [&ordered_edges](const Edge<I>& e) {
+    stdutils::erase_if(edges, [&ordered_edges](const Edge<I>& e) {
         const bool inserted = ordered_edges.insert(ordered_edge(e)).second;
         return !inserted;
     });
-    edges.erase(past_kept_edges, std::end(edges));
     assert(edges.size() == ordered_edges.size());
     assert(!has_duplicates(edges));
 }
@@ -195,8 +196,7 @@ void filter_out_duplicates(EdgeSoup<I>& edges)
 template <typename I>
 void filter_out_loops(EdgeSoup<I>& edges)
 {
-    const auto past_kept_edges = std::remove_if(std::begin(edges), std::end(edges), &is_loop<I>);
-    edges.erase(past_kept_edges, std::end(edges));
+    stdutils::erase_if(edges, &is_loop<I>);
     assert(!has_loop_edge(edges));
 }
 
@@ -204,10 +204,9 @@ template <typename I>
 void filter_out_duplicates_and_loops(EdgeSoup<I>& edges)
 {
     std::set<Edge<I>> ordered_edges;
-    const auto past_kept_edges = std::remove_if(std::begin(edges), std::end(edges), [&ordered_edges](const Edge<I>& e) {
+    stdutils::erase_if(edges, [&ordered_edges](const Edge<I>& e) {
         return is_loop(e) || !ordered_edges.insert(ordered_edge(e)).second;
     });
-    edges.erase(past_kept_edges, std::end(edges));
     assert(edges.size() == ordered_edges.size());
     assert(is_valid(edges));
 }
@@ -261,11 +260,11 @@ std::pair<I, I> minmax_indices(const EdgeSoup<I>& edges)
 {
     assert(!edges.empty());
     auto it_edge = std::cbegin(edges);
-    std::pair<I, I> result = std::minmax(it_edge->first, it_edge->second);
+    std::pair<I, I> result = std::minmax(it_edge->orig(), it_edge->dest());
     while(++it_edge != std::cend(edges))
     {
-        stdutils::minmax_update(result, it_edge->first);
-        stdutils::minmax_update(result, it_edge->second);
+        stdutils::minmax_update(result, it_edge->orig());
+        stdutils::minmax_update(result, it_edge->dest());
     }
     return result;
 }
@@ -274,8 +273,10 @@ template <typename I>
 std::pair<I, I> minmax_indices(const Path<I>& path)
 {
     assert(!path.vertices.empty());
-    const auto pair_it = std::minmax_element(path.vertices);
-    return std::make_pair<I, I>(*pair_it.first, *pair_it.second);
+    const auto [min_it, max_it] = std::minmax_element(std::begin(path.vertices), std::end(path.vertices));
+    assert(min_it != std::end(path.vertices));
+    assert(max_it != std::end(path.vertices));
+    return std::pair<I, I>(*min_it, *max_it);
 }
 
 template <typename I>
@@ -299,10 +300,16 @@ namespace details
     class RemapIndices
     {
     public:
-        RemapIndices(const std::pair<I, I>& minmax)
-            : min_idx(minmax.first)
-            , max_idx(minmax.second)
+        RemapIndices(I min, I max)
+            : min_idx(min)
+            , max_idx(max)
             , idx_map(2u + max_idx - min_idx, I{0})
+        {
+            assert(min_idx <= max_idx);
+        }
+
+        RemapIndices(const std::pair<I, I>& minmax)
+            : RemapIndices(minmax.first, minmax.second)
         {
             assert(min_idx <= max_idx);
         }
@@ -338,38 +345,50 @@ namespace details
     };
 }
 
+template <typename InputIt>
+void compact_indexing(InputIt index_begin, InputIt index_end)
+{
+    using I = typename InputIt::value_type;
+    if (index_begin == index_end)
+        return; // Empty range
+    const auto [min_it, max_it] = std::minmax_element(index_begin, index_end);
+    assert(min_it != index_end);
+    assert(max_it != index_end);
+    details::RemapIndices<I> idx_map(*min_it, *max_it);
+    for (auto it = index_begin; it != index_end; ++it)
+        idx_map.visit(*it);
+    idx_map.remap();
+    for (auto it = index_begin; it != index_end; ++it)
+        *it = idx_map[*it];
+    assert(std::distance(index_begin, index_end) == idx_map.nb_vertices());
+}
+
 template <typename I>
-void remap_indices(EdgeSoup<I>& edges)
+void compact_indexing(EdgeSoup<I>& edges)
 {
     details::RemapIndices<I> idx_map(minmax_indices(edges));
     for (const auto& e : edges)
     {
-        idx_map.visit(e.first);
-        idx_map.visit(e.second);
+        idx_map.visit(e[0]);
+        idx_map.visit(e[1]);
     }
     idx_map.remap();
     for (auto& e : edges)
     {
-        e.first = idx_map[e.first];
-        e.second = idx_map[e.second];
+        e[0] = idx_map[e[0]];
+        e[1] = idx_map[e[1]];
     }
     assert(nb_vertices(edges) == idx_map.nb_vertices());
 }
 
 template <typename I>
-void remap_indices(Path<I>& path)
+void compact_indexing(Path<I>& path)
 {
-    details::RemapIndices<I> idx_map(minmax_indices(path));
-    for (const auto& v : path.vertices)
-        idx_map.visit(v);
-    idx_map.remap();
-    for (auto& v : path.vertices)
-        v = idx_map[v];
-    assert(nb_vertices(path) == idx_map.nb_vertices());
+    compact_indexing(std::begin(path.vertices), std::end(path.vertices));
 }
 
 template <typename I>
-void remap_indices(TriangleSoup<I>& triangles)
+void compact_indexing(TriangleSoup<I>& triangles)
 {
     details::RemapIndices<I> idx_map(minmax_indices(triangles));
     for (const auto& t : triangles)
@@ -395,8 +414,8 @@ VertexSet<I> to_vertex_set(const EdgeSoup<I>& edges)
     VertexSet<I> result;
     for (const auto& e : edges)
     {
-        result.insert(e.first);
-        result.insert(e.second);
+        result.insert(e[0]);
+        result.insert(e[1]);
     }
     return result;
 }
@@ -468,11 +487,10 @@ namespace details
         std::for_each(result.begin(), result.end(), [&idx](auto& pair) { pair.first = idx++; });
         for (const auto& e : edges)
         {
-            result[e.first  - min_idx].second++;
-            result[e.second - min_idx].second++;
+            result[e.orig() - min_idx].second++;
+            result[e.dest() - min_idx].second++;
         }
-        const auto valid_degrees_end = std::remove_if(std::begin(result), std::end(result), [](const auto& pair) { return pair.second == 0; });
-        result.erase(valid_degrees_end, result.end());
+        stdutils::erase_if(result, [](const auto& pair) { return pair.second == 0; });
         return result;
     }
 
@@ -512,9 +530,9 @@ namespace details
             };
             for (const auto& e : edges)
             {
-                if (e.first == e.second) { assert(0); continue; }
-                init_half_edge(e.first, e.second);
-                init_half_edge(e.second, e.first);
+                if (e[0] == e[1]) { assert(0); continue; }
+                init_half_edge(e[0], e[1]);
+                init_half_edge(e[1], e[0]);
             }
             for (auto& vis: m_visited) { vis.m_degree = vis.m_unvisited; }
         }

@@ -43,7 +43,7 @@ bool is_valid(const Edges<P, I>& edges)
 {
     const I nb_vertices = static_cast<I>(edges.vertices.size());
     const bool all_valid = std::all_of(std::cbegin(edges.indices), std::cend(edges.indices), [nb_vertices](const graphs::Edge<I>& e) {
-        return graphs::is_valid(e) && e.first < nb_vertices && e.second < nb_vertices;
+        return graphs::is_valid(e) && e.orig() < nb_vertices && e.dest() < nb_vertices;
     });
     return all_valid && !graphs::has_duplicates(edges.indices);
 }

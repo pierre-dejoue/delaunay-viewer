@@ -73,8 +73,8 @@ WeightedEdgeIt nearest_neighbor(WeightedEdgeIt begin, WeightedEdgeIt end)
     // Support vector containing the degree of each vertex
     I max_index = 0;
     std::for_each(begin, end, [&max_index](const auto& edge) {
-        stdutils::max_update(max_index, edge.edge().first);
-        stdutils::max_update(max_index, edge.edge().second);
+        stdutils::max_update(max_index, edge.edge().orig());
+        stdutils::max_update(max_index, edge.edge().dest());
     });
     assert(max_index <= IndexTraits<I>::max_valid_index());
     std::vector<std::uint8_t> vertex_degree(max_index + 1, 0u);
@@ -85,8 +85,8 @@ WeightedEdgeIt nearest_neighbor(WeightedEdgeIt begin, WeightedEdgeIt end)
     std::size_t point_count = 0;
     while (current != end && point_count < vertex_degree.size())
     {
-        const I i = current->edge().first;
-        const I j = current->edge().second;
+        const I i = current->edge().orig();
+        const I j = current->edge().dest();
         auto& deg_i = vertex_degree[i];
         auto& deg_j = vertex_degree[j];
         bool is_nn_edge = false;
@@ -125,8 +125,8 @@ WeightedEdgeIt minimum_spanning_tree(WeightedEdgeIt begin, WeightedEdgeIt end)
     // Union-find structure to identify components
     I max_index = 0;
     std::for_each(begin, end, [&max_index](const auto& edge) {
-        stdutils::max_update(max_index, edge.edge().first);
-        stdutils::max_update(max_index, edge.edge().second);
+        stdutils::max_update(max_index, edge.edge().orig());
+        stdutils::max_update(max_index, edge.edge().dest());
     });
     assert(max_index <= IndexTraits<I>::max_valid_index());
     std::vector<std::uint8_t> vertex_degree(max_index + 1, 0u);
@@ -137,8 +137,8 @@ WeightedEdgeIt minimum_spanning_tree(WeightedEdgeIt begin, WeightedEdgeIt end)
     WeightedEdgeIt current = begin;
     while (current != end)
     {
-        const I i = current->edge().first;
-        const I j = current->edge().second;
+        const I i = current->edge().orig();
+        const I j = current->edge().dest();
         const I comp_i = components.find(i);
         const I comp_j = components.find(j);
         if (comp_i != comp_j)
@@ -162,8 +162,8 @@ WeightedEdgeIt relative_neighborhood_graph(WeightedEdgeIt begin, WeightedEdgeIt 
 
     std::set<I> vertices;
     std::for_each(begin, end, [&vertices](const auto& edge) {
-        const I i = edge.edge().first;
-        const I j = edge.edge().second;
+        const I i = edge.edge().orig();
+        const I j = edge.edge().dest();
         vertices.insert(i);
         vertices.insert(j);
     });
@@ -172,8 +172,8 @@ WeightedEdgeIt relative_neighborhood_graph(WeightedEdgeIt begin, WeightedEdgeIt 
     WeightedEdgeIt current = begin;
     while (current != end)
     {
-        const I i = current->edge().first;
-        const I j = current->edge().second;
+        const I i = current->edge().orig();
+        const I j = current->edge().dest();
         const auto w_ij = current->weight();
         const bool exclusion_zone_is_empty = std::none_of(vertices.cbegin(), vertices.cend(), [i, j, w_ij, &weight](const I k) {
             return weight(i, k) < w_ij && weight(j, k) < w_ij;
@@ -198,8 +198,8 @@ WeightedEdgeIt gabriel_graph(WeightedEdgeIt begin, WeightedEdgeIt end, WeightFun
 
     std::set<I> vertices;
     std::for_each(begin, end, [&vertices](const auto& edge) {
-        const I i = edge.edge().first;
-        const I j = edge.edge().second;
+        const I i = edge.edge().orig();
+        const I j = edge.edge().dest();
         vertices.insert(i);
         vertices.insert(j);
     });
@@ -208,8 +208,8 @@ WeightedEdgeIt gabriel_graph(WeightedEdgeIt begin, WeightedEdgeIt end, WeightFun
     WeightedEdgeIt current = begin;
     while (current != end)
     {
-        const I i = current->edge().first;
-        const I j = current->edge().second;
+        const I i = current->edge().orig();
+        const I j = current->edge().dest();
         const auto w_ij = current->weight();
         const auto w_ij_sq = w_ij * w_ij;
         const bool exclusion_zone_is_empty = std::none_of(vertices.cbegin(), vertices.cend(), [i, j, w_ij_sq, &weight](const I k) {
