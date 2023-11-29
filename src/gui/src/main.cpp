@@ -20,6 +20,7 @@
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
 #include <shapes/io.h>
+#include <stdutils/algorithm.h>
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
 #include <stdutils/platform.h>
@@ -171,7 +172,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
                         shapes.emplace_back(std::move(cbp));
                 }
             }
-            const auto filtered_out = std::remove_if(std::begin(shapes), std::end(shapes), [](const auto& shape) {
+            stdutils::erase_if(shapes, [](const auto& shape) {
                 if (shapes::get_dimension(shape) != 2)
                 {
                     std::stringstream out;
@@ -181,7 +182,6 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
                 }
                 return false;
             });
-            shapes.erase(filtered_out, shapes.end());
             if (!shapes.empty() && windows.viewport)
             {
                 windows.viewport->reset();
