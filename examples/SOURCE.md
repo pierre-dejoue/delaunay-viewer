@@ -1,9 +1,12 @@
 Source of the example files
 ===========================
 
-## CDT-logo.cdt, Capital-A.cdt, Constrained-Sweden.cdt
+## CDT-logo.cdt, Capital-A.cdt, Constrained-Sweden.cdt, two_islands.dat
 
 CDT test files: https://github.com/artem-ogre/CDT/tree/master/CDT/tests/inputs
+
+Constrained-Sweden.cdt was patched to avoid repeat points.
+two_islands.dat is an excerpt from Constrained-Sweden.cdt.
 
 ## bird.cdt, city.dat, poly2tri_dude.dat
 
