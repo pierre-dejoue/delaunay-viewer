@@ -116,15 +116,16 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
             std::string filename = "no_file";
             if (ImGui::MenuItem("Open CDT"))
             {
-                const auto paths = pfd::open_file("Select a CDT file", "",
-                    { "CDT file", "*.cdt", "All files", "*.*" }).result();
+                const auto paths = pfd::source_paths(
+                    pfd::open_file("Select a CDT file", "", { "CDT file", "*.cdt", "All files", "*.*" })
+                );
                 for (const auto& path : paths)
                 {
                     std::cout << "User selected CDT file " << path << std::endl;
                     if (shapes::io::cdt::peek_point_dimension(path, io_err_handler) == 2)
                     {
                         auto cdt_shapes = shapes::io::cdt::parse_2d_shapes_from_file(path, io_err_handler);
-                        filename = std::filesystem::path(path).filename().string();
+                        filename = path.filename().string();
                         shapes.clear();
                         if (!cdt_shapes.point_cloud.vertices.empty())
                         {
@@ -145,25 +146,27 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
             }
             if (ImGui::MenuItem("Open DAT"))
             {
-                const auto paths = pfd::open_file("Select a DAT file", "",
-                    { "DAT file", "*.dat", "All files", "*.*" }).result();
+                const auto paths = pfd::source_paths(
+                    pfd::open_file("Select a DAT file", "", { "DAT file", "*.dat", "All files", "*.*" })
+                );
                 for (const auto& path : paths)
                 {
                     std::cout << "User selected DAT file " << path << std::endl;
-                    filename = std::filesystem::path(path).filename().string();
+                    filename = path.filename().string();
                     shapes = shapes::io::dat::parse_shapes_from_file(path, io_err_handler);
                 }
             }
             if (ImGui::MenuItem("Open SVG"))
             {
-                const auto paths = pfd::open_file("Select a SVG file", "",
-                    { "SVG file", "*.svg" }).result();
+                const auto paths = pfd::source_paths(
+                    pfd::open_file("Select a SVG file", "", { "SVG file", "*.svg" })
+                );
                 for (const auto& path : paths)
                 {
                     std::cout << "User selected SVG file " << path << std::endl;
                     auto file_paths = svg::io::parse_svg_paths(path, io_err_handler);
                     std::cout << "Nb of point paths: " << file_paths.point_paths.size() << ". Nb of cubic bezier paths: " << file_paths.cubic_bezier_paths.size() << "." << std::endl;
-                    filename = std::filesystem::path(path).filename().string();
+                    filename = path.filename().string();
                     shapes.clear();
                     shapes.reserve(file_paths.point_paths.size() + file_paths.cubic_bezier_paths.size());
                     for (const auto& pp : file_paths.point_paths)
@@ -192,14 +195,13 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
             bool save_menu_enabled = static_cast<bool>(windows.shape_control);
             if (ImGui::MenuItem("Save as DAT", "", false, save_menu_enabled))
             {
-                std::filesystem::path filepath = pfd::save_file(
-                    "Select a file", "",
-                    { "DAT", "*.dat" },
-                    pfd::opt::force_overwrite).result();
-                if (!filepath.empty())
+                std::filesystem::path path = pfd::target_path(
+                    pfd::save_file("Select a file", "", { "DAT", "*.dat" }, pfd::opt::force_overwrite)
+                );
+                if (!path.empty())
                 {
-                    if (!filepath.has_extension()) { filepath.replace_extension("dat"); }
-                    shapes::io::dat::save_shapes_as_file(filepath, windows.shape_control->get_triangulation_input_aggregate(), io_err_handler);
+                    if (!path.has_extension()) { path.replace_extension("dat"); }
+                    shapes::io::dat::save_shapes_as_file(path, windows.shape_control->get_triangulation_input_aggregate(), io_err_handler);
                 }
             }
             ImGui::Separator();

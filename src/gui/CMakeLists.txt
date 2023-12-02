@@ -14,6 +14,7 @@ set(GUI_SOURCES
     src/imgui_helpers.cpp
     src/main.cpp
     src/opengl_and_glfw.cpp
+    src/pfd_wrap.cpp
     src/project.cpp
     src/renderer.cpp
     src/settings.cpp
