@@ -6,6 +6,7 @@ include(compiler_options)
 
 set(LIB_SOURCES
     src/io.cpp
+    src/vect.cpp
 )
 
 add_library(shapes STATIC ${LIB_SOURCES})

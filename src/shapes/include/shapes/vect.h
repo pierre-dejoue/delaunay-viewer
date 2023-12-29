@@ -4,7 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
-
+#include <ostream>
 
 namespace shapes
 {
@@ -48,6 +48,15 @@ inline bool isfinite(const Vect3d<F>& v)
 {
     return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
 }
+
+//
+// IO
+//
+template <typename F>
+std::ostream& operator<<(std::ostream& out, const Vect2d<F>& v);
+
+template <typename F>
+std::ostream& operator<<(std::ostream& out, const Vect3d<F>& v);
 
 //
 // Standard operations
