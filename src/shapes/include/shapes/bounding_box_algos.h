@@ -6,6 +6,7 @@
 #include <shapes/traits.h>
 
 #include <cassert>
+#include <cmath>
 #include <limits>
 
 
@@ -44,7 +45,7 @@ void ensure_min_extent(Range<F>& range)
         else
             range.min = range.max * (F(1) + std::numeric_limits<F>::epsilon());
     }
-    assert(range.extent() != F(0));
+    assert(std::fpclassify(range.length()) != FP_ZERO);
 }
 
 template <typename F>

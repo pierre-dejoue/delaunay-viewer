@@ -6,9 +6,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <limits>
 #include <ostream>
-
 
 namespace shapes
 {
@@ -21,7 +21,8 @@ struct Range
     bool is_populated() const { return min <= max; }
     Range<F>& add(F v);
     Range<F>& merge(const Range<F>& o);
-    F extent() const { return min <= max ? max - min : F(0); }
+    F length() const { return min <= max ? max - min : F(0); }
+    F diameter() const { return length(); }
     F min;
     F max;
 };
@@ -35,9 +36,10 @@ struct BoundingBox2d
     BoundingBox2d<F>& merge(const BoundingBox2d& o);
     Point2d<F> min() const;
     Point2d<F> max() const;
-    Vect2d<F> extent() const { return { rx.extent(), ry.extent() }; }
-    F width() const { return rx.extent(); }
-    F height() const { return ry.extent(); }
+    Vect2d<F> extent() const { return { rx.length(), ry.length() }; }
+    F width() const { return rx.length(); }
+    F height() const { return ry.length(); }
+    F diameter() const { const F w = width(); const F h = height(); return std::sqrt(w * w + h * h); }
     Range<F> rx;
     Range<F> ry;
 };
@@ -51,10 +53,11 @@ struct BoundingBox3d
     BoundingBox3d<F>& merge(const BoundingBox3d& o);
     Point3d<F> min() const;
     Point3d<F> max() const;
-    Vect3d<F> extent() const { return { rx.extent(), ry.extent(), rz.extent() }; }
-    F width() const { return rx.extent(); }
-    F height() const { return ry.extent(); }
-    F depth() const { return rz.extent(); }
+    Vect3d<F> extent() const { return { rx.length(), ry.length(), rz.length() }; }
+    F width() const { return rx.length(); }
+    F height() const { return ry.length(); }
+    F depth() const { return rz.length(); }
+    F diameter() const { const F w = width(); const F h = height(); const F d = depth(); return std::sqrt(w * w + h * h + d * d); }
     Range<F> rx;
     Range<F> ry;
     Range<F> rz;
@@ -70,6 +73,7 @@ std::ostream& operator<<(std::ostream& out, const BoundingBox3d<F>& bb);
 //
 // Conversions
 //
+
 template <typename F1, typename F0>
 Range<F1> cast(const Range<F0>& range)
 {
