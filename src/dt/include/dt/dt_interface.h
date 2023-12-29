@@ -62,11 +62,17 @@ shapes::Triangles2d<F, I> Interface<F, I>::triangulate(TriangulationPolicy polic
     {
         triangulate_impl(policy, result);
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
         result.vertices.clear();
         result.faces.clear();
         if (m_err_handler) { m_err_handler(stdutils::io::Severity::EXCPT, e.what()); }
+    }
+    catch (...)
+    {
+        result.vertices.clear();
+        result.faces.clear();
+        if (m_err_handler) { m_err_handler(stdutils::io::Severity::EXCPT, "Unknown exception occured"); }
     }
     assert(is_valid(result));
     return result;

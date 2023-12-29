@@ -124,7 +124,7 @@ RegisteredImplList<F, I> get_impl_list()
 template <typename F, typename I>
 std::unique_ptr<Interface<F, I>> get_impl(const RegisteredImpl<F, I>& registered_impl, const stdutils::io::ErrorHandler* err_handler)
 {
-    if (err_handler == nullptr)
+    if (err_handler == nullptr || !(*err_handler))
         return registered_impl.impl_factory(nullptr);
 
     // This handler is copied by the Interface<F, I> ctor
