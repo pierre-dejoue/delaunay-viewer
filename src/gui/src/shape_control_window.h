@@ -11,6 +11,7 @@
 #include <shapes/bounding_box.h>
 #include <shapes/io.h>
 #include <shapes/point.h>
+#include <shapes/point_cloud.h>
 #include <shapes/sampling_interface.h>
 #include <shapes/shapes.h>
 
@@ -35,63 +36,78 @@ public:
 
     ShapeWindow(
         std::string_view name,
-        std::vector<shapes::AllShapes<scalar>>&& shapes,
+        shapes::io::ShapeAggregate<scalar>&& shapes,
         ViewportWindow& viewport_window);
     ~ShapeWindow();
     ShapeWindow(const ShapeWindow&) = delete;
     ShapeWindow& operator=(const ShapeWindow&) = delete;
+    ShapeWindow(ShapeWindow&&) = delete;
+    ShapeWindow& operator=(ShapeWindow&&) = delete;
 
     void visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz, bool& input_has_changed);
 
     const DrawCommandLists& get_draw_command_lists() const;
 
     shapes::io::ShapeAggregate<scalar> get_triangulation_input_aggregate() const;
+    shapes::io::ShapeAggregate<scalar> get_tab_aggregate(const Key& selected_tab) const;
 
     void add_steiner_point(const shapes::Point2d<scalar>& pt);
 
 private:
     struct ShapeControl
     {
+        struct PrimitiveData
+        {
+            PrimitiveData(std::size_t nb, const renderer::ColorData& color) : nb(nb), color(color), draw(true) {}
+            std::size_t nb;
+            renderer::ColorData color;
+            bool draw;
+        };
         explicit ShapeControl(shapes::AllShapes<scalar>&& shape);
+        ShapeControl(const ShapeControl& shape_control);
+        ShapeControl& operator=(const ShapeControl& shape_control);
 
         void update(shapes::AllShapes<scalar>&& rep_shape);
-        DrawCommand<scalar> to_draw_command(const Settings& settings, bool constraint_edges = false) const;
+        DrawCommand<scalar> to_draw_command(const Settings& settings) const;
 
-        std::size_t nb_vertices;
-        std::size_t nb_edges;
-        std::size_t nb_faces;
         bool active;
         bool force_inactive;
         bool highlight;
-        renderer::ColorData point_color;
-        renderer::ColorData edge_color;
-        renderer::ColorData face_color;
         float latest_computation_time_ms;
+        PrimitiveData vertices;
+        PrimitiveData edges;
+        PrimitiveData faces;
         shapes::AllShapes<scalar> shape;
+        std::string descr;
         std::unique_ptr<shapes::UniformSamplingInterface2d<scalar>> sampler;
         float req_sampling_length;
         ShapeControl* sampled_shape;
     };
-    using ShapeControlPtr = std::unique_ptr<ShapeControl>;
+    using ShapeControlSmartPtr = std::unique_ptr<ShapeControl>;
+    using ShapeControlPtrs = std::vector<const ShapeControl*>;
+    using ShapeControlListKVP = std::pair<Key, ShapeControlPtrs>;
+    using ShapeControlLists = std::vector<ShapeControlListKVP>;
 
     struct TriangulationOutput
     {
-        ShapeControlPtr delaunay_triangulation;
+        ShapeControlSmartPtr delaunay_triangulation;
     };
 
     struct ProximityGraphs
     {
-        ShapeControlPtr nn_graph;
-        ShapeControlPtr mst_graph;
-        ShapeControlPtr rng_graph;
-        ShapeControlPtr gg_graph;
-        ShapeControlPtr dt_graph;
+        ShapeControlSmartPtr nn_graph;
+        ShapeControlSmartPtr mst_graph;
+        ShapeControlSmartPtr rng_graph;
+        ShapeControlSmartPtr gg_graph;
+        ShapeControlSmartPtr dt_graph;
     };
 
     void init_bounding_box();
-    std::vector<const ShapeControl*> get_active_shapes() const;
+    ShapeControlPtrs get_active_input_shapes() const;
     void recompute_triangulations(delaunay::TriangulationPolicy policy, const stdutils::io::ErrorHandler& err_handler);
+    shapes::PointCloud2d<scalar> compute_input_point_cloud(const stdutils::io::ErrorHandler& err_handler);
     void compute_proximity_graphs(const stdutils::io::ErrorHandler& err_handler);
+    void map_shape_controls_by_tabs(bool flag_include_proxiity_graphs);
     void build_draw_lists(const Settings& settings);
     ShapeControl* allocate_new_sampled_shape(const ShapeControl& parent, shapes::AllShapes<scalar>&& shape);
     void delete_sampled_shape(ShapeControl** sc);
@@ -102,13 +118,15 @@ private:
 
     const std::string m_title;
     std::vector<ShapeControl> m_input_shape_controls;
-    std::vector<std::unique_ptr<ShapeControl>> m_sampled_shape_controls;
+    std::vector<ShapeControlSmartPtr> m_sampled_shape_controls;
     ShapeControl m_steiner_shape_control;
     std::optional<shapes::Point2d<scalar>> m_new_steiner_pt;
     delaunay::TriangulationPolicy m_triangulation_policy;
     std::map<std::string, TriangulationOutput> m_triangulation_shape_controls;
+    std::vector<ShapeControl> m_triangulation_constraint_edges;
     ProximityGraphs m_proximity_graphs_controls;
     shapes::BoundingBox2d<scalar> m_geometry_bounding_box;
+    ShapeControlLists m_shape_control_lists;
     DrawCommandLists m_draw_command_lists;
     Settings::General m_prev_general_settings;
     bool m_first_visit;

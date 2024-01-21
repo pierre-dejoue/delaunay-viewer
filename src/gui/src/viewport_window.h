@@ -36,7 +36,7 @@ public:
 
     void reset();
 
-    void visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz,  Key& selected_key);
+    void visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz);
 
     void set_draw_commands(Key key, const DrawCommands<scalar>& draw_commands);
     void set_draw_commands(Key key, DrawCommands<scalar>&& draw_commands);
@@ -44,6 +44,8 @@ public:
     void set_geometry_bounding_box(const GeometryBB& bounding_box);
 
     void set_steiner_callback(const SteinerCallback& callback);
+
+    const Key& get_latest_selected_tab() const;
 
     GeometryBB get_canvas_bounding_box() const;
 
@@ -74,6 +76,7 @@ private:
     ZoomSelectionBox m_zoom_selection_box;
     DrawCommandLists m_draw_command_lists;
     TabList m_tabs;
+    Key m_latest_selected_tab;
     renderer::ColorData m_background_color;
     bool m_steiner_checked;
     SteinerCallback m_steiner_callback;

@@ -39,6 +39,7 @@ ViewportWindow::ViewportWindow()
     , m_zoom_selection_box()
     , m_draw_command_lists()
     , m_tabs()
+    , m_latest_selected_tab()
     , m_background_color(to_float_color(CanvasBackgroundColor_Default))
     , m_steiner_checked(false)
     , m_steiner_callback()
@@ -109,7 +110,7 @@ void ViewportWindow::set_draw_commands(Key key, DrawCommands<scalar>&& draw_comm
     m_draw_command_lists[key] = std::move(draw_commands);
 }
 
-void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz, Key& selected_key)
+void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz)
 {
     can_be_erased = false; // Always ON
 
@@ -203,7 +204,7 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
         for (const auto& tab_name : tabs)
             if (ImGui::BeginTabItem(tab_name.c_str()))
             {
-                selected_key = tab_name;
+                m_latest_selected_tab = tab_name;
 
                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
                 assert(draw_list);
@@ -269,9 +270,9 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
                 for (const auto& draw_command : m_draw_command_lists[tab_name])
                 {
                     assert(draw_command.shape);
-                    options.point_color = draw_command.point_color;
-                    options.edge_color = draw_command.edge_color;
-                    options.face_color = draw_command.face_color;
+                    options.vertices = draw_command.vertices;
+                    options.edges = draw_command.edges;
+                    options.faces = draw_command.faces;
                     std::visit(stdutils::Overloaded {
                         [&draw_list, &canvas, &options](const shapes::PointCloud2d<scalar>& pc) { draw_point_cloud(pc, draw_list, canvas, options); },
                         [&draw_list, &canvas, &options](const shapes::PointPath2d<scalar>& pp) { draw_point_path(pp, draw_list, canvas, options); },
@@ -311,6 +312,11 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
     }
 
     ImGui::End();
+}
+
+const ViewportWindow::Key& ViewportWindow::get_latest_selected_tab() const
+{
+    return m_latest_selected_tab;
 }
 
 ViewportWindow::GeometryBB ViewportWindow::get_canvas_bounding_box() const

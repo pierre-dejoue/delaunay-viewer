@@ -175,7 +175,8 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
                         shapes.emplace_back(std::move(cbp));
                 }
             }
-            stdutils::erase_if(shapes, [](const auto& shape) {
+            stdutils::erase_if(shapes, [](const auto& shape_wrapper) {
+                const auto& shape = shape_wrapper.shape;
                 if (shapes::get_dimension(shape) != 2)
                 {
                     std::stringstream out;
@@ -192,8 +193,8 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
                 windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), *windows.viewport);
             }
             ImGui::Separator();
-            bool save_menu_enabled = static_cast<bool>(windows.shape_control);
-            if (ImGui::MenuItem("Save as DAT", "", false, save_menu_enabled))
+            bool save_input_as_dat_menu_enabled = static_cast<bool>(windows.shape_control);
+            if (ImGui::MenuItem("Save input as DAT", "", false, save_input_as_dat_menu_enabled))
             {
                 std::filesystem::path path = pfd::target_path(
                     pfd::save_file("Select a file", "", { "DAT", "*.dat" }, pfd::opt::force_overwrite)
@@ -202,6 +203,19 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
                 {
                     if (!path.has_extension()) { path.replace_extension("dat"); }
                     shapes::io::dat::save_shapes_as_file(path, windows.shape_control->get_triangulation_input_aggregate(), io_err_handler);
+                }
+            }
+            bool save_tab_as_dat_menu_enabled = static_cast<bool>(windows.viewport) && static_cast<bool>(windows.shape_control);
+            if (ImGui::MenuItem("Save current viewport as DAT", "", false, save_tab_as_dat_menu_enabled))
+            {
+                std::filesystem::path path = pfd::target_path(
+                    pfd::save_file("Select a file", "", { "DAT", "*.dat" }, pfd::opt::force_overwrite)
+                );
+                if (!path.empty())
+                {
+                    if (!path.has_extension()) { path.replace_extension("dat"); }
+                    const auto key = windows.viewport->get_latest_selected_tab();
+                    shapes::io::dat::save_shapes_as_file(path, windows.shape_control->get_tab_aggregate(key), io_err_handler);
                 }
             }
             ImGui::Separator();
@@ -364,11 +378,10 @@ int main(int argc, char *argv[])
         }
 
         // Viewport window
-        ViewportWindow::Key selected_tab;
         if (windows.viewport)
         {
             bool can_be_erased = false;
-            windows.viewport->visit(can_be_erased, settings, windows.layout.viewport, selected_tab);
+            windows.viewport->visit(can_be_erased, settings, windows.layout.viewport);
             assert(!can_be_erased);     // Always ON
             draw_2d_renderer.set_background_color(windows.viewport->get_background_color());
         }
@@ -377,6 +390,7 @@ int main(int argc, char *argv[])
         if (windows.shape_control)
         {
             const auto& dcls = windows.shape_control->get_draw_command_lists();
+            ViewportWindow::Key selected_tab = windows.viewport ? windows.viewport->get_latest_selected_tab() : ViewportWindow::Key();
             const auto draw_commands_it = std::find_if(std::cbegin(dcls), std::cend(dcls), [&selected_tab](const auto& kvp) { return kvp.first == selected_tab; });
             if (draw_commands_it != std::cend(dcls))
             {

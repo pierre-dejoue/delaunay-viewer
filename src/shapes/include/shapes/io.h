@@ -22,7 +22,20 @@ namespace io
 {
 
 template <typename F>
-using ShapeAggregate = std::vector<shapes::AllShapes<F>>;
+struct ShapeWrapper
+{
+    ShapeWrapper(shapes::AllShapes<F>&& shape, std::string descr = "") : shape(std::move(shape)), descr(descr) {}
+    template <typename T>
+    ShapeWrapper(T&& geom, std::string descr = "") : shape(std::move(geom)), descr(descr) {}
+    template <typename T>
+    ShapeWrapper(const T& geom, std::string descr = "") : shape(geom), descr(descr) {}
+
+    shapes::AllShapes<F> shape;
+    std::string descr;
+};
+
+template <typename F>
+using ShapeAggregate = std::vector<ShapeWrapper<F>>;
 
 //
 // DAT format

@@ -33,7 +33,7 @@ public:
 private:
     void triangulate_impl(TriangulationPolicy policy, shapes::Triangles2d<F, I>& result) const override;
 
-    std::vector<shapes::Point2d<F>> m_points;
+    shapes::Points2d<F> m_points;
     std::vector<std::pair<I, I>> m_polylines_indices;
     std::vector<bool> m_polyline_is_closed;
     std::vector<std::pair<I, I>> m_steiner_indices;
@@ -56,7 +56,7 @@ namespace details
 namespace p2t
 {
     template <typename F>
-    std::vector<::p2t::Point> copy_vertices(const std::vector<shapes::Point2d<F>>& points)
+    std::vector<::p2t::Point> copy_vertices(const shapes::Points2d<F>& points)
     {
         std::vector<::p2t::Point> result;
         result.reserve(points.size());

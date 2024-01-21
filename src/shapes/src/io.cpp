@@ -4,6 +4,7 @@
 
 #include <shapes/traits.h>
 #include <stdutils/io.h>
+#include <stdutils/macros.h>
 #include <stdutils/string.h>
 
 #include <algorithm>
@@ -14,6 +15,7 @@
 #include <iomanip>
 #include <iterator>
 #include <istream>
+#include <map>
 #include <numeric>
 #include <set>
 #include <sstream>
@@ -36,6 +38,21 @@ struct NumericLineBuffer
     std::vector<Entry> lines;
     unsigned int dim = 0;
 };
+
+template <typename F, int POINT_DIM, std::size_t MAX_DIM>
+typename shapes::Traits<F, POINT_DIM>::Point to_point(const typename NumericLineBuffer<F, MAX_DIM>::Entry& buffer)
+{
+    static_assert(static_cast<std::size_t>(POINT_DIM) <= MAX_DIM);
+    using P = typename shapes::Traits<F, POINT_DIM>::Point;
+    if constexpr (POINT_DIM == 2)
+    {
+        return P(buffer[0], buffer[1]);
+    }
+    else
+    {
+        return P(buffer[0], buffer[1], buffer[2]);
+    }
+}
 
 template <typename T, std::size_t MAX_DIM>
 bool parse_numeric_line(const std::string& line, NumericLineBuffer<T, MAX_DIM>& buffer, T default_val = T{0})
@@ -83,7 +100,9 @@ enum class ShapeType
 {
     POINT_CLOUD,
     POINT_PATH,
-    CUBIC_BEZIER_PATH
+    CUBIC_BEZIER_PATH,
+    EDGE_SOUP,
+    TRIANGLE_SOUP
 };
 
 template <typename F, std::size_t MAX_DIM>
@@ -97,7 +116,7 @@ struct ShapeBuffer
 };
 
 template <typename F, std::size_t MAX_DIM>
-void append_vertices(std::vector<Point2d<F>>& target, const NumericLineBuffer<F, MAX_DIM>& source)
+void append_vertices(Points2d<F>& target, const NumericLineBuffer<F, MAX_DIM>& source)
 {
     static_assert(MAX_DIM >= 2);
     target.reserve(target.size() + source.lines.size());
@@ -105,14 +124,37 @@ void append_vertices(std::vector<Point2d<F>>& target, const NumericLineBuffer<F,
 }
 
 template <typename F, std::size_t MAX_DIM>
-void append_vertices(std::vector<Point3d<F>>& target, const NumericLineBuffer<F, MAX_DIM>& source)
+void append_vertices(Points3d<F>& target, const NumericLineBuffer<F, MAX_DIM>& source)
 {
     static_assert(MAX_DIM >= 3);
     target.reserve(target.size() + source.lines.size());
     for (const auto& arr: source.lines) { target.emplace_back(arr[0], arr[1], arr[2]); }
 }
 
-} // Anonymous namespace
+template <typename P, typename I>
+class UniquePoints
+{
+public:
+    I add(const P& point)
+    {
+        const I next_idx = static_cast<I>(m_unique_points.size());
+        const auto [elt_it, inserted] = m_unique_points.try_emplace(point, next_idx);
+        UNUSED(inserted);
+        assert(elt_it != m_unique_points.end());
+        return elt_it->second;
+    }
+
+    // Dump all points in insertion order
+    std::vector<P> dump_points() const {
+        std::vector<P> result(m_unique_points.size());
+        for (const auto& [point, idx] : m_unique_points) { result[idx] = point; }
+        return result;
+    }
+private:
+    std::map<P, I, shapes::less<P>> m_unique_points;
+};
+
+} // namespace
 
 
 /**
@@ -127,7 +169,7 @@ void append_vertices(std::vector<Point3d<F>>& target, const NumericLineBuffer<F,
  *      - control lines (e.g. "LINE_PATH" or "CUBIC_BEZIER_PATH OPEN") describing the type of the next point series
  * - Point series are a sequence of point lines uninterrupted by a control line.
  * - A control lines comprises of two tokens: <shape_type> <shape_topology>, where:
- *      - <shape_type> can be (the case is ignored): "POINT_CLOUD", "POINT_PATH", "CUBIC_BEZIER_PATH"
+ *      - <shape_type> can be (the case is ignored): "POINT_CLOUD", "POINT_PATH", "CUBIC_BEZIER_PATH", "EDGE_SOUP", "TRIANGLE_SOUP"
  *      - <shape_topology> is optional, it can be (the case is ignored): "OPEN", "CLOSED" (the default).
  * - Any line in the file that is not a well-formed control line, a comment or a blank line is considered a separation
  *   between point series. In the case of a malformed control line, the next series is considered to be a POINT_CLOUD.
@@ -143,18 +185,19 @@ template <typename F, int POINT_DIM, std::size_t MAX_DIM>
 void append_new_shape(const ShapeBuffer<F, MAX_DIM>& buffer, ShapeAggregate<F>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
     static_assert(static_cast<std::size_t>(POINT_DIM) <= MAX_DIM);
+    using P = typename shapes::Traits<F, POINT_DIM>::Point;
     switch (buffer.type)
     {
         case ShapeType::POINT_CLOUD:
         {
-            shapes::PointCloud<typename shapes::Traits<F, POINT_DIM>::Point> pc;
+            shapes::PointCloud<P> pc;
             append_vertices(pc.vertices, buffer.vertices);
             shapes.emplace_back(std::move(pc));
             break;
         }
         case ShapeType::POINT_PATH:
         {
-            shapes::PointPath<typename shapes::Traits<F, POINT_DIM>::Point> pp;
+            shapes::PointPath<P> pp;
             pp.closed = buffer.closed;
             append_vertices(pp.vertices, buffer.vertices);
             shapes.emplace_back(std::move(pp));
@@ -162,14 +205,14 @@ void append_new_shape(const ShapeBuffer<F, MAX_DIM>& buffer, ShapeAggregate<F>& 
         }
         case ShapeType::CUBIC_BEZIER_PATH:
         {
-            shapes::CubicBezierPath<typename shapes::Traits<F, POINT_DIM>::Point> cbp;
+            shapes::CubicBezierPath<P> cbp;
             cbp.closed = buffer.closed;
             append_vertices(cbp.vertices, buffer.vertices);
             if (shapes::valid_size(cbp))
             {
                 shapes.emplace_back(std::move(cbp));
             }
-            else
+            else if (err_handler)
             {
                 std::stringstream out;
                 out << "Ignored a cubic bezier path (started line " << buffer.line_nb_start << ") with invalid size " << cbp.vertices.size();
@@ -177,6 +220,46 @@ void append_new_shape(const ShapeBuffer<F, MAX_DIM>& buffer, ShapeAggregate<F>& 
             }
             break;
         }
+        case ShapeType::EDGE_SOUP:
+        {
+            const auto nb_vertices = buffer.vertices.lines.size();
+            if (nb_vertices % 2 != 0 && err_handler) { err_handler(stdutils::io::Severity::WARN, "Invalid number of vertices in shape of type EDGE_SOUP. Last ones will be ignored."); }
+            shapes::Edges<P> edges;
+            using I = typename decltype(edges)::index;
+            UniquePoints<P, I> unique_vertices;
+            edges.indices.reserve(nb_vertices / 2);
+            for (std::size_t idx = 0; idx + 1 < nb_vertices; idx += 2)
+            {
+                const I e0 = unique_vertices.add(to_point<F, POINT_DIM, MAX_DIM>(buffer.vertices.lines[idx]));
+                const I e1 = unique_vertices.add(to_point<F, POINT_DIM, MAX_DIM>(buffer.vertices.lines[idx + 1]));
+                edges.indices.emplace_back(e0, e1);
+            }
+            edges.vertices = unique_vertices.dump_points();
+            shapes.emplace_back(std::move(edges));
+            break;
+        }
+        case ShapeType::TRIANGLE_SOUP:
+        {
+            const auto nb_vertices = buffer.vertices.lines.size();
+            if (nb_vertices % 3 != 0 && err_handler) { err_handler(stdutils::io::Severity::WARN, "Invalid number of vertices in shape of type TRIANGLE_SOUP. Last ones will be ignored."); }
+            shapes::Triangles<P> triangles;
+            using I = typename decltype(triangles)::index;
+            UniquePoints<P, I> unique_vertices;
+            triangles.faces.reserve(nb_vertices / 3);
+            for (std::size_t idx = 0; idx + 2 < nb_vertices; idx += 3)
+            {
+                const I t0 = unique_vertices.add(to_point<F, POINT_DIM, MAX_DIM>(buffer.vertices.lines[idx]));
+                const I t1 = unique_vertices.add(to_point<F, POINT_DIM, MAX_DIM>(buffer.vertices.lines[idx + 1]));
+                const I t2 = unique_vertices.add(to_point<F, POINT_DIM, MAX_DIM>(buffer.vertices.lines[idx + 2]));
+                triangles.faces.emplace_back(t0, t1, t2);
+            }
+            triangles.vertices = unique_vertices.dump_points();
+            shapes.emplace_back(std::move(triangles));
+            break;
+        }
+        default:
+            assert(0);
+            break;
     }
 }
 
@@ -209,9 +292,11 @@ ShapeAggregate<F> parse_shapes_from_stream_gen(std::istream& inputstream, const 
         TokenIterator token_iterator(line);
         const std::string first_token = token_iterator.next_token();
         const auto type_str = stdutils::string::tolower(first_token);
-        if (type_str == "point_path") { buffer.type = ShapeType::POINT_PATH; }
-        else if (type_str == "cubic_bezier_path") { buffer.type = ShapeType::CUBIC_BEZIER_PATH; }
-        else { buffer.type = ShapeType::POINT_CLOUD; }
+        if      (type_str == "point_path")          { buffer.type = ShapeType::POINT_PATH; }
+        else if (type_str == "cubic_bezier_path")   { buffer.type = ShapeType::CUBIC_BEZIER_PATH; }
+        else if (type_str == "edge_soup")           { buffer.type = ShapeType::EDGE_SOUP; }
+        else if (type_str == "triangle_soup")       { buffer.type = ShapeType::TRIANGLE_SOUP; }
+        else    /* default */                       { buffer.type = ShapeType::POINT_CLOUD; }
         // 4. Topology of the next shape
         const auto topo_str = stdutils::string::tolower(token_iterator.next_token());
         buffer.closed = (topo_str != "open");
@@ -230,10 +315,13 @@ struct StreamWriterInput
 template <typename F>
 void save_shapes_as_stream_gen(std::ostream& out, const StreamWriterInput<F>& input, const stdutils::io::ErrorHandler& err_handler)
 {
+    UNUSED(err_handler);
     const auto initial_fp_digits = stdutils::io::accurate_fp_precision<F>(out);
     const char sep = input.sep;
-    for (const auto& shape : input.shapes)
+    for (const auto& shape_wrapper : input.shapes)
     {
+        if (!shape_wrapper.descr.empty())
+            out << "# " << shape_wrapper.descr << sep;
         std::visit(stdutils::Overloaded {
             [&out, sep](const shapes::PointCloud2d<F>& pc) {
                 out << "POINT_CLOUD\n";
@@ -259,12 +347,52 @@ void save_shapes_as_stream_gen(std::ostream& out, const StreamWriterInput<F>& in
                 out << "CUBIC_BEZIER_PATH " << (cbp.closed ? "CLOSED" : "OPEN") << sep;
                 for (const auto& p : cbp.vertices) { out << p.x << ' ' << p.y << ' ' << p.z << sep; }
             },
-            [&err_handler](const shapes::Edges2d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Edges2d not written to DAT stream"); },
-            [&err_handler](const shapes::Edges3d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Edges3d not written to DAT stream"); },
-            [&err_handler](const shapes::Triangles2d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Triangles2d not written to DAT stream"); },
-            [&err_handler](const shapes::Triangles3d<F>&) { err_handler(stdutils::io::Severity::WARN, "Shape Triangles3d not written to DAT stream"); },
+            [&out, sep](const shapes::Edges2d<F>& edges) {
+                out << "EDGE_SOUP" << sep;
+                for (const auto& e : edges.indices)
+                {
+                    const auto& p0 = edges.vertices[e[0]];
+                    const auto& p1 = edges.vertices[e[1]];
+                    out << p0.x << ' ' << p0.y << sep;
+                    out << p1.x << ' ' << p1.y << sep;
+                }
+            },
+            [&out, sep](const shapes::Edges3d<F>& edges) {
+                out << "EDGE_SOUP" << sep;
+                for (const auto& e : edges.indices)
+                {
+                    const auto& p0 = edges.vertices[e[0]];
+                    const auto& p1 = edges.vertices[e[1]];
+                    out << p0.x << ' ' << p0.y << ' ' << p0.z << sep;
+                    out << p1.x << ' ' << p1.y << ' ' << p1.z << sep;
+                }
+            },
+            [&out, sep](const shapes::Triangles2d<F>& triangles) {
+                out << "TRIANGLE_SOUP" << sep;
+                for (const auto& t : triangles.faces)
+                {
+                    const auto& p0 = triangles.vertices[t[0]];
+                    const auto& p1 = triangles.vertices[t[1]];
+                    const auto& p2 = triangles.vertices[t[2]];
+                    out << p0.x << ' ' << p0.y << sep;
+                    out << p1.x << ' ' << p1.y << sep;
+                    out << p2.x << ' ' << p2.y << sep;
+                }
+            },
+            [&out, sep](const shapes::Triangles3d<F>& triangles) {
+                out << "TRIANGLE_SOUP" << sep;
+                for (const auto& t : triangles.faces)
+                {
+                    const auto& p0 = triangles.vertices[t[0]];
+                    const auto& p1 = triangles.vertices[t[1]];
+                    const auto& p2 = triangles.vertices[t[2]];
+                    out << p0.x << ' ' << p0.y << ' ' << p0.z << sep;
+                    out << p1.x << ' ' << p1.y << ' ' << p1.z << sep;
+                    out << p2.x << ' ' << p2.y << ' ' << p2.z << sep;
+                }
+            },
             [](const auto&) { assert(0); }
-        }, shape);
+        }, shape_wrapper.shape);
     }
     out << std::setprecision(initial_fp_digits);
 }

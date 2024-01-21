@@ -2,6 +2,8 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
+#include <shapes/comparison.h>
+
 #include <algorithm>
 #include <cmath>
 #include <ostream>
@@ -14,7 +16,7 @@ struct Vect2d
 {
     static constexpr int dim = 2;
     using scalar = F;
-    Vect2d() : x(F(0)), y(F(0)) {}
+    Vect2d() : x(0), y(0) {}
     Vect2d(F x, F y) : x(x), y(y) {}
     bool operator==(const Vect2d<F>& other) const { return x == other.x && y == other.y; }
     F x;
@@ -26,7 +28,7 @@ struct Vect3d
 {
     static constexpr int dim = 3;
     using scalar = F;
-    Vect3d() : x(F(0)), y(F(0)), z(F(0)) {}
+    Vect3d() : x(0), y(0), z(0) {}
     Vect3d(F x, F y, F z) : x(x), y(y), z(z) {}
     bool operator==(const Vect3d<F>& other) const { return x == other.x && y == other.y && z == other.z; }
     F x;
@@ -124,5 +126,26 @@ F inf_norm(const Vect3d<F>& v)
     return std::max(std::abs(v.x), std::max(std::abs(v.y), std::abs(v.z)));
 }
 
+
+//
+// Comparisons
+//
+template <typename F>
+struct less<Vect2d<F>>
+{
+    constexpr bool operator()(const Vect2d<F>& lhs, const Vect2d<F>& rhs) const
+    {
+        return lhs.x < rhs.x || (lhs.x == rhs.x && lhs.y < rhs.y);
+    }
+};
+
+template <typename F>
+struct less<Vect3d<F>>
+{
+    constexpr bool operator()(const Vect3d<F>& lhs, const Vect3d<F>& rhs) const
+    {
+        return lhs.x < rhs.x || (lhs.x == rhs.x && lhs.y < rhs.y) || (lhs.x == rhs.x && lhs.y == rhs.y && lhs.z < rhs.z);
+    }
+};
 
 } // namespace shapes

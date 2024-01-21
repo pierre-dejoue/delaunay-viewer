@@ -4,6 +4,7 @@
 
 #include <shapes/vect.h>
 
+#include <vector>
 
 namespace shapes
 {
@@ -13,5 +14,11 @@ using Point2d = Vect2d<F>;
 
 template<typename F>
 using Point3d = Vect3d<F>;
+
+template<typename F>
+using Points2d = std::vector<Point2d<F>>;
+
+template<typename F>
+using Points3d = std::vector<Point3d<F>>;
 
 } // namespace shapes

@@ -16,15 +16,17 @@
 
 #include <cassert>
 
-
 struct DrawingOptions
 {
     Settings::Point point_settings;
     Settings::Path path_settings;
     Settings::Surface surface_settings;
-    renderer::ColorData point_color = { 0.f, 0.f, 0.f, 1.f };
-    renderer::ColorData edge_color = { 0.f, 0.f, 0.f, 1.f };
-    renderer::ColorData face_color = { 0.f, 0.f, 0.f, 1.f };
+    PrimitiveProperties vertices;
+    PrimitiveProperties edges;
+    PrimitiveProperties faces;
+    bool draw_points = true;
+    bool draw_edges = true;
+    bool draw_faces = true;
 };
 
 template <typename F>
@@ -103,9 +105,9 @@ template <typename F>
 void draw_point_cloud(const shapes::PointCloud2d<F>& pc, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options)
 {
     assert(draw_list);
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
-        const auto color = details::to_compact_color(options.point_color);
+        const auto color = details::to_compact_color(options.vertices.color);
         details::draw_points(pc, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -128,11 +130,11 @@ void draw_point_cloud(const shapes::PointCloud2d<F>& pc, renderer::DrawList& dra
     const auto end_indices_idx = draw_list.m_indices.size();
 
     // Show/no_show is decided by the presence of a DrawCmd (do not modify the vertices and indices buffers)
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_indices_idx, end_indices_idx);
-        draw_call.m_uniform_color = options.point_color;
+        draw_call.m_uniform_color = options.vertices.color;
         draw_call.m_uniform_point_size = std::max(1.f, options.point_settings.size);
         draw_call.m_cmd = renderer::DrawCmd::Points;
     }
@@ -143,11 +145,11 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, ImDrawList* draw_list, co
 {
     assert(draw_list);
     const std::size_t nb_vertices = pp.vertices.size();
-    if (options.path_settings.show)
+    if (options.path_settings.show && options.edges.draw)
     {
         const auto nb_edges = shapes::nb_edges(pp);
         assert(nb_edges <= nb_vertices);
-        const ImU32 color = details::to_compact_color(options.edge_color);
+        const ImU32 color = details::to_compact_color(options.edges.color);
         for (std::size_t idx = 0; idx < nb_edges; idx++)
         {
             const shapes::Point2d<F>& p0 = pp.vertices[idx];
@@ -157,9 +159,9 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, ImDrawList* draw_list, co
             details::custom_add_line(draw_list, to_imgui_vec2(cp0), to_imgui_vec2(cp1), color, options.path_settings.width);
         }
     }
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
-        const ImU32 color = details::to_compact_color(options.point_color);
+        const ImU32 color = details::to_compact_color(options.vertices.color);
         details::draw_points(pp, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -191,18 +193,18 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, renderer::DrawList& draw_
     const auto end_point_indices_idx = draw_list.m_indices.size();
 
     // Show/no_show is decided by the presence of a DrawCmd (do not modify the vertices and indices buffers)
-    if (options.path_settings.show)
+    if (options.path_settings.show && options.edges.draw)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_edge_indices_idx, end_edge_indices_idx);
-        draw_call.m_uniform_color = options.edge_color;
+        draw_call.m_uniform_color = options.edges.color;
         draw_call.m_cmd = renderer::DrawCmd::Lines;
     }
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_point_indices_idx, end_point_indices_idx);
-        draw_call.m_uniform_color = options.point_color;
+        draw_call.m_uniform_color = options.vertices.color;
         draw_call.m_uniform_point_size = std::max(1.f, options.point_settings.size);
         draw_call.m_cmd = renderer::DrawCmd::Points;
     }
@@ -212,9 +214,9 @@ template <typename F>
 void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options)
 {
     assert(draw_list);
-    if (options.path_settings.show)
+    if (options.path_settings.show && options.edges.draw)
     {
-        const ImU32 color = details::to_compact_color(options.edge_color);
+        const ImU32 color = details::to_compact_color(options.edges.color);
         const auto nb_edges = shapes::nb_edges(cbp);
         for (std::size_t idx = 0; idx < nb_edges; idx++)
         {
@@ -230,10 +232,10 @@ void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList*
             draw_list->AddBezierCubic(to_imgui_vec2(cp0), to_imgui_vec2(cp1), to_imgui_vec2(cp2), to_imgui_vec2(cp3), color, options.path_settings.width);
         }
     }
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
         const shapes::PointPath2d<F> pp = shapes::extract_endpoints(cbp);
-        const ImU32 color = details::to_compact_color(options.point_color);
+        const ImU32 color = details::to_compact_color(options.vertices.color);
         details::draw_points(pp, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -250,16 +252,15 @@ template <typename F>
 void draw_edge_soup(const shapes::Edges2d<F>& es, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options)
 {
     assert(draw_list);
-    const std::size_t nb_vertices = es.vertices.size();
-    if (options.path_settings.show)
+    if (options.path_settings.show && options.edges.draw)
     {
-        const ImU32 color = details::to_compact_color(options.edge_color);
+        const ImU32 color = details::to_compact_color(options.edges.color);
         for (const auto& edge : es.indices)
         {
             const std::size_t i = static_cast<std::size_t>(edge[0]);
             const std::size_t j = static_cast<std::size_t>(edge[1]);
-            assert(i < nb_vertices);
-            assert(j < nb_vertices);
+            assert(i < es.vertices.size());
+            assert(j < es.vertices.size());
             const shapes::Point2d<F>& p0 = es.vertices[i];
             const shapes::Point2d<F>& p1 = es.vertices[j];
             const auto cp0 = canvas.to_screen(p0);
@@ -267,9 +268,9 @@ void draw_edge_soup(const shapes::Edges2d<F>& es, ImDrawList* draw_list, const C
             details::custom_add_line(draw_list, to_imgui_vec2(cp0), to_imgui_vec2(cp1), color, options.path_settings.width);
         }
     }
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
-        const ImU32 color = details::to_compact_color(options.point_color);
+        const ImU32 color = details::to_compact_color(options.vertices.color);
         details::draw_points(es, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -304,18 +305,18 @@ void draw_edge_soup(const shapes::Edges2d<F>& es, renderer::DrawList& draw_list,
     const auto end_point_indices_idx = draw_list.m_indices.size();
 
     // Show/no_show is decided by the presence of a DrawCmd (do not modify the vertices and indices buffers)
-    if (options.path_settings.show)
+    if (options.path_settings.show && options.edges.draw)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_edge_indices_idx, end_edge_indices_idx);
-        draw_call.m_uniform_color = options.edge_color;
+        draw_call.m_uniform_color = options.edges.color;
         draw_call.m_cmd = renderer::DrawCmd::Lines;
     }
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_point_indices_idx, end_point_indices_idx);
-        draw_call.m_uniform_color = options.point_color;
+        draw_call.m_uniform_color = options.vertices.color;
         draw_call.m_uniform_point_size = std::max(1.f, options.point_settings.size);
         draw_call.m_cmd = renderer::DrawCmd::Points;
     }
@@ -325,9 +326,9 @@ template <typename F, typename I>
 void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options)
 {
     assert(draw_list);
-    if (options.surface_settings.show)
+    if (options.surface_settings.show && options.faces.draw)
     {
-        const ImU32 color = details::to_compact_color(options.face_color);
+        const ImU32 color = details::to_compact_color(options.faces.color);
         for (const auto& face : tri.faces)
         {
             const shapes::Point2d<F>& p0 = tri.vertices[face[0]];
@@ -339,9 +340,9 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list,
             draw_list->AddTriangleFilled(to_imgui_vec2(cp0), to_imgui_vec2(cp1), to_imgui_vec2(cp2), color);
         }
     }
-    if (options.path_settings.show)
+    if (options.path_settings.show && options.edges.draw)
     {
-        const ImU32 color = details::to_compact_color(options.edge_color);
+        const ImU32 color = details::to_compact_color(options.edges.color);
         const float thickness =  options.path_settings.width;
         for (const auto& face : tri.faces)
         {
@@ -356,9 +357,9 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, ImDrawList* draw_list,
             details::custom_add_line(draw_list, cp2, cp0, color, thickness);
         }
     }
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
-        const ImU32 color = details::to_compact_color(options.point_color);
+        const ImU32 color = details::to_compact_color(options.vertices.color);
         details::draw_points(tri, draw_list, canvas, color, options.point_settings.size);
     }
 }
@@ -400,25 +401,25 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
     const auto end_point_indices_idx = draw_list.m_indices.size();
 
     // Show/no_show is decided by the presence of a DrawCmd (do not modify the vertices and indices buffers)
-    if (options.surface_settings.show)
+    if (options.surface_settings.show && options.faces.draw)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_face_indices_idx, end_face_indices_idx);
-        draw_call.m_uniform_color = options.face_color;
+        draw_call.m_uniform_color = options.faces.color;
         draw_call.m_cmd = renderer::DrawCmd::Triangles;
     }
-    if (options.path_settings.show)
+    if (options.path_settings.show && options.edges.draw)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_edge_indices_idx, end_edge_indices_idx);
-        draw_call.m_uniform_color = options.edge_color;
+        draw_call.m_uniform_color = options.edges.color;
         draw_call.m_cmd = renderer::DrawCmd::Lines;
     }
-    if (options.point_settings.show)
+    if (options.point_settings.show && options.vertices.draw)
     {
         auto& draw_call = draw_list.m_draw_calls.emplace_back();
         draw_call.m_range = std::make_pair(begin_point_indices_idx, end_point_indices_idx);
-        draw_call.m_uniform_color = options.point_color;
+        draw_call.m_uniform_color = options.vertices.color;
         draw_call.m_uniform_point_size = std::max(1.f, options.point_settings.size);
         draw_call.m_cmd = renderer::DrawCmd::Points;
     }
@@ -430,9 +431,9 @@ namespace
     void to_opengl_draw_commands(const DrawCommand<F>& draw_command, renderer::DrawList& draw_list, DrawingOptions& options)
     {
         assert(draw_command.shape != nullptr);
-        options.point_color = draw_command.point_color;
-        options.edge_color = draw_command.edge_color;
-        options.face_color = draw_command.face_color;
+        options.vertices = draw_command.vertices;
+        options.edges = draw_command.edges;
+        options.faces = draw_command.faces;
         std::visit(stdutils::Overloaded {
             [&draw_list, &options](const shapes::PointCloud2d<F>& pc) { draw_point_cloud(pc, draw_list, options); },
             [&draw_list, &options](const shapes::PointPath2d<F>& pp) { draw_point_path(pp, draw_list, options); },

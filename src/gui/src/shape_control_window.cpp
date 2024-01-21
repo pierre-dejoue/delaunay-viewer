@@ -26,11 +26,14 @@
 namespace
 {
     const char* INPUT_TAB_NAME = "Input";
+    const char* PROXIMITY_TAB_NAME = "Proximity Graphs";
 
     constexpr ImU32 VertexColor_Default     = IM_COL32(20, 90, 116, 255);
+    constexpr ImU32 VertexColor_EdgeSoup    = IM_COL32(105, 116, 20, 255);
     constexpr ImU32 VertexColor_Highlighted = IM_COL32(230, 230, 255, 255);
 
     constexpr ImU32 EdgeColor_Default       = IM_COL32(91, 94, 137, 255);
+    constexpr ImU32 EdgeColor_EdgeSoup      = IM_COL32(133, 137, 91, 255);
     constexpr ImU32 EdgeColor_Constraint    = IM_COL32(222, 91, 94, 255);
     constexpr ImU32 EdgeColor_Highlighted   = IM_COL32(190, 230, 255, 255);
     constexpr ImU32 EdgeColor_Proximity     = IM_COL32(160, 170, 255, 255);
@@ -38,31 +41,36 @@ namespace
     constexpr ImU32 FaceColor_Default       = IM_COL32(80, 82, 105, 255);
     constexpr ImU32 FaceColor_Highlighted   = IM_COL32(170, 210, 255, 255);
 
-    const auto VertexColor_Float_Default = to_float_color(VertexColor_Default);
-    const auto EdgeColor_Float_Default =   to_float_color(EdgeColor_Default);
-    const auto FaceColor_Float_Default =   to_float_color(FaceColor_Default);
+    const auto VertexColor_Float_Default    = to_float_color(VertexColor_Default);
+    const auto EdgeColor_Float_Default      = to_float_color(EdgeColor_Default);
+    const auto FaceColor_Float_Default      = to_float_color(FaceColor_Default);
+    const auto EdgeColor_Float_Constraint   = to_float_color(EdgeColor_Constraint);
 
-    renderer::ColorData get_vertex_color(bool highlight, const renderer::ColorData& def)
+    renderer::ColorData get_vertices_color(const renderer::ColorData& def, bool highlight, float alpha = 1.f)
     {
-        return (highlight ? to_float_color(VertexColor_Highlighted) : def);
+        assert(0.f <= alpha && alpha <= 1.f);
+        static const renderer::ColorData vertex_highlight_color = to_float_color(VertexColor_Highlighted);
+        auto color = highlight ? vertex_highlight_color : def;
+        color[3] *= alpha;
+        return color;
     }
 
-    renderer::ColorData get_edge_color(bool highlight, bool constraint_edges, const renderer::ColorData& def)
+    renderer::ColorData get_edges_color(const renderer::ColorData& def, bool highlight, float alpha = 1.f)
     {
-        if (highlight)
-            return to_float_color(EdgeColor_Highlighted);
-        else if (constraint_edges)
-            return to_float_color(EdgeColor_Constraint);
-        else
-            return def;
+        assert(0.f <= alpha && alpha <= 1.f);
+        static const renderer::ColorData edge_highlight_color = to_float_color(EdgeColor_Highlighted);
+        auto color = highlight ? edge_highlight_color : def;
+        color[3] *= alpha;
+        return color;
     }
 
-    renderer::ColorData get_face_color(bool highlight, const Settings::Surface& surface_settings, const renderer::ColorData& def)
+    renderer::ColorData get_faces_color(const renderer::ColorData& def, bool highlight, float alpha = 1.f)
     {
-        const float alpha = std::clamp(surface_settings.alpha, 0.f, 1.f);
-        auto base_color = (highlight ? to_float_color(FaceColor_Highlighted) : def);
-        base_color[3] *= alpha;
-        return base_color;
+        assert(0.f <= alpha && alpha <= 1.f);
+        static const renderer::ColorData face_highlight_color = to_float_color(FaceColor_Highlighted);
+        auto color = highlight ? face_highlight_color : def;
+        color[3] *= alpha;
+        return color;
     }
 
     renderer::ColorData& luminosity(renderer::ColorData& color, float ratio)
@@ -87,46 +95,86 @@ namespace
         return result;
     }
 
-} // Anonymous namespace
+    const stdutils::io::ErrorHandler& control_window_error_handler()
+    {
+        static const stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode code, std::string_view msg) { std::cout << stdutils::io::str_severity_code(code) << ": " << msg << std::endl; };
+        return err_handler;
+    }
+
+} // namespace
 
 ShapeWindow::ShapeControl::ShapeControl(shapes::AllShapes<scalar>&& shape)
-    : nb_vertices(shapes::nb_vertices(shape))
-    , nb_edges(shapes::nb_edges(shape))
-    , nb_faces(shapes::nb_faces(shape))
-    , active(true)
+    : active(true)
     , force_inactive(false)
     , highlight(false)
-    , point_color(VertexColor_Float_Default)
-    , edge_color(EdgeColor_Float_Default)
-    , face_color(FaceColor_Float_Default)
     , latest_computation_time_ms(0.f)
+    , vertices(shapes::nb_vertices(shape), VertexColor_Float_Default)
+    , edges(   shapes::nb_edges(shape),    EdgeColor_Float_Default)
+    , faces(   shapes::nb_faces(shape),    FaceColor_Float_Default)
     , shape(std::move(shape))
+    , descr()
     , sampler()
     , req_sampling_length(1.f)
     , sampled_shape(nullptr)
 { }
 
+ShapeWindow::ShapeControl::ShapeControl(const ShapeControl& shape_control)
+    : active(shape_control.active)
+    , force_inactive(false)
+    , highlight(false)
+    , latest_computation_time_ms(0.f)
+    , vertices(shape_control.vertices)
+    , edges(shape_control.edges)
+    , faces(shape_control.faces)
+    , shape(shape_control.shape)
+    , descr(shape_control.descr)
+    , sampler()
+    , req_sampling_length(1.f)
+    , sampled_shape(nullptr)
+{ }
+
+ShapeWindow::ShapeControl& ShapeWindow::ShapeControl::operator=(const ShapeControl& shape_control)
+{
+    active = shape_control.active;
+    force_inactive = false;
+    highlight = false;
+    latest_computation_time_ms = 0.f;
+    vertices = shape_control.vertices;
+    edges = shape_control.edges;
+    faces = shape_control.faces;
+    shape = shape_control.shape;
+    descr = shape_control.descr;
+    sampler.reset();
+    req_sampling_length = 1.f;
+    sampled_shape = nullptr;
+    return *this;
+}
+
 void ShapeWindow::ShapeControl::update(shapes::AllShapes<scalar>&& rep_shape)
 {
     shape = std::move(rep_shape);
-    nb_vertices = shapes::nb_vertices(shape);
-    nb_edges = shapes::nb_edges(shape);
-    nb_faces = shapes::nb_faces(shape);
+    vertices.nb = shapes::nb_vertices(shape);
+    edges.nb = shapes::nb_edges(shape);
+    faces.nb = shapes::nb_faces(shape);
     // 'active', 'hightlight' remain as-is
 }
 
-DrawCommand<ShapeWindow::scalar> ShapeWindow::ShapeControl::to_draw_command(const Settings& settings, bool constraint_edges) const
+DrawCommand<ShapeWindow::scalar> ShapeWindow::ShapeControl::to_draw_command(const Settings& settings) const
 {
     DrawCommand<ShapeWindow::scalar> result(shape);
-    result.point_color = get_vertex_color(highlight, point_color);
-    result.edge_color = get_edge_color(highlight, constraint_edges, edge_color);
-    result.face_color = get_face_color(highlight, settings.read_surface_settings(), face_color);
+    const float surface_alpha = std::clamp(settings.read_surface_settings().alpha, 0.f, 1.f);
+    result.vertices.color = get_vertices_color(vertices.color, highlight);
+    result.edges.color = get_edges_color(edges.color, highlight);
+    result.faces.color = get_faces_color(faces.color, highlight, surface_alpha);
+    result.vertices.draw = vertices.draw;
+    result.edges.draw = edges.draw;
+    result.faces.draw = faces.draw;
     return result;
 }
 
 ShapeWindow::ShapeWindow(
         std::string_view name,
-        std::vector<shapes::AllShapes<scalar>>&& shapes,
+        shapes::io::ShapeAggregate<scalar>&& shapes,
         ViewportWindow& viewport_window)
     : m_title(std::string(name) + " Controls")
     , m_input_shape_controls()
@@ -135,15 +183,38 @@ ShapeWindow::ShapeWindow(
     , m_new_steiner_pt()
     , m_triangulation_policy(delaunay::TriangulationPolicy::PointCloud)
     , m_triangulation_shape_controls()
+    , m_triangulation_constraint_edges()
     , m_proximity_graphs_controls()
     , m_geometry_bounding_box()
+    , m_shape_control_lists()
     , m_draw_command_lists()
     , m_prev_general_settings()
     , m_first_visit(true)
 {
+    m_steiner_shape_control.descr = "Steiner points";
+
+    const auto EdgeColor_Float_EdgeSoup = to_float_color(EdgeColor_EdgeSoup);
+    const auto VertexColor_Float_EdgeSoup = to_float_color(VertexColor_EdgeSoup);
+
     m_input_shape_controls.reserve(shapes.size());
-    for (auto& shape : shapes)
-        m_input_shape_controls.emplace_back(std::move(shape));
+    const auto& err_handler = control_window_error_handler();
+    for (auto& shape_wrapper : shapes)
+        std::visit(stdutils::Overloaded {
+            [this, &err_handler, EdgeColor_Float_EdgeSoup, VertexColor_Float_EdgeSoup](const shapes::Edges2d<scalar>& s) {
+                auto& shape_control = m_input_shape_controls.emplace_back(std::move(s));
+                shape_control.descr = "Ignored Input";
+                shape_control.edges.color = EdgeColor_Float_EdgeSoup;
+                shape_control.vertices.color = VertexColor_Float_EdgeSoup;
+                err_handler(stdutils::io::Severity::WARN, "Input shape of type EDGE_SOUP will not be part of the triangulation");
+            },
+            [this, &err_handler](const shapes::Triangles2d<scalar>& s) {
+                m_input_shape_controls.emplace_back(std::move(s)).descr = "Ignored Input";
+                err_handler(stdutils::io::Severity::WARN, "Input shape of type TRIANGLE_SOUP will not be part of the triangulation");
+            },
+            [this](const auto& s) {
+                m_input_shape_controls.emplace_back(std::move(s)).descr = INPUT_TAB_NAME;
+            }
+        }, shape_wrapper.shape);
     shapes.clear();
     init_bounding_box();
     viewport_window.set_geometry_bounding_box(m_geometry_bounding_box);
@@ -158,27 +229,27 @@ void ShapeWindow::init_bounding_box()
             [this](const shapes::PointCloud2d<scalar>& s) { m_geometry_bounding_box.merge(shapes::fast_bounding_box(s)); },
             [this](const shapes::PointPath2d<scalar>& s) { m_geometry_bounding_box.merge(shapes::fast_bounding_box(s)); },
             [this](const shapes::CubicBezierPath2d<scalar>& s) { m_geometry_bounding_box.merge(shapes::fast_bounding_box(s)); },
+            [this](const shapes::Edges2d<scalar>& s) { m_geometry_bounding_box.merge(shapes::fast_bounding_box(s)); },
+            [this](const shapes::Triangles2d<scalar>& s) { m_geometry_bounding_box.merge(shapes::fast_bounding_box(s)); },
             [](const auto&) { assert(0); }
         }, shape_control.shape);
     shapes::ensure_min_extent(m_geometry_bounding_box);
 }
 
 // The input for the triangulation algorithm
-std::vector<const ShapeWindow::ShapeControl*> ShapeWindow::get_active_shapes() const
+ShapeWindow::ShapeControlPtrs ShapeWindow::get_active_input_shapes() const
 {
     std::vector<const ShapeControl*> active_shapes;
     for (const auto& shape_control : m_input_shape_controls)
     {
-        if (shape_control.active)
-            active_shapes.emplace_back(&shape_control);
+        if (shape_control.active) { active_shapes.emplace_back(&shape_control); }
     }
     for (const auto& shape_control_ptr : m_sampled_shape_controls)
     {
         assert(shape_control_ptr);
-        if (shape_control_ptr->active)
-            active_shapes.emplace_back(shape_control_ptr.get());
+        if (shape_control_ptr->active) { active_shapes.emplace_back(shape_control_ptr.get()); }
     }
-    if (m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
+    if (m_steiner_shape_control.active && m_steiner_shape_control.vertices.nb > 0)
     {
         active_shapes.emplace_back(&m_steiner_shape_control);
     }
@@ -189,6 +260,8 @@ void ShapeWindow::recompute_triangulations(delaunay::TriangulationPolicy policy,
 {
     std::chrono::duration<float, std::milli> duration;
     shapes::Triangles2d<scalar> triangulation;
+    const auto active_shapes = get_active_input_shapes();
+    // Triangulation
     for (const auto& algo : delaunay::get_impl_list<scalar>().algos)
     {
         // Setup triangulation
@@ -196,7 +269,6 @@ void ShapeWindow::recompute_triangulations(delaunay::TriangulationPolicy policy,
         auto triangulation_algo = delaunay::get_impl(algo, &err_handler);
         assert(triangulation_algo);
         bool first_path = true;
-        const auto active_shapes = get_active_shapes();
         for (const auto* shape_control_ptr : active_shapes)
         {
             std::visit(stdutils::Overloaded {
@@ -206,6 +278,8 @@ void ShapeWindow::recompute_triangulations(delaunay::TriangulationPolicy policy,
                     else { triangulation_algo->add_hole(pp); }
                 },
                 [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
+                [](const shapes::Edges2d<scalar>&) { /* TODO */ },
+                [](const shapes::Triangles2d<scalar>&) { /* Skip */ },
                 [](const auto&) { assert(0); }
             }, shape_control_ptr->shape);
         }
@@ -218,33 +292,67 @@ void ShapeWindow::recompute_triangulations(delaunay::TriangulationPolicy policy,
 
         // Update or create the output shape controls
         if (m_triangulation_shape_controls.at(algo.name).delaunay_triangulation)
+        {
             m_triangulation_shape_controls.at(algo.name).delaunay_triangulation->update(std::move(triangulation));
+        }
         else
+        {
             m_triangulation_shape_controls.at(algo.name).delaunay_triangulation = std::make_unique<ShapeControl>(std::move(triangulation));
+            m_triangulation_shape_controls.at(algo.name).delaunay_triangulation->descr = std::string("Triangulation from algo: ") + algo.name;
+        }
         assert(m_triangulation_shape_controls.at(algo.name).delaunay_triangulation);
         m_triangulation_shape_controls.at(algo.name).delaunay_triangulation->latest_computation_time_ms = duration.count();
     }
+    // Constrained edges (those are just the copy of the input shape controls, with a different color)
+    m_triangulation_constraint_edges.clear();
+    if (policy == delaunay::TriangulationPolicy::CDT)
+    {
+        for (const auto* shape_control_ptr : active_shapes)
+        {
+            const bool copy_me = std::visit(stdutils::Overloaded {
+                    [](const shapes::PointPath2d<scalar>&) { return true; },
+                    [](const shapes::Edges2d<scalar>&) { /* TODO */ return false; },
+                    [](const auto&) { return false; }
+                }, shape_control_ptr->shape);
+            if (copy_me)
+            {
+                auto& copy_shape_control = m_triangulation_constraint_edges.emplace_back(*shape_control_ptr);
+                copy_shape_control.descr = "Constraint edges";
+                copy_shape_control.vertices.draw = false;
+                copy_shape_control.edges.draw = true;
+                copy_shape_control.edges.color = EdgeColor_Float_Constraint;
+            }
+        }
+    }
+}
+
+shapes::PointCloud2d<ShapeWindow::scalar> ShapeWindow::compute_input_point_cloud(const stdutils::io::ErrorHandler& err_handler)
+{
+    UNUSED(err_handler);
+    shapes::PointCloud2d<scalar> input_pc;
+    const auto active_shapes = get_active_input_shapes();
+    for (const auto* shape_control_ptr : active_shapes)
+    {
+        std::visit(stdutils::Overloaded {
+            [&input_pc](const shapes::PointCloud2d<scalar>& pc) { input_pc.vertices.insert(input_pc.vertices.end(), pc.vertices.cbegin(), pc.vertices.cend()); },
+            [&input_pc](const shapes::PointPath2d<scalar>& pp)  { input_pc.vertices.insert(input_pc.vertices.end(), pp.vertices.cbegin(), pp.vertices.cend()); },
+            [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
+            [](const shapes::Edges2d<scalar>&) { /* Skip */ },
+            [](const shapes::Triangles2d<scalar>&) { /* Skip */ },
+            [](const auto&) { assert(0); }
+        }, shape_control_ptr->shape);
+    }
+    return input_pc;
 }
 
 void ShapeWindow::compute_proximity_graphs(const stdutils::io::ErrorHandler& err_handler)
 {
-    const auto active_shapes = get_active_shapes();
-    shapes::PointCloud2d<scalar> proximity_point_cloud;
-    for (const auto* shape_control_ptr : active_shapes)
-    {
-        std::visit(stdutils::Overloaded {
-            [&proximity_point_cloud](const shapes::PointCloud2d<scalar>& pc) { proximity_point_cloud.vertices.insert(proximity_point_cloud.vertices.end(), pc.vertices.cbegin(), pc.vertices.cend()); },
-            [&proximity_point_cloud](const shapes::PointPath2d<scalar>& pp)  { proximity_point_cloud.vertices.insert(proximity_point_cloud.vertices.end(), pp.vertices.cbegin(), pp.vertices.cend()); },
-            [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
-            [](const auto&) { assert(0); }
-        }, shape_control_ptr->shape);
-    }
-
-    auto edge_color = to_float_color(EdgeColor_Proximity);
+    const auto input_pc = compute_input_point_cloud(err_handler);
+    auto edges_color = to_float_color(EdgeColor_Proximity);
     float lum_ratio = 0.75f;
 
     // NN
-    auto nn = delaunay::nearest_neighbor(proximity_point_cloud, err_handler);
+    auto nn = delaunay::nearest_neighbor(input_pc, err_handler);
     if (m_proximity_graphs_controls.nn_graph)
     {
         m_proximity_graphs_controls.nn_graph->update(std::move(nn));
@@ -252,12 +360,13 @@ void ShapeWindow::compute_proximity_graphs(const stdutils::io::ErrorHandler& err
     else
     {
         m_proximity_graphs_controls.nn_graph = std::make_unique<ShapeControl>(std::move(nn));
-        m_proximity_graphs_controls.nn_graph->edge_color = edge_color;
+        m_proximity_graphs_controls.nn_graph->descr = "NN";
+        m_proximity_graphs_controls.nn_graph->edges.color = edges_color;
     }
-    luminosity(edge_color, lum_ratio);
+    luminosity(edges_color, lum_ratio);
 
     // MST
-    auto mst = delaunay::minimum_spanning_tree(proximity_point_cloud, err_handler);
+    auto mst = delaunay::minimum_spanning_tree(input_pc, err_handler);
     if (m_proximity_graphs_controls.mst_graph)
     {
         m_proximity_graphs_controls.mst_graph->update(std::move(mst));
@@ -265,12 +374,13 @@ void ShapeWindow::compute_proximity_graphs(const stdutils::io::ErrorHandler& err
     else
     {
         m_proximity_graphs_controls.mst_graph = std::make_unique<ShapeControl>(std::move(mst));
-        m_proximity_graphs_controls.mst_graph->edge_color = edge_color;
+        m_proximity_graphs_controls.mst_graph->descr = "MST";
+        m_proximity_graphs_controls.mst_graph->edges.color = edges_color;
     }
-    luminosity(edge_color, lum_ratio);
+    luminosity(edges_color, lum_ratio);
 
     // RNG
-    auto rng = delaunay::relative_neighborhood_graph(proximity_point_cloud, err_handler);
+    auto rng = delaunay::relative_neighborhood_graph(input_pc, err_handler);
     if (m_proximity_graphs_controls.rng_graph)
     {
         m_proximity_graphs_controls.rng_graph->update(std::move(rng));
@@ -278,12 +388,13 @@ void ShapeWindow::compute_proximity_graphs(const stdutils::io::ErrorHandler& err
     else
     {
         m_proximity_graphs_controls.rng_graph = std::make_unique<ShapeControl>(std::move(rng));
-        m_proximity_graphs_controls.rng_graph->edge_color = edge_color;
+        m_proximity_graphs_controls.rng_graph->descr = "RNG";
+        m_proximity_graphs_controls.rng_graph->edges.color = edges_color;
     }
-    luminosity(edge_color, lum_ratio);
+    luminosity(edges_color, lum_ratio);
 
     // GG
-    auto gg = delaunay::gabriel_graph(proximity_point_cloud, err_handler);
+    auto gg = delaunay::gabriel_graph(input_pc, err_handler);
     if (m_proximity_graphs_controls.gg_graph)
     {
         m_proximity_graphs_controls.gg_graph->update(std::move(gg));
@@ -291,12 +402,13 @@ void ShapeWindow::compute_proximity_graphs(const stdutils::io::ErrorHandler& err
     else
     {
         m_proximity_graphs_controls.gg_graph = std::make_unique<ShapeControl>(std::move(gg));
-        m_proximity_graphs_controls.gg_graph->edge_color = edge_color;
+        m_proximity_graphs_controls.gg_graph->descr = "GG";
+        m_proximity_graphs_controls.gg_graph->edges.color = edges_color;
     }
-    luminosity(edge_color, lum_ratio);
+    luminosity(edges_color, lum_ratio);
 
     // DT
-    auto dt = delaunay::delaunay_triangulation(proximity_point_cloud, err_handler);
+    auto dt = delaunay::delaunay_triangulation(input_pc, err_handler);
     if (m_proximity_graphs_controls.dt_graph)
     {
         m_proximity_graphs_controls.dt_graph->update(std::move(dt));
@@ -304,68 +416,35 @@ void ShapeWindow::compute_proximity_graphs(const stdutils::io::ErrorHandler& err
     else
     {
         m_proximity_graphs_controls.dt_graph = std::make_unique<ShapeControl>(std::move(dt));
-        m_proximity_graphs_controls.dt_graph->edge_color = edge_color;
+        m_proximity_graphs_controls.dt_graph->descr = "DT";
+        m_proximity_graphs_controls.dt_graph->edges.color = edges_color;
     }
 }
 
-void ShapeWindow::build_draw_lists(const Settings& settings)
+void ShapeWindow::map_shape_controls_by_tabs(bool flag_include_proximity_graphs)
 {
-    m_draw_command_lists.clear();
-    {
-        auto& draw_command_list = m_draw_command_lists.emplace_back(INPUT_TAB_NAME, DrawCommands<scalar>()).second;
-        for (const auto& shape_control : m_input_shape_controls)
-        {
-            if (shape_control.active)
-                draw_command_list.emplace_back(shape_control.to_draw_command(settings));
-        }
-        for (const auto& shape_control_ptr : m_sampled_shape_controls)
-        {
-            assert(shape_control_ptr);
-            if (shape_control_ptr->active)
-                draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings));
-        }
-        if(m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
-        {
-            draw_command_list.emplace_back(m_steiner_shape_control.to_draw_command(settings));
-        }
-    }
-    const auto triangulation_policy = settings.read_general_settings().cdt ? delaunay::TriangulationPolicy::CDT :  delaunay::TriangulationPolicy::PointCloud;
-    constexpr bool CONSTRAINED_EDGES = true;
+    m_shape_control_lists.clear();
+
+    // Input
+    m_shape_control_lists.emplace_back(INPUT_TAB_NAME, get_active_input_shapes());
+
+    // Triangulation output
     for (const auto& [algo_name, triangulation_output] : m_triangulation_shape_controls)
     {
         if (!triangulation_output.delaunay_triangulation)
             continue;
-        const auto& shape_control_delaunay = *triangulation_output.delaunay_triangulation;
-        auto& draw_command_list = m_draw_command_lists.emplace_back(algo_name, DrawCommands<scalar>()).second;
-        draw_command_list.emplace_back(shape_control_delaunay.to_draw_command(settings));
-        if (triangulation_policy == delaunay::TriangulationPolicy::CDT)
-        {
-            for (const auto& shape_control : m_input_shape_controls)
-            {
-                if (shape_control.active && !shapes::is_bezier_path(shape_control.shape))
-                {
-                    draw_command_list.emplace_back(shape_control.to_draw_command(settings, CONSTRAINED_EDGES));
-                }
-            }
-            for (const auto& shape_control_ptr : m_sampled_shape_controls)
-            {
-                if (shape_control_ptr->active)
-                {
-                    assert(!shapes::is_bezier_path(shape_control_ptr->shape));
-                    draw_command_list.emplace_back(shape_control_ptr->to_draw_command(settings, CONSTRAINED_EDGES));
-                }
-            }
-        }
-        if(m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
-        {
-            draw_command_list.emplace_back(m_steiner_shape_control.to_draw_command(settings));
-        }
+        auto& shape_control_list = m_shape_control_lists.emplace_back(algo_name, ShapeControlPtrs()).second;
+        shape_control_list.emplace_back(triangulation_output.delaunay_triangulation.get());
+        if(m_steiner_shape_control.active && m_steiner_shape_control.vertices.nb > 0)
+            shape_control_list.emplace_back(&m_steiner_shape_control);
+        for (const auto& constraint_edges_shape_control : m_triangulation_constraint_edges)
+            shape_control_list.emplace_back(&constraint_edges_shape_control);
     }
-    // Crust
+
     // Proximity Graphs
-    if (settings.read_general_settings().proximity_graphs)
+    if (flag_include_proximity_graphs)
     {
-        auto& draw_command_list = m_draw_command_lists.emplace_back("Proximity Graphs", DrawCommands<scalar>()).second;
+        auto& shape_control_list = m_shape_control_lists.emplace_back(PROXIMITY_TAB_NAME, ShapeControlPtrs()).second;
         std::vector<const ShapeControl*> proxi_graphs = {
             m_proximity_graphs_controls.dt_graph.get(),
             m_proximity_graphs_controls.gg_graph.get(),
@@ -377,33 +456,47 @@ void ShapeWindow::build_draw_lists(const Settings& settings)
         {
             if (proxi_graph && proxi_graph->active)
             {
-                draw_command_list.emplace_back(proxi_graph->to_draw_command(settings));
+                shape_control_list.emplace_back(proxi_graph);
             }
         }
     }
     else
     {
-        m_draw_command_lists.emplace_back("Proximity Graphs", DrawCommands<scalar>());
+        m_shape_control_lists.emplace_back(PROXIMITY_TAB_NAME, ShapeControlPtrs());
     }
+}
+
+void ShapeWindow::build_draw_lists(const Settings& settings)
+{
+    m_draw_command_lists.clear();
+    const bool flag_include_proximity_graphs = settings.read_general_settings().proximity_graphs;
+    map_shape_controls_by_tabs(flag_include_proximity_graphs);
+    std::for_each(m_shape_control_lists.cbegin(), m_shape_control_lists.cend(), [this, &settings](const auto& kvp) {
+        const Key& key = kvp.first;
+        const ShapeControlPtrs& shape_control_ptrs = kvp.second;
+        auto& draw_command_list = m_draw_command_lists.emplace_back(key, DrawCommands<scalar>()).second;
+        draw_command_list.reserve(shape_control_ptrs.size());
+        std::transform(shape_control_ptrs.cbegin(), shape_control_ptrs.cend(), std::back_inserter(draw_command_list), [&settings](const ShapeControl* shape_control) {
+            return shape_control->to_draw_command(settings);
+        });
+    });
 }
 
 shapes::io::ShapeAggregate<ShapeWindow::scalar> ShapeWindow::get_triangulation_input_aggregate() const
 {
-    shapes::io::ShapeAggregate<ShapeWindow::scalar> result;
-    for (const auto& shape_control : m_input_shape_controls)
+    return get_tab_aggregate(INPUT_TAB_NAME);
+}
+
+shapes::io::ShapeAggregate<ShapeWindow::scalar> ShapeWindow::get_tab_aggregate(const ShapeWindow::Key& selected_tab) const
+{
+    shapes::io::ShapeAggregate<scalar> result;
+    auto list_it = std::find_if(m_shape_control_lists.cbegin(), m_shape_control_lists.cend(), [&selected_tab](const auto& kvp) { return kvp.first == selected_tab; });
+    if (list_it != m_shape_control_lists.cend())
     {
-        if (shape_control.active)
-            result.emplace_back(shape_control.shape);
-    }
-    for (const auto& shape_control_ptr : m_sampled_shape_controls)
-    {
-        assert(shape_control_ptr);
-        if (shape_control_ptr->active)
-            result.emplace_back(shape_control_ptr->shape);
-    }
-    if(m_steiner_shape_control.active && m_steiner_shape_control.nb_vertices > 0)
-    {
-        result.emplace_back(m_steiner_shape_control.shape);
+        for (const ShapeControl* shape_control_ptr : list_it->second)
+        {
+            result.emplace_back(shape_control_ptr->shape, shape_control_ptr->descr);
+        }
     }
     return result;
 }
@@ -411,11 +504,12 @@ shapes::io::ShapeAggregate<ShapeWindow::scalar> ShapeWindow::get_triangulation_i
 ShapeWindow::ShapeControl* ShapeWindow::allocate_new_sampled_shape(const ShapeControl& parent, shapes::AllShapes<scalar>&& shape)
 {
     const auto& new_shape = m_sampled_shape_controls.emplace_back(std::make_unique<ShapeControl>(std::move(shape)));
+    new_shape->descr = "Sampling";
 
     // Inherit colors from parent
-    new_shape->point_color = parent.point_color;
-    new_shape->edge_color = parent.edge_color;
-    new_shape->face_color = parent.face_color;
+    new_shape->vertices.color = parent.vertices.color;
+    new_shape->edges.color = parent.edges.color;
+    new_shape->faces.color = parent.faces.color;
 
     return new_shape.get();
 }
@@ -504,19 +598,19 @@ void ShapeWindow::shape_list_menu(ShapeControl& shape_control, unsigned int idx,
             if(swap_topo)
             {
                 shapes::flip_open_closed(shape_control.shape);
-                shape_control.nb_edges = shapes::nb_edges(shape_control.shape);
+                shape_control.edges.nb = shapes::nb_edges(shape_control.shape);
                 geometry_has_changed = true;
             }
         }
     }
 
     // Color pickers
-    ImGui::ColorEdit4("Point color", shape_control.point_color.data(), ImGuiColorEditFlags_NoInputs);
-    if (shapes::has_edges(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Edge color", shape_control.edge_color.data(), ImGuiColorEditFlags_NoInputs); }
-    if (shapes::has_faces(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Face color", shape_control.face_color.data(), ImGuiColorEditFlags_NoInputs); }
+    ImGui::ColorEdit4("Point color", shape_control.vertices.color.data(), ImGuiColorEditFlags_NoInputs);
+    if (shapes::has_edges(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Edge color", shape_control.edges.color.data(), ImGuiColorEditFlags_NoInputs); }
+    if (shapes::has_faces(shape_control.shape)) { ImGui::SameLine(); ImGui::ColorEdit4("Face color", shape_control.faces.color.data(), ImGuiColorEditFlags_NoInputs); }
 
     // Info
-    ImGui::Text("Nb vertices: %ld, nb edges: %ld", shape_control.nb_vertices, shape_control.nb_edges);
+    ImGui::Text("Nb vertices: %ld, nb edges: %ld", shape_control.vertices.nb, shape_control.edges.nb);
 
     // Sampling
     if (allow_sampling && (shapes::is_bezier_path(shape_control.shape) || shapes::is_point_path(shape_control.shape)))
@@ -576,7 +670,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const Win
     geometry_has_changed = m_first_visit;
     m_first_visit = false;
 
-    stdutils::io::ErrorHandler err_handler = [](stdutils::io::SeverityCode code, std::string_view msg) { std::cout << stdutils::io::str_severity_code(code) << ": " << msg << std::endl; };
+    const auto& err_handler = control_window_error_handler();
 
     const auto triangulation_policy = settings.read_general_settings().cdt ? delaunay::TriangulationPolicy::CDT :  delaunay::TriangulationPolicy::PointCloud;
     geometry_has_changed |= triangulation_policy != m_triangulation_policy;
@@ -683,7 +777,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const Win
         if (pt_it == std::cend(pc.vertices))
         {
             pc.vertices.emplace_back(std::move(new_pt));
-            m_steiner_shape_control.nb_vertices = pc.vertices.size();
+            m_steiner_shape_control.vertices.nb = pc.vertices.size();
             geometry_has_changed = true;
         }
         else
@@ -729,14 +823,14 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const Win
             if (is_open)
             {
                 // Color pickers
-                ImGui::ColorEdit4("Point color", triangulation_shape_control.point_color.data(), ImGuiColorEditFlags_NoInputs);
+                ImGui::ColorEdit4("Point color", triangulation_shape_control.vertices.color.data(), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
-                ImGui::ColorEdit4("Edge color", triangulation_shape_control.edge_color.data(), ImGuiColorEditFlags_NoInputs);
+                ImGui::ColorEdit4("Edge color", triangulation_shape_control.edges.color.data(), ImGuiColorEditFlags_NoInputs);
                 ImGui::SameLine();
-                ImGui::ColorEdit4("Face color", triangulation_shape_control.face_color.data(), ImGuiColorEditFlags_NoInputs);
+                ImGui::ColorEdit4("Face color", triangulation_shape_control.faces.color.data(), ImGuiColorEditFlags_NoInputs);
 
                 // Info
-                ImGui::Text("Nb vertices: %ld, nb edges: %ld, nb faces: %ld", triangulation_shape_control.nb_vertices, triangulation_shape_control.nb_edges, triangulation_shape_control.nb_faces);
+                ImGui::Text("Nb vertices: %ld, nb edges: %ld, nb faces: %ld", triangulation_shape_control.vertices.nb, triangulation_shape_control.edges.nb, triangulation_shape_control.faces.nb);
                 ImGui::Text("Computation time: %0.3g ms", static_cast<double>(triangulation_shape_control.latest_computation_time_ms));
                 ImGui::TreePop();
             }
@@ -749,7 +843,7 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const Win
     if (display_proximity_graphs)
     {
         ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-        if (ImGui::TreeNode("Proximity Graphs"))
+        if (ImGui::TreeNode(PROXIMITY_TAB_NAME))
         {
             std::vector<std::pair<std::string, ShapeControl*>> proxi_graphs;
             if (m_proximity_graphs_controls.nn_graph) { proxi_graphs.emplace_back("NN", m_proximity_graphs_controls.nn_graph.get()); }
@@ -769,12 +863,12 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const Win
                     geometry_has_changed |= active_button("proximity", idx, *shape_control);
 
                     // Color pickers
-                    ImGui::ColorEdit4("Point color", shape_control->point_color.data(), ImGuiColorEditFlags_NoInputs);
+                    ImGui::ColorEdit4("Point color", shape_control->vertices.color.data(), ImGuiColorEditFlags_NoInputs);
                     ImGui::SameLine();
-                    ImGui::ColorEdit4("Edge color", shape_control->edge_color.data(), ImGuiColorEditFlags_NoInputs);
+                    ImGui::ColorEdit4("Edge color", shape_control->edges.color.data(), ImGuiColorEditFlags_NoInputs);
 
                     // Info
-                    ImGui::Text("Nb vertices: %ld, nb edges: %ld", shape_control->nb_vertices, shape_control->nb_edges);
+                    ImGui::Text("Nb vertices: %ld, nb edges: %ld", shape_control->vertices.nb, shape_control->edges.nb);
                     ImGui::TreePop();
                 }
                 idx++;
