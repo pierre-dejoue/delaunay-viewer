@@ -9,6 +9,7 @@ set(UTESTS_SOURCES
     src/test_span.cpp
     src/test_stats.cpp
     src/test_string.cpp
+    src/test_testing.cpp
 )
 
 add_executable(utests_stdutils ${UTESTS_SOURCES})
