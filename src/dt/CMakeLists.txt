@@ -9,6 +9,9 @@ endif()
 if(DELAUNAY_VIEWER_BUILD_CDT)
     include(cdt)
 endif()
+if(DELAUNAY_VIEWER_BUILD_TRIANGLE)
+    include(triangle)
+endif()
 
 set(LIB_SOURCES
     src/dt_impl.cpp
@@ -37,6 +40,12 @@ if (DELAUNAY_VIEWER_BUILD_CDT)
         BUILD_CDT
     )
 endif()
+if(DELAUNAY_VIEWER_BUILD_TRIANGLE)
+    target_compile_definitions(dt
+        PRIVATE
+        BUILD_TRIANGLE
+    )
+endif()
 
 set(THIRD_PARTY_LIBS)
 if(DELAUNAY_VIEWER_BUILD_POLY2TRI)
@@ -44,6 +53,9 @@ if(DELAUNAY_VIEWER_BUILD_POLY2TRI)
 endif()
 if(DELAUNAY_VIEWER_BUILD_CDT)
     list(APPEND THIRD_PARTY_LIBS CDT::CDT)
+endif()
+if(DELAUNAY_VIEWER_BUILD_TRIANGLE)
+    list(APPEND THIRD_PARTY_LIBS Triangle)
 endif()
 
 target_link_libraries(dt

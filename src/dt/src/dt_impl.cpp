@@ -8,6 +8,9 @@
 #if BUILD_CDT
     #include "impl_cdt.h"
 #endif
+#if BUILD_TRIANGLE
+    #include "impl_triangle.h"
+#endif
 
 namespace delaunay {
 namespace {
@@ -15,6 +18,11 @@ namespace {
 bool static_register_all_implementations()
 {
     bool success = true;
+
+#if BUILD_TRIANGLE
+    // Shewchuk's Triangle
+    success &= register_impl<double, std::uint32_t>("Triangle", 4, &get_triangle_impl<double, std::uint32_t>);
+#endif
 
 #if BUILD_POLY2TRI
     // Poly2tri (the library only supports double)
