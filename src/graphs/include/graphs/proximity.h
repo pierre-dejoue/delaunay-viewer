@@ -13,8 +13,7 @@
 #include <set>
 #include <vector>
 
-namespace graphs
-{
+namespace graphs {
 
 /**
  * The algorithms in this file generate proximity graphs.
@@ -57,7 +56,7 @@ WeightedEdgeIt gabriel_graph(WeightedEdgeIt begin, WeightedEdgeIt end, WeightFun
 
 //
 //
-// Implementations
+// Implementation
 //
 //
 

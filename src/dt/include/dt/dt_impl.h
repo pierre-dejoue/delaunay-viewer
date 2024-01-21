@@ -16,9 +16,7 @@
 #include <string_view>
 #include <vector>
 
-
-namespace delaunay
-{
+namespace delaunay {
 
 // Data structures
 template <typename F, typename I>
@@ -61,11 +59,15 @@ std::unique_ptr<Interface<F, I>> get_impl(const RegisteredImpl<F, I>& registered
 template <typename F, typename I = std::uint32_t>
 std::pair<std::string, std::unique_ptr<Interface<F, I>>> get_ref_impl(const stdutils::io::ErrorHandler* err_handler = nullptr);
 
+
+//
 //
 // Implementation
 //
-namespace details
-{
+//
+
+
+namespace details {
 
     template <typename F, typename I>
     std::map<std::string, RegisteredImpl<F, I>>& get_impl_map()

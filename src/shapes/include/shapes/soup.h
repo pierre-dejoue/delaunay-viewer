@@ -7,11 +7,9 @@
 #include <shapes/edge.h>
 #include <shapes/triangle.h>
 
-
 #include <cstdint>
 
-namespace shapes
-{
+namespace shapes {
 
 /**
  * A healthy soup of 0-, 1-, and 2-simplices

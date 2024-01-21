@@ -12,8 +12,7 @@
 #include <cassert>
 #include <vector>
 
-namespace shapes
-{
+namespace shapes {
 
 template <typename P, typename I>
 std::vector<PointPath<P>> extract_borders(const Triangles<P, I>& triangles);
@@ -24,7 +23,7 @@ Edges<P, I> extract_edges(const Triangles<P, I>& triangles);
 
 //
 //
-// Implementations
+// Implementation
 //
 //
 

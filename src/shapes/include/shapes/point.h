@@ -6,8 +6,7 @@
 
 #include <vector>
 
-namespace shapes
-{
+namespace shapes {
 
 template<typename F>
 using Point2d = Vect2d<F>;

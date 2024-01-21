@@ -11,8 +11,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace shapes
-{
+namespace shapes {
 
 /**
  * See graphs/proximity.h for more information regarding the proximity graphs
@@ -30,15 +29,15 @@ Edges<P, I> relative_neighborhood_graph(const Triangles<P, I>& triangles);
 template <typename P, typename I = std::uint32_t>
 Edges<P, I> gabriel_graph(const Triangles<P, I>& triangles);
 
+
 //
 //
-// Implementations
+// Implementation
 //
 //
 
 
-namespace details
-{
+namespace details {
 
 template <typename F, typename I>
 struct WeightEdge
@@ -86,7 +85,7 @@ Edges<P, I> generic_proximity_graph(const Triangles<P, I>& triangles, Func func)
     return result;
 }
 
-}
+} // namepsace details
 
 template <typename P, typename I>
 Edges<P, I> nearest_neighbor(const Triangles<P, I>& triangles)
@@ -125,6 +124,5 @@ Edges<P, I> gabriel_graph(const Triangles<P, I>& triangles)
     };
     return details::generic_proximity_graph<P, I>(triangles, gg_gen);
 }
-
 
 } // namespace shapes

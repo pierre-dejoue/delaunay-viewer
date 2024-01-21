@@ -10,8 +10,7 @@
 #include <limits>
 #include <ostream>
 
-namespace shapes
-{
+namespace shapes {
 
 template <typename F>
 struct Range
@@ -102,8 +101,11 @@ BoundingBox3d<F1> cast(const BoundingBox3d<F0>& bb)
     return result;
 }
 
+
 //
-// Implementations
+//
+// Implementation
+//
 //
 
 template <typename F>

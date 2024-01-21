@@ -14,8 +14,7 @@
 #include <type_traits>
 #include <variant>
 
-namespace shapes
-{
+namespace shapes {
 
 // NB: The first type in the list is default constructible therefore the variant is as well
 template <typename F>

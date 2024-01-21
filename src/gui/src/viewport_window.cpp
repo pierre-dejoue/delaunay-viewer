@@ -13,9 +13,7 @@
 #include <cassert>
 #include <variant>
 
-
-namespace
-{
+namespace {
 constexpr ViewportWindow::scalar DEFAULT_ZOOM = 0.9;
 
 constexpr ImU32 CanvasBackgroundColor_Default = IM_COL32(40, 40, 40, 255);

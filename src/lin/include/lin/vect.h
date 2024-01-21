@@ -7,9 +7,7 @@
 #include <array>
 #include <cstddef>
 
-
-namespace lin
-{
+namespace lin {
 
 using index = std::size_t;
 

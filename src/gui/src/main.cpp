@@ -44,8 +44,7 @@
 #include <string>
 #include <vector>
 
-namespace
-{
+namespace {
 
 void err_callback(stdutils::io::SeverityCode sev, std::string_view msg)
 {
@@ -235,7 +234,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
     }
 }
 
-} // Anonymous namespace
+} // namespace
 
 int main(int argc, char *argv[])
 {

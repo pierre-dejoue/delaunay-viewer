@@ -14,9 +14,7 @@
 #include <numeric>
 #include <set>
 
-
-namespace graphs
-{
+namespace graphs {
 
 // Validate (exclude loop edges, duplicate edges, invalid triangles, improper size, etc.)
 template <typename I>
@@ -115,9 +113,10 @@ std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges);
 
 //
 //
-// Implementations
+// Implementation
 //
 //
+
 
 template <typename I>
 bool has_duplicates(const EdgeSoup<I>& edges)
@@ -294,8 +293,8 @@ std::pair<I, I> minmax_indices(const TriangleSoup<I>& triangles)
     return result;
 }
 
-namespace details
-{
+namespace details {
+
     template <typename I>
     class RemapIndices
     {
@@ -343,7 +342,8 @@ namespace details
         I max_idx;
         std::vector<I> idx_map;
     };
-}
+
+} // namespace details
 
 template <typename InputIt>
 void compact_indexing(InputIt index_begin, InputIt index_end)
@@ -474,8 +474,8 @@ EdgeSoup<I> to_edge_soup(const TriangleSoup<I>& triangles)
     return result;
 }
 
-namespace details
-{
+namespace details {
+
     // Return a vector of pairs <I index, std::size_t vertex_degree>
     template <typename I>
     std::vector<std::pair<I, std::size_t>> vertex_degree(const EdgeSoup<I>& edges)
@@ -595,7 +595,8 @@ namespace details
         std::size_t m_max_idx;
         std::size_t m_max_deg;
     };
-} // details namespace
+
+} // namespace details
 
 template <typename I>
 std::size_t min_degree(const EdgeSoup<I>& edges)
@@ -682,6 +683,5 @@ std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges)
     assert(details::nb_edges(result) == nb_edges(edges));
     return result;
 }
-
 
 } // namespace graphs

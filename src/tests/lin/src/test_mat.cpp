@@ -6,8 +6,7 @@
 #include <sstream>
 #include <string>
 
-namespace lin
-{
+namespace lin {
 
 TEST_CASE("Test identity matrix", "[lin::mat]")
 {
@@ -38,4 +37,4 @@ TEST_CASE("Test matrix memory layout is row-major", "[lin::mat]")
     CHECK(test[1][3] == 8);
 }
 
-}
+} // namespace lin

@@ -9,9 +9,7 @@
 #include <cmath>
 #include <limits>
 
-
-namespace shapes
-{
+namespace shapes {
 
 // A rough, fast to compute bounding box of any shape with vertices
 template <typename S>

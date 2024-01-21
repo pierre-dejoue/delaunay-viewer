@@ -4,11 +4,8 @@
 
 #include <chrono>
 
-
-namespace stdutils
-{
-namespace chrono
-{
+namespace stdutils {
+namespace chrono {
 
 // For example to measure a duration in milliseconds:
 //

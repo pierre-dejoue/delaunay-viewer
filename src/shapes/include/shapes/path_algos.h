@@ -9,8 +9,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace shapes
-{
+namespace shapes {
 
 template <typename P>
 PointPath<P> extract_endpoints(const CubicBezierPath<P>& cbp);
@@ -25,7 +24,9 @@ bool flip_open_closed(PointPath<P>& pp);
 
 
 //
-// Implementations
+//
+// Implementation
+//
 //
 
 

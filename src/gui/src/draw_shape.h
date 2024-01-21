@@ -57,12 +57,15 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
 template <typename F>
 void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool update_buffers, const Settings& settings);
 
+
 //
-// Implementations
+//
+// Implementation
+//
 //
 
-namespace details
-{
+
+namespace details {
 
     // Draw all the vertices of any shape with vertices
     template <typename S, typename F = typename S::scalar>
@@ -425,8 +428,7 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
     }
 }
 
-namespace
-{
+namespace {
     template <typename F>
     void to_opengl_draw_commands(const DrawCommand<F>& draw_command, renderer::DrawList& draw_list, DrawingOptions& options)
     {

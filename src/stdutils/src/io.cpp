@@ -4,11 +4,8 @@
 
 #include <cassert>
 
-
-namespace stdutils
-{
-namespace io
-{
+namespace stdutils {
+namespace io {
 
 std::string_view str_severity_code(SeverityCode code)
 {
@@ -38,5 +35,5 @@ std::string_view str_severity_code(SeverityCode code)
     }
 }
 
-}
-}
+} // namespace io
+} // namespace stdutils

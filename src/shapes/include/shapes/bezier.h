@@ -4,8 +4,7 @@
 
 #include <shapes/vect.h>
 
-namespace shapes
-{
+namespace shapes {
 
 template <typename F>
 class QuadraticBezierMap2d
@@ -51,9 +50,14 @@ private:
     F const * const p;
 };
 
+
 //
-// Implementations
 //
+// Implementation
+//
+//
+
+
 template <typename F>
 Vect2d<F> QuadraticBezierMap2d<F>::at(float t)
 {

@@ -10,9 +10,7 @@
 #include <cstdint>
 #include <memory>
 
-
-namespace delaunay
-{
+namespace delaunay {
 
 enum class TriangulationPolicy
 {
@@ -44,8 +42,11 @@ protected:
 
 
 //
+//
 // Implementation
 //
+//
+
 
 template <typename F, typename I>
 Interface<F, I>::Interface(const stdutils::io::ErrorHandler* err_handler)

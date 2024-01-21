@@ -8,8 +8,7 @@
 #include <stdexcept>
 #include <type_traits>
 
-namespace stdutils
-{
+namespace stdutils {
 
 template <class T>
 constexpr void max_update(T& to, const T& from) { to = std::max(to, from); }

@@ -3,8 +3,7 @@
 #include <cassert>
 #include <limits>
 
-namespace
-{
+namespace {
 
     Settings::GeneralLimits general_settings_limits()
     {
@@ -57,7 +56,7 @@ namespace
         return result;
     }
 
-} // Anonymous namespace
+} // namespace
 
 Settings::Settings()
 {

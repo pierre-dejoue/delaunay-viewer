@@ -11,8 +11,7 @@
 #include <string>
 #include <type_traits>
 
-namespace graphs
-{
+namespace graphs {
 
 template <typename I = std::uint32_t>
 Path<I> test_open_path()
@@ -409,4 +408,4 @@ TEST_CASE("Algo: Extract paths from edge soup", "[graphs]")
     }
 }
 
-}
+} // namespace graphs

@@ -8,8 +8,7 @@
 #include <cmath>
 #include <ostream>
 
-namespace shapes
-{
+namespace shapes {
 
 template <typename F>
 struct Vect2d

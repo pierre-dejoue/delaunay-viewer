@@ -7,8 +7,7 @@
 #define THIS_PROEJCT_VERSION_STRING "@delaunay_viewer_VERSION@"
 
 
-namespace project
-{
+namespace project {
 
 // Get the project identifier (it is the CMAKE_PROJECT_NAME)
 std::string_view get_identifier();

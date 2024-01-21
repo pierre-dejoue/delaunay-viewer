@@ -5,9 +5,7 @@
 #include <shapes/bounding_box.h>
 #include <shapes/point.h>
 
-
-namespace shapes
-{
+namespace shapes {
 
 template <typename F, int Dim>
 struct Traits;

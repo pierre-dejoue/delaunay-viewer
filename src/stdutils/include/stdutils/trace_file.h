@@ -10,8 +10,7 @@
 // Trace files are primarily intended for UTests.
 // Use them to output trace information in files managed by git.
 // The idea is to follow the evolution of the trace output with that of the code in the git history.
-namespace stdutils
-{
+namespace stdutils {
 
 // Define in your test suite a function with the following prototype (in namespace stdutils!):
 extern std::filesystem::path trace_folder_path();

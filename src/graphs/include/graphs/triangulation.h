@@ -9,9 +9,7 @@
 #include <cstdint>
 #include <map>
 
-
-namespace graphs
-{
+namespace graphs {
 
 // Borders of a 2-manifold (which can have several components)
 template <typename I>
@@ -28,7 +26,7 @@ BordersAndInnerEdges<I> extract_borders(const TriangleSoup<I>& triangles);
 
 //
 //
-// Implementations
+// Implementation
 //
 //
 

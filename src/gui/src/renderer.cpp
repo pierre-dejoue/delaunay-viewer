@@ -7,12 +7,9 @@
 #include <array>
 #include <cassert>
 
+namespace renderer {
 
-namespace renderer
-{
-
-namespace
-{
+namespace {
 
 const char* vertex_shader_source = R"SRC(
 
@@ -57,7 +54,7 @@ unsigned int to_gl_draw_cmd(DrawCmd cmd)
     }
 }
 
-}  // Anonymous namespace
+}  // namespace
 
 DrawList::DrawCall::DrawCall()
     : m_range(0, 0)

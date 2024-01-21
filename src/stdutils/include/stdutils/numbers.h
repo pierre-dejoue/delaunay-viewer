@@ -2,10 +2,8 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-namespace stdutils
-{
-namespace numbers
-{
+namespace stdutils {
+namespace numbers {
 
 template <typename F>
 inline constexpr F e_v = F{};   // Invalid

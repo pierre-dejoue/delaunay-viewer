@@ -17,8 +17,7 @@
 #include <string>
 #include <type_traits>
 
-namespace shapes
-{
+namespace shapes {
 
 template <typename F>
 CubicBezierPath2d<F> test_cbp_2d_1()

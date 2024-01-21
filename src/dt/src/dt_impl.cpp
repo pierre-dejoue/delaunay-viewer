@@ -9,11 +9,8 @@
     #include "impl_cdt.h"
 #endif
 
-
-namespace delaunay
-{
-namespace
-{
+namespace delaunay {
+namespace {
 
 bool static_register_all_implementations()
 {
@@ -34,7 +31,7 @@ bool static_register_all_implementations()
     return success;
 }
 
-}
+} // namespace
 
 bool register_all_implementations()
 {

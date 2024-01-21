@@ -8,9 +8,7 @@
 #include <cassert>
 #include <initializer_list>
 
-
-namespace lin
-{
+namespace lin {
 
 // NxM matrix (mathematical notation, meaning N = Rows and M = Cols)
 template <typename F, index N, index M>
@@ -70,7 +68,9 @@ mat2<F>& inverse(mat2<F>& m, F* det_ptr = nullptr);
 
 
 //
-// Implementations
+//
+// Implementation
+//
 //
 
 

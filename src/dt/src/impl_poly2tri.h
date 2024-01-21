@@ -17,8 +17,7 @@
 
 #define DT_POLY2TRI_ORIGINAL_API 0
 
-namespace delaunay
-{
+namespace delaunay {
 
 template <typename F, typename I = std::uint32_t>
 class Poly2triImpl : public Interface<F, I>
@@ -48,13 +47,17 @@ std::unique_ptr<Interface<F, I>> get_poly2tri_impl(const stdutils::io::ErrorHand
     return std::make_unique<Poly2triImpl<F, I>>(err_handler);
 }
 
+
+//
 //
 // Implementation
 //
-namespace details
-{
-namespace p2t
-{
+//
+
+
+namespace details {
+namespace p2t {
+
     template <typename F>
     std::vector<::p2t::Point> copy_vertices(const shapes::Points2d<F>& points)
     {

@@ -10,9 +10,7 @@
 #include <sstream>
 #include <string>
 
-
-namespace
-{
+namespace {
 
 // Target OpenGL 3.3 for this project
 constexpr int TARGET_OPENGL_MAJOR = 3;
@@ -45,7 +43,7 @@ void glfw_error_callback(int error, const char* description)
     s_glfw_err_handler(stdutils::io::Severity::ERR, out.str());
 }
 
-} // Anonymous namespace
+} // namespace
 
 GLFWWindowContext::GLFWWindowContext(int width, int height, const std::string_view& title, const stdutils::io::ErrorHandler* err_handler)
     : m_window_ptr(nullptr)
@@ -278,8 +276,7 @@ bool gl_get_attrib_location(GLuint program, const GLchar *name, GLuint* out_loca
     return true;
 }
 
-namespace
-{
+namespace {
     // OpenGL debug output callaback;
     stdutils::io::ErrorHandler s_opengl_debug_output_err_handler;
     void gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum sev, GLsizei length,

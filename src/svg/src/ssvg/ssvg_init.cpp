@@ -3,8 +3,7 @@
 #include <bx/allocator.h>
 #include <ssvg/ssvg.h>
 
-namespace
-{
+namespace {
     bx::DefaultAllocator s_bx_default_allocator;
 
     bx::AllocatorI* s_initialize_ssvg_lib()

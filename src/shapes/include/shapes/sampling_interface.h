@@ -5,9 +5,7 @@
 #include <shapes/point.h>
 #include <shapes/path.h>
 
-
-namespace shapes
-{
+namespace shapes {
 
 /**
  * Uniform sampling generic interface

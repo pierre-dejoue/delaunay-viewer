@@ -2,11 +2,9 @@
 
 #include <algorithm>
 
-namespace pfd
-{
+namespace pfd {
 
-namespace
-{
+namespace {
 
 // Portable File Dialogs encodes all paths as UTF8 strings
 std::filesystem::path to_fs_path(const std::string& pfd_path)
@@ -15,7 +13,7 @@ std::filesystem::path to_fs_path(const std::string& pfd_path)
     return std::filesystem::u8path(pfd_path);
 }
 
-}
+} // namespace
 
 std::vector<std::filesystem::path> source_paths(open_file&& widget)
 {

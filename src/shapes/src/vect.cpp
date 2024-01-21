@@ -6,8 +6,7 @@
 
 #include <iomanip>
 
-namespace shapes
-{
+namespace shapes {
 
 //
 // IO

@@ -22,13 +22,10 @@
 #include <type_traits>
 #include <vector>
 
+namespace shapes {
+namespace io {
 
-namespace shapes
-{
-namespace io
-{
-namespace
-{
+namespace {
 
 template <typename T, std::size_t MAX_DIM>
 struct NumericLineBuffer
@@ -176,10 +173,9 @@ private:
  * - Control lines are optional. In the absence of any control line, the file consists of a single point series
  *   considered to be a POINT_CLOUD.
  */
-namespace dat
-{
-namespace
-{
+namespace dat {
+
+namespace {
 
 template <typename F, int POINT_DIM, std::size_t MAX_DIM>
 void append_new_shape(const ShapeBuffer<F, MAX_DIM>& buffer, ShapeAggregate<F>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept
@@ -397,7 +393,7 @@ void save_shapes_as_stream_gen(std::ostream& out, const StreamWriterInput<F>& in
     out << std::setprecision(initial_fp_digits);
 }
 
-} // Anonymous namespace
+} // namespace
 
 ShapeAggregate<double> parse_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
@@ -481,10 +477,9 @@ void save_shapes_as_oneliner_stream(std::ostream& outputstream, const ShapeAggre
  * - The number of lines of the VERTEX section is expected to be exactly equal to <nb_vertices>.
  * - The number of lines of the EDGE (resp. TRIANGLE) section is expected to be exactly equal to <nb_edges> (resp. <nb_triangles>).
  */
-namespace cdt
-{
-namespace
-{
+namespace cdt {
+
+namespace {
 
 bool check_expected_size(std::string_view id, std::size_t sz0, std::size_t sz1, const stdutils::io::ErrorHandler& err_handler, stdutils::io::SeverityCode sev)
 {
@@ -731,7 +726,7 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
     return result;
 }
 
-} // Anonymous namespace
+} // namespace
 
 unsigned int peek_point_dimension(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
@@ -802,7 +797,6 @@ shapes::Soup3d<double> parse_3d_shapes_from_file(std::filesystem::path filepath,
 }
 
 } // namespace cdt
-
 
 } // namespace io
 } // namespace shapes

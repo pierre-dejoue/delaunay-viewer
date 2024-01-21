@@ -2,8 +2,7 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-namespace stdutils
-{
+namespace stdutils {
 
 // Helper type for visitors
 template<class... Ts>
@@ -13,4 +12,4 @@ struct Overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts>
 Overloaded(Ts...) -> Overloaded<Ts...>;
 
-}
+} // namespace stdutils

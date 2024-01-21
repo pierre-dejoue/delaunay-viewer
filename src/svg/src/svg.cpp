@@ -14,14 +14,10 @@
 #include <fstream>
 #include <sstream>
 
+namespace svg {
+namespace io {
 
-namespace svg
-{
-namespace io
-{
-
-namespace
-{
+namespace {
 
 ssvg::ShapeAttributes init_default_shape_attr()
 {
@@ -422,7 +418,7 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
     }
 }
 
-} // Anonymous namespace
+} // namespace
 
 Paths<double> parse_svg_paths(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
 {

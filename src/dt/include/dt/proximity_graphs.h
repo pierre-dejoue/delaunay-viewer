@@ -9,8 +9,7 @@
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
 
-namespace delaunay
-{
+namespace delaunay {
 
 /**
  * See graphs/proximity.h for more information regarding the proximity graphs
@@ -34,13 +33,12 @@ shapes::Edges<P, I> delaunay_triangulation(const shapes::PointCloud<P>& pc, cons
 
 //
 //
-// Implementations
+// Implementation
 //
 //
 
 
-namespace details
-{
+namespace details {
 
 template <typename P, typename I, typename Func>
 shapes::Edges<P, I> generic_proximity_graph(const shapes::PointCloud<P>& pc, const stdutils::io::ErrorHandler& err_handler, Func func)

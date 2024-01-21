@@ -6,11 +6,8 @@
 #include <filesystem>
 #include <vector>
 
-
-namespace svg
-{
-namespace io
-{
+namespace svg {
+namespace io {
 
 template <typename F>
 struct Paths

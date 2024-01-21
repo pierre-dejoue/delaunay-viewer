@@ -22,9 +22,7 @@
 #include <utility>
 #include <variant>
 
-
-namespace
-{
+namespace {
     const char* INPUT_TAB_NAME = "Input";
     const char* PROXIMITY_TAB_NAME = "Proximity Graphs";
 

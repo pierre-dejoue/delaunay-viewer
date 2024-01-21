@@ -9,8 +9,7 @@
 #include <sstream>
 #include <string>
 
-namespace shapes
-{
+namespace shapes {
 
 TEST_CASE("ensure_min_extent", "[range]")
 {
@@ -27,4 +26,4 @@ TEST_CASE("ensure_min_extent", "[range]")
     CHECK(r3.length() > 0.f);
 }
 
-}
+} // namespace shapes

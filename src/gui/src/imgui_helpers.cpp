@@ -5,7 +5,6 @@
 #include <imgui_impl_opengl3.h>
 #include "opengl_and_glfw.h"
 
-
 void set_color(renderer::ColorData& color, ImU32 compact_color)
 {
     const ImColor im_color(compact_color);
@@ -22,8 +21,7 @@ renderer::ColorData to_float_color(ImU32 compact_color)
 }
 
 
-namespace ImGui
-{
+namespace ImGui {
 
 void HelpMarker(const char* desc)
 {

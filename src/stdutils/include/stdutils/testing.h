@@ -5,11 +5,11 @@
 #include <cstdlib>
 #include <string>
 
-// Utilities for testing
-namespace stdutils
-{
-namespace testing
-{
+/**
+ * Utilities for testing
+ */
+namespace stdutils {
+namespace testing {
 
 struct CopyMoveString
 {

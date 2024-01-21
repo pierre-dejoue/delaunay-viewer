@@ -10,8 +10,7 @@
 #include <sstream>
 #include <vector>
 
-namespace
-{
+namespace {
     template <typename F>
     std::vector<F> gen_circle_1d_distrib(std::size_t n, F r, F offset = F{0})
     {

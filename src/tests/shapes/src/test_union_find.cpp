@@ -4,8 +4,7 @@
 
 #include <graphs/union_find.h>
 
-namespace graphs
-{
+namespace graphs {
 
 TEST_CASE("Union Find: simple test", "[graphs]")
 {

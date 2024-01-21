@@ -11,9 +11,7 @@
 #include <utility>
 #include <vector>
 
-
-namespace renderer
-{
+namespace renderer {
 
 using ColorData = std::array<float, 4>;                     // r, g, b, a
 

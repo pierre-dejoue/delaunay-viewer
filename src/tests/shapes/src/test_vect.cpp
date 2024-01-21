@@ -30,8 +30,7 @@ struct Catch::StringMaker<shapes::Vect3d<float>>
     }
 };
 
-namespace shapes
-{
+namespace shapes {
 
 TEST_CASE("Test Vect2d operations", "[vect2d]")
 {
@@ -53,4 +52,4 @@ TEST_CASE("Test Vect3d operations", "[vect3d]")
     CHECK(3.f * b == Vect3d<float>(15.f, 24.f, 18.f));
 }
 
-}
+} // namespace shapes

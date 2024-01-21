@@ -14,11 +14,8 @@
 #include <stdexcept>
 #include <vector>
 
-
-namespace stdutils
-{
-namespace stats
-{
+namespace stdutils {
+namespace stats {
 
 // F: a scalar
 template <typename F>
@@ -75,9 +72,10 @@ F median(InputIt begin, InputIt end);
 
 //
 //
-// Implementations
+// Implementation
 //
 //
+
 
 template <typename F>
 Result<F> Result<F>::normalize_to(F unit) const

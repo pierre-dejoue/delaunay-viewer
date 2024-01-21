@@ -7,9 +7,7 @@
 #include <algorithm>
 #include <vector>
 
-
-namespace shapes
-{
+namespace shapes {
 
 /**
  * Point Cloud

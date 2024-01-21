@@ -11,8 +11,8 @@
 #include <string>
 #include <type_traits>
 
-namespace shapes
-{
+namespace shapes {
+
 template <typename F>
 PointCloud2d<F> test_point_cloud_2d()
 {
@@ -140,4 +140,4 @@ TEST_CASE("Generic functions on AllShapes variant", "[shapes]")
     CHECK(nb_faces(s) == 1);
 }
 
-}
+} // namespace shapes

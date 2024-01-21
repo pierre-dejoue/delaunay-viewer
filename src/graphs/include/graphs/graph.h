@@ -11,9 +11,7 @@
 #include <utility>
 #include <vector>
 
-
-namespace graphs
-{
+namespace graphs {
 
 /**
  * Edge

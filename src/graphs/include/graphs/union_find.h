@@ -10,8 +10,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace graphs
-{
+namespace graphs {
 
 /**
  * Union-Find is a classical data structure used to represent a partition of a set of elements.

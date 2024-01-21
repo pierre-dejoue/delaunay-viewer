@@ -12,8 +12,8 @@
 #include <utility>
 #include <vector>
 
-namespace delaunay
-{
+namespace delaunay {
+
 // Fc  floating-point type used by the library (computation)
 // F   floating-point type used for the interface
 template <typename Fc, typename F, typename I = std::uint32_t>
@@ -42,13 +42,16 @@ std::unique_ptr<Interface<F, I>> get_cdt_impl(const stdutils::io::ErrorHandler* 
     return std::make_unique<CDTImpl<Fc, F, I>>(err_handler);
 }
 
+
+//
 //
 // Implementation
 //
-namespace details
-{
-namespace cdt
-{
+//
+
+
+namespace details {
+namespace cdt {
 
     template <typename Fc, typename F>
     std::vector<CDT::V2d<Fc>> copy_vertices(const shapes::Points2d<F>& points)

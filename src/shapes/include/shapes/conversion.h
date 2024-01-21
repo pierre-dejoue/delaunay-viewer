@@ -5,9 +5,7 @@
 #include <shapes/path.h>
 #include <shapes/point_cloud.h>
 
-
-namespace shapes
-{
+namespace shapes {
 
 static constexpr bool CLOSED_PATH = true;
 

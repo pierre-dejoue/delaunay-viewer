@@ -12,9 +12,7 @@
 #include <cstdint>
 #include <vector>
 
-
-namespace shapes
-{
+namespace shapes {
 
 /**
  * Triangles

@@ -5,8 +5,7 @@
 #include <limits>
 #include <type_traits>
 
-namespace graphs
-{
+namespace graphs {
 
 // The following traits define what a proper vertex index is and its properties
 //

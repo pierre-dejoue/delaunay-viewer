@@ -14,9 +14,7 @@
 #include <execution>
 #include <iterator>
 
-
-namespace shapes
-{
+namespace shapes {
 
 /**
  *  Trivial sampling just extracts the endpoints of each path
@@ -393,8 +391,7 @@ F UniformSamplingCubicBezier<F, Point2d>::max_segment_length() const
     return m_max_segment_length;
 }
 
-namespace
-{
+namespace {
 
 // Given the arc length derivates at t=0, v0, and at t=1, v1, and given a length_ratio comprised between 0 and 1,
 // returns a time ratio comprised between 0 and 1, which is the solution of the quadratic model of the arc length
@@ -408,7 +405,7 @@ F precise_time_ratio(F v0, F v1, F length_ratio)
     return std::clamp((v0 - std::sqrt(v0 *v0 * (F{1}- lr) + v1 * v1 * lr)) / (v0 - v1) , F{0}, F{1});
 }
 
-} // anonymous namespace
+} // namespace
 
 template <typename F>
 PointPath<Point2d<F>> UniformSamplingCubicBezier<F, Point2d>::sample(F max_sampling_length) const

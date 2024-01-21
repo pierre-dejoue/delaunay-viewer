@@ -14,11 +14,8 @@
 #include <string_view>
 #include <vector>
 
-
-namespace stdutils
-{
-namespace io
-{
+namespace stdutils {
+namespace io {
 
 /**
  * IO error handling
@@ -153,11 +150,13 @@ using SkipLineStream = Basic_SkipLineStream<char>;
 template <typename CharT>
 std::size_t countlines(std::basic_istream<CharT, std::char_traits<CharT>>& istream);
 
+
 //
 //
-// IMPLEMENTATION
+// Implementation
 //
 //
+
 
 template <typename F, typename CharT>
 int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out)

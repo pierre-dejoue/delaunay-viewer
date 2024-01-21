@@ -9,8 +9,7 @@
 #include <cstddef>
 #include <vector>
 
-namespace shapes
-{
+namespace shapes {
 
 /**
  * Point Path
