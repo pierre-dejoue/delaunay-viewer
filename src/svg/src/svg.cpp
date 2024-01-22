@@ -22,21 +22,21 @@ namespace {
 ssvg::ShapeAttributes init_default_shape_attr()
 {
     ssvg::ShapeAttributes defaultAttrs;
-	std::memset(&defaultAttrs, 0, sizeof(ssvg::ShapeAttributes));
+    std::memset(&defaultAttrs, 0, sizeof(ssvg::ShapeAttributes));
     defaultAttrs.m_Parent = nullptr;
-	defaultAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
-	defaultAttrs.m_StrokePaint.m_ColorABGR = 0x00000000;
-	defaultAttrs.m_FillPaint.m_Type = ssvg::PaintType::None;
-	defaultAttrs.m_FillPaint.m_ColorABGR = 0x00000000;
+    defaultAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
+    defaultAttrs.m_StrokePaint.m_ColorABGR = 0x00000000;
+    defaultAttrs.m_FillPaint.m_Type = ssvg::PaintType::None;
+    defaultAttrs.m_FillPaint.m_ColorABGR = 0x00000000;
     ssvg::transformIdentity(&defaultAttrs.m_Transform[0]);
-	defaultAttrs.m_StrokeMiterLimit = 4.0f;
+    defaultAttrs.m_StrokeMiterLimit = 4.0f;
     defaultAttrs.m_StrokeWidth = 1.0f;
-	defaultAttrs.m_StrokeOpacity = 1.0f;
-	defaultAttrs.m_FillOpacity = 1.0f;
+    defaultAttrs.m_StrokeOpacity = 1.0f;
+    defaultAttrs.m_FillOpacity = 1.0f;
     defaultAttrs.m_FontSize = 8.0f;
     //defaultAttrs.m_Opacity
     defaultAttrs.m_Flags = 0;
-	defaultAttrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
+    defaultAttrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
     defaultAttrs.m_StrokeLineCap = ssvg::LineCap::Butt;
     defaultAttrs.m_FillRule = ssvg::FillRule::NonZero;
     //defaultAttrs.m_ID

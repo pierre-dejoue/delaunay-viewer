@@ -156,7 +156,7 @@ std::string_view gl_debug_source_str(GLenum source_enum)
     {
         case GL_DEBUG_SOURCE_API:               // Calls to the OpenGL API
             return "OpenGL API";
-        case GL_DEBUG_SOURCE_WINDOW_SYSTEM:	    // Calls to a window-system API
+        case GL_DEBUG_SOURCE_WINDOW_SYSTEM:     // Calls to a window-system API
             return "Window System API";
         case GL_DEBUG_SOURCE_SHADER_COMPILER:   // A compiler for a shading language
             return "Sahder Compiler";
