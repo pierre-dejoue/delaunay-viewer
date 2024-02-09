@@ -9,8 +9,11 @@ message(STATUS "Third-party: simple-svg")
 include(FetchContent)
 FetchContent_Declare(
     simple-svg
-    GIT_REPOSITORY https://github.com/jdryg/simple-svg.git
-    GIT_TAG 279c682320a882661f05e30e6e6e949a61a31293        # Nov 30, 2021
+    #GIT_REPOSITORY https://github.com/jdryg/simple-svg.git
+    #GIT_TAG 279c682320a882661f05e30e6e6e949a61a31293        # Nov 30, 2021
+    # Fork:
+    GIT_REPOSITORY https://github.com/pierre-dejoue/simple-svg.git
+    GIT_TAG eeb4ff7f35e3479c1acf59d5668dfe376f3e937d
 )
 FetchContent_Populate(simple-svg)
 
