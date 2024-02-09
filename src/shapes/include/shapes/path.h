@@ -89,10 +89,20 @@ bool is_valid(const CubicBezierPath<P>& cbp)
 }
 
 template <typename P>
-std::size_t nb_edges(const CubicBezierPath<P>& cbp)
+// For CBP, replace the notion of edges (resp. vertices) of point paths by that of segments (resp. endpoints.)
+//  - The segments are the individual cubic Bezier curves that are linked together to for a cubic Bezier path.
+//  - The endpoints are the vertices at the extremities of the segments.
+std::size_t nb_segments(const CubicBezierPath<P>& cbp)
 {
     assert(valid_size(cbp));
     return cbp.vertices.size() / 3;
+}
+
+template <typename P>
+std::size_t nb_endpoints(const CubicBezierPath<P>& cbp)
+{
+    assert(valid_size(cbp));
+    return cbp.vertices.size() / 3 + (cbp.closed ? 0 : 1);
 }
 
 } // namespace shapes

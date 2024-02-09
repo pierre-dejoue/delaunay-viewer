@@ -34,7 +34,7 @@ template <typename P>
 PointPath<P> extract_endpoints(const CubicBezierPath<P>& cbp)
 {
     PointPath<P> pp;
-    const std::size_t segs = nb_edges(cbp);
+    const std::size_t segs = nb_segments(cbp);
     pp.vertices.reserve(segs + 1);
     for (unsigned int idx = 0; idx < segs; idx++)
     {

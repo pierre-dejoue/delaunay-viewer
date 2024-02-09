@@ -92,7 +92,8 @@ TEST_CASE("Sample a CubicbezierCurve2d", "[sampling]")
     const auto cbp = test_cbp_2d_1<FP>();
 
     REQUIRE(cbp.vertices.size() == 4);
-    REQUIRE(nb_edges(cbp) == 1);
+    REQUIRE(nb_segments(cbp) == 1);
+    REQUIRE(nb_endpoints(cbp) == 2);
 
     // Sampler
     UniformSamplingCubicBezier2d<FP>::InitTraceInfo trace_info;
@@ -143,7 +144,8 @@ TEST_CASE("Sample cubic Bezier curves and measure accuracy", "[sampling]")
         const auto& cbp = curves[idx];
         REQUIRE(cbp.vertices.size() == 4);
         REQUIRE(cbp.closed == false);
-        REQUIRE(nb_edges(cbp) == 1);
+        REQUIRE(nb_segments(cbp) == 1);
+        REQUIRE(nb_endpoints(cbp) == 2);
         REQUIRE(is_valid(cbp));
 
         shapes::io::dat::save_shapes_as_oneliner_stream(trace_out, { cbp }, "END\n");

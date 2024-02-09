@@ -220,8 +220,8 @@ void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList*
     if (options.path_settings.show && options.edges.draw)
     {
         const ImU32 color = details::to_compact_color(options.edges.color);
-        const auto nb_edges = shapes::nb_edges(cbp);
-        for (std::size_t idx = 0; idx < nb_edges; idx++)
+        const auto nb_segments = shapes::nb_segments(cbp);
+        for (std::size_t idx = 0; idx < nb_segments; idx++)
         {
             assert(3 * idx + 2 < cbp.vertices.size());
             const shapes::Point2d<F>& p0 = cbp.vertices[3 * idx];

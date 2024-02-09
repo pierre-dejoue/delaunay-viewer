@@ -200,7 +200,7 @@ UniformSamplingCubicBezier<F, Point2d>::UniformSamplingCubicBezier(const CubicBe
     assert(valid_size(cbp));
 
     // Copy control points, duplicate the last one if the input is a closed path
-    m_control_points.reserve(6 * nb_edges(cbp) + 2);
+    m_control_points.reserve(6 * nb_segments(cbp) + 2);
     const F* begin_coord = reinterpret_cast<const F*>(cbp.vertices.data());
     const F* end_coord = begin_coord + (2 * cbp.vertices.size());
     std::copy(begin_coord, end_coord, std::back_inserter(m_control_points));
@@ -216,7 +216,7 @@ UniformSamplingCubicBezier<F, Point2d>::UniformSamplingCubicBezier(const CubicBe
     //   v0 = 3 * (p1 - p0)
     //   v1 = 3 * (p2 - p1)
     //   v2 = 3 * (p3 - p2)
-    const std::size_t v_sz = 6 * nb_edges(cbp);
+    const std::size_t v_sz = 6 * nb_segments(cbp);
     m_derivate_control_points.resize(v_sz, F{0});
     const F* p = m_control_points.data();
     F* v = m_derivate_control_points.data();
