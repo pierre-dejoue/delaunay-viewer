@@ -54,15 +54,19 @@ public:
     template <typename InputIt>
     void add_samples(InputIt begin, InputIt end);
 
-    const Result<F>& get_result();
+    void add_samples(const CumulSamples& other);
+
+    CumulSamples& operator+=(const CumulSamples& other);
+
+    const Result<F>& get_result() const;
 
     bool empty() const;
 
 private:
     F m_sum;
     F m_sum_sq;
-    Result<F> m_result;
-    std::size_t m_prev_n;
+    mutable Result<F> m_result;
+    mutable std::size_t m_prev_n;
 };
 
 // The median, which cannot be computed in a cumulative way
@@ -126,7 +130,32 @@ void CumulSamples<F>::add_samples(InputIt begin, InputIt end)
 }
 
 template <typename F>
-const Result<F>& CumulSamples<F>::get_result()
+void CumulSamples<F>::add_samples(const CumulSamples<F>& other)
+{
+    if (m_result.n == 0u)
+    {
+        m_result.min = other.m_result.min;
+        m_result.max = other.m_result.max;
+    }
+    else
+    {
+        min_update(m_result.min, other.m_result.min);
+        max_update(m_result.max, other.m_result.max);
+    }
+    m_result.n += other.m_result.n;
+    m_sum += other.m_sum;
+    m_sum_sq += other.m_sum_sq;
+}
+
+template <typename F>
+CumulSamples<F>& CumulSamples<F>::operator+=(const CumulSamples<F>& other)
+{
+    add_samples(other);
+    return *this;
+}
+
+template <typename F>
+const Result<F>& CumulSamples<F>::get_result() const
 {
     if (m_result.n != m_prev_n)
     {

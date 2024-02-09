@@ -64,6 +64,34 @@ TEST_CASE("CumulSamples basic", "[stats]")
     CHECK_THAT(samples.get_result().stdev, Catch::Matchers::WithinRel(2.2913f, 0.0001f));
 }
 
+TEST_CASE("CumulSamples: Merge two distributions", "[stats]")
+{
+    std::array<float, 9> samples = { 1.f, 3.f, 7.f, 1.f, 8.f, 5.f, 2.f, 4.f, 6.f };
+    stdutils::stats::CumulSamples<float> a;
+    stdutils::stats::CumulSamples<float> b;
+    stdutils::stats::CumulSamples<float> c;
+    const std::size_t h = samples.size() / 2;
+    for (std::size_t i = 0; i < samples.size(); i++)
+    {
+        a.add_sample(samples[i]);
+        if (i < h)
+            b.add_sample(samples[i]);
+        else
+            c.add_sample(samples[i]);
+    }
+
+    // Merge b and c together
+    b += c;
+
+    CHECK(a.get_result().n == samples.size());
+    CHECK(b.get_result().n == samples.size());
+    CHECK(a.get_result().min == b.get_result().min);
+    CHECK(a.get_result().max == b.get_result().max);
+    CHECK(a.get_result().mean == b.get_result().mean);
+    CHECK(a.get_result().variance == b.get_result().variance);
+    CHECK_THAT(a.get_result().stdev - b.get_result().stdev, Catch::Matchers::WithinAbs(0.0, 0.0001));
+}
+
 TEST_CASE("CumulSamples on circle distribution", "[stats]")
 {
     stdutils::stats::CumulSamples<float> samples;
