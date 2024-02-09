@@ -4,6 +4,7 @@
 #include "imgui_helpers.h"
 #include "settings.h"
 
+#include <dt/dt_impl.h>
 #include <dt/dt_interface.h>
 #include <dt/proximity_graphs.h>
 #include <shapes/bounding_box_algos.h>
@@ -173,8 +174,11 @@ DrawCommand<ShapeWindow::scalar> ShapeWindow::ShapeControl::to_draw_command(cons
 ShapeWindow::ShapeWindow(
         std::string_view name,
         shapes::io::ShapeAggregate<scalar>&& shapes,
+        const DtTracker<scalar>& dt_tracker,
         ViewportWindow& viewport_window)
     : m_title(std::string(name) + " Controls")
+    , m_dt_tracker(dt_tracker)
+    , m_prev_dt_tracker_signature(dt_tracker.state_signature())
     , m_input_shape_controls()
     , m_sampled_shape_controls()
     , m_steiner_shape_control(shapes::PointCloud2d<scalar>())
@@ -256,51 +260,57 @@ ShapeWindow::ShapeControlPtrs ShapeWindow::get_active_input_shapes() const
 
 void ShapeWindow::recompute_triangulations(delaunay::TriangulationPolicy policy, const stdutils::io::ErrorHandler& err_handler)
 {
-    std::chrono::duration<float, std::milli> duration;
-    shapes::Triangles2d<scalar> triangulation;
+    // Triangulation input
     const auto active_shapes = get_active_input_shapes();
-    // Triangulation
-    for (const auto& algo : delaunay::get_impl_list<scalar>().algos)
-    {
-        // Setup triangulation
-        m_triangulation_shape_controls.try_emplace(algo.name);
-        auto triangulation_algo = delaunay::get_impl(algo, &err_handler);
-        assert(triangulation_algo);
-        bool first_path = true;
-        for (const auto* shape_control_ptr : active_shapes)
-        {
-            std::visit(stdutils::Overloaded {
-                [&triangulation_algo](const shapes::PointCloud2d<scalar>& pc) { triangulation_algo->add_steiner(pc); },
-                [&triangulation_algo, &first_path](const shapes::PointPath2d<scalar>& pp) {
-                    if (first_path) { triangulation_algo->add_path(pp); first_path = false; }
-                    else { triangulation_algo->add_hole(pp); }
-                },
-                [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
-                [](const shapes::Edges2d<scalar>&) { /* TODO */ },
-                [](const shapes::Triangles2d<scalar>&) { /* Skip */ },
-                [](const auto&) { assert(0); }
-            }, shape_control_ptr->shape);
-        }
 
-        // Triangulate
+    // Triangulate
+    for (const auto& algo : m_dt_tracker.list_algos())
+    {
+        std::chrono::duration<float, std::milli> duration{0};
+        shapes::Triangles2d<scalar> triangulation;
+
+        if (algo.active)
         {
-            stdutils::chrono::DurationMeas meas(duration);
-            triangulation = triangulation_algo->triangulate(policy);
+            // Setup triangulation
+            auto triangulation_algo = delaunay::get_impl(algo.impl, &err_handler);
+            assert(triangulation_algo);
+            bool first_path = true;
+            for (const auto* shape_control_ptr : active_shapes)
+            {
+                std::visit(stdutils::Overloaded {
+                    [&triangulation_algo](const shapes::PointCloud2d<scalar>& pc) { triangulation_algo->add_steiner(pc); },
+                    [&triangulation_algo, &first_path](const shapes::PointPath2d<scalar>& pp) {
+                        if (first_path) { triangulation_algo->add_path(pp); first_path = false; }
+                        else { triangulation_algo->add_hole(pp); }
+                    },
+                    [](const shapes::CubicBezierPath2d<scalar>&) { /* Skip */ },
+                    [](const shapes::Edges2d<scalar>&) { /* TODO */ },
+                    [](const shapes::Triangles2d<scalar>&) { /* Skip */ },
+                    [](const auto&) { assert(0); }
+                }, shape_control_ptr->shape);
+            }
+
+            // Triangulate
+            {
+                stdutils::chrono::DurationMeas meas(duration);
+                triangulation = triangulation_algo->triangulate(policy);
+            }
         }
 
         // Update or create the output shape controls
-        if (m_triangulation_shape_controls.at(algo.name).delaunay_triangulation)
+        if (m_triangulation_shape_controls[algo.impl.name].delaunay_triangulation)
         {
-            m_triangulation_shape_controls.at(algo.name).delaunay_triangulation->update(std::move(triangulation));
+            m_triangulation_shape_controls[algo.impl.name].delaunay_triangulation->update(std::move(triangulation));
+            m_triangulation_shape_controls[algo.impl.name].delaunay_triangulation->latest_computation_time_ms = duration.count();
         }
-        else
+        else if (!triangulation.vertices.empty())
         {
-            m_triangulation_shape_controls.at(algo.name).delaunay_triangulation = std::make_unique<ShapeControl>(std::move(triangulation));
-            m_triangulation_shape_controls.at(algo.name).delaunay_triangulation->descr = std::string("Triangulation from algo: ") + algo.name;
+            m_triangulation_shape_controls[algo.impl.name].delaunay_triangulation = std::make_unique<ShapeControl>(std::move(triangulation));
+            m_triangulation_shape_controls[algo.impl.name].delaunay_triangulation->descr = std::string("Triangulation from algo: ") + algo.impl.name;
+            m_triangulation_shape_controls[algo.impl.name].delaunay_triangulation->latest_computation_time_ms = duration.count();
         }
-        assert(m_triangulation_shape_controls.at(algo.name).delaunay_triangulation);
-        m_triangulation_shape_controls.at(algo.name).delaunay_triangulation->latest_computation_time_ms = duration.count();
     }
+
     // Constrained edges (those are just the copy of the input shape controls, with a different color)
     m_triangulation_constraint_edges.clear();
     if (policy == delaunay::TriangulationPolicy::CDT)
@@ -677,6 +687,11 @@ void ShapeWindow::visit(bool& can_be_erased, const Settings& settings, const Win
     if (display_proximity_graphs != m_prev_general_settings.proximity_graphs)
         geometry_has_changed = true;
     m_prev_general_settings = settings.read_general_settings();
+
+    const auto dt_tracker_signature = m_dt_tracker.state_signature();
+    if (dt_tracker_signature != m_prev_dt_tracker_signature)
+        geometry_has_changed = true;
+    m_prev_dt_tracker_signature = dt_tracker_signature;
 
     ImGui::SetNextWindowPosAndSize(win_pos_sz);
     constexpr ImGuiWindowFlags win_flags = ImGuiWindowFlags_NoCollapse

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dt_tracker.h"
+#include "viewport_window.h"
 #include "window_layout.h"
 
 #include <string>
@@ -9,7 +11,9 @@ class Settings;
 class SettingsWindow
 {
 public:
-    explicit SettingsWindow(Settings& settings);
+    using scalar = ViewportWindow::scalar;
+
+    SettingsWindow(Settings& settings, DtTracker<scalar>& dt_tracker);
     SettingsWindow(const SettingsWindow&) = delete;
     SettingsWindow& operator=(const SettingsWindow&) = delete;
 
@@ -17,5 +21,6 @@ public:
 
 private:
     Settings& m_settings;
+    DtTracker<scalar>& m_dt_tracker;
     std::string m_title;
 };

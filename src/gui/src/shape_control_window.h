@@ -2,12 +2,12 @@
 
 #include "canvas.h"
 #include "draw_command.h"
+#include "dt_tracker.h"
 #include "renderer.h"
 #include "settings.h"
 #include "viewport_window.h"
 #include "window_layout.h"
 
-#include <dt/dt_impl.h>
 #include <shapes/bounding_box.h>
 #include <shapes/io.h>
 #include <shapes/point.h>
@@ -23,7 +23,6 @@
 #include <utility>
 #include <vector>
 
-
 class Settings;
 
 class ShapeWindow
@@ -37,6 +36,7 @@ public:
     ShapeWindow(
         std::string_view name,
         shapes::io::ShapeAggregate<scalar>&& shapes,
+        const DtTracker<scalar>& dt_tracker,
         ViewportWindow& viewport_window);
     ~ShapeWindow();
     ShapeWindow(const ShapeWindow&) = delete;
@@ -117,6 +117,8 @@ private:
     void shape_list_menu(ShapeControl& shape_control, unsigned int idx, bool allow_sampling, bool allow_tinkering, bool& in_out_trash, bool& input_has_changed);
 
     const std::string m_title;
+    const DtTracker<scalar>& m_dt_tracker;
+    std::size_t m_prev_dt_tracker_signature;
     std::vector<ShapeControl> m_input_shape_controls;
     std::vector<ShapeControlSmartPtr> m_sampled_shape_controls;
     ShapeControl m_steiner_shape_control;

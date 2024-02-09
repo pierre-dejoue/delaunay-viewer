@@ -8,11 +8,11 @@
 #include <cassert>
 
 
-SettingsWindow::SettingsWindow(Settings& settings)
+SettingsWindow::SettingsWindow(Settings& settings, DtTracker<scalar>& dt_tracker)
     : m_settings(settings)
+    , m_dt_tracker(dt_tracker)
     , m_title("Settings")
-{
-}
+{ }
 
 void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
 {
@@ -46,6 +46,17 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
         ImGui::Unindent();
     }
 
+    {
+        ImGui::Dummy(spacing);
+        ImGui::BulletText("Triangulation algos");
+        ImGui::Indent();
+        for (auto& algo : m_dt_tracker.list_algos())
+        {
+            ImGui::Checkbox(algo.impl.name.c_str(), &(algo.active));
+        }
+        ImGui::Unindent();
+    }
+
     Settings::Point* point_settings = m_settings.get_point_settings();
     if (point_settings)
     {
@@ -55,7 +66,8 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
         ImGui::BulletText("Points");
         ImGui::Indent();
         ImGui::Checkbox("Show##Point", &(point_settings->show));
-        ImGui::SliderFloat("Size ratio##Point", &point_settings->size, limits.size.min, limits.size.max, "%.3f", ImGuiSliderFlags_AlwaysClamp);
+        ImGui::SameLine();
+        ImGui::SliderFloat("Size##Point", &point_settings->size, limits.size.min, limits.size.max, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         ImGui::Unindent();
     }
 
@@ -67,6 +79,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
         ImGui::BulletText("Curve Segments");
         ImGui::Indent();
         ImGui::Checkbox("Show##Path", &(path_settings->show));
+        ImGui::SameLine();
         ImGui::SliderFloat("Width##Path", &path_settings->width, limits.width.min, limits.width.max, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         ImGui::Unindent();
     }
@@ -79,6 +92,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
         ImGui::BulletText("Faces");
         ImGui::Indent();
         ImGui::Checkbox("Show##Surface", &(surface_settings->show));
+        ImGui::SameLine();
         ImGui::SliderFloat("Alpha##Surface", &surface_settings->alpha, limits.alpha.min, limits.alpha.max, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         ImGui::Unindent();
     }

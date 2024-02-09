@@ -8,6 +8,7 @@
 
 #include "argagg_wrap.h"
 #include "draw_shape.h"
+#include "dt_tracker.h"
 #include "project.h"
 #include "renderer.h"
 #include "settings.h"
@@ -89,6 +90,8 @@ argagg::parser_results parse_command_line(int argc, char *argv[])
     return args;
 }
 
+using scalar = ViewportWindow::scalar;
+
 // Application windows
 struct AppWindows
 {
@@ -103,7 +106,7 @@ struct AppWindows
     } layout;
 };
 
-void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& application_should_close, bool& gui_dark_mode)
+void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTracker<scalar>& dt_tracker, bool& application_should_close, bool& gui_dark_mode)
 {
     application_should_close = false;
     if (ImGui::BeginMainMenuBar())
@@ -189,7 +192,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, bool& applic
             {
                 windows.viewport->reset();
                 renderer.draw_list().reset();
-                windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), *windows.viewport);
+                windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), dt_tracker, *windows.viewport);
             }
             ImGui::Separator();
             bool save_input_as_dat_menu_enabled = static_cast<bool>(windows.shape_control);
@@ -280,32 +283,32 @@ int main(int argc, char *argv[])
     bool gui_dark_mode = false;
     imgui_set_style(gui_dark_mode);
 
-    // Application Settings
-    Settings settings;
-
-    // Application Windows
-    AppWindows windows;
-    windows.settings = std::make_unique<SettingsWindow>(settings);
-    windows.viewport = std::make_unique<ViewportWindow>();
-    constexpr float WINDOW_SETTINGS_WIDTH = 400.f;
-    constexpr float WINDOW_SETTINGS_HEIGHT = 400.f;
-    windows.layout.settings      = WindowLayout(0.f,                   0.f,                    WINDOW_SETTINGS_WIDTH, WINDOW_SETTINGS_HEIGHT);
-    windows.layout.viewport      = WindowLayout(WINDOW_SETTINGS_WIDTH, 0.f,                    -1.f,                  -1.f);
-    windows.layout.shape_control = WindowLayout(0.f,                   WINDOW_SETTINGS_HEIGHT, WINDOW_SETTINGS_WIDTH, -1.f);
-
-    // Steiner callback
-    using scalar = ViewportWindow::scalar;
-    windows.viewport->set_steiner_callback([&windows, &err_handler](const shapes::Point2d<scalar>& p) {
-        if (windows.shape_control) { windows.shape_control->add_steiner_point(p); }
-        else { err_handler(stdutils::io::Severity::WARN, "Could not add steiner point: No control window"); }
-    });
-
     // Register the Delaunay triangulation implementations
     if (!delaunay::register_all_implementations())
     {
         err_handler(stdutils::io::Severity::FATAL, "Issue during Delaunay implementations' registration");
         return EXIT_FAILURE;
     }
+    DtTracker<scalar> dt_tracker;
+
+    // Application Settings
+    Settings settings;
+
+    // Application Windows
+    AppWindows windows;
+    windows.settings = std::make_unique<SettingsWindow>(settings, dt_tracker);
+    windows.viewport = std::make_unique<ViewportWindow>();
+    constexpr float WINDOW_SETTINGS_WIDTH = 400.f;
+    constexpr float WINDOW_SETTINGS_HEIGHT = 450.f;
+    windows.layout.settings      = WindowLayout(0.f,                   0.f,                    WINDOW_SETTINGS_WIDTH, WINDOW_SETTINGS_HEIGHT);
+    windows.layout.viewport      = WindowLayout(WINDOW_SETTINGS_WIDTH, 0.f,                    -1.f,                  -1.f);
+    windows.layout.shape_control = WindowLayout(0.f,                   WINDOW_SETTINGS_HEIGHT, WINDOW_SETTINGS_WIDTH, -1.f);
+
+    // Steiner callback
+    windows.viewport->set_steiner_callback([&windows, &err_handler](const shapes::Point2d<scalar>& p) {
+        if (windows.shape_control) { windows.shape_control->add_steiner_point(p); }
+        else { err_handler(stdutils::io::Severity::WARN, "Could not add steiner point: No control window"); }
+    });
 
     // Renderer
     renderer::Draw2D draw_2d_renderer(&err_handler);
@@ -334,7 +337,7 @@ int main(int argc, char *argv[])
         // Main menu
         {
             bool app_should_close = false;
-            main_menu_bar(windows, draw_2d_renderer, app_should_close, gui_dark_mode);
+            main_menu_bar(windows, draw_2d_renderer, dt_tracker, app_should_close, gui_dark_mode);
             if (app_should_close)
                 glfwSetWindowShouldClose(glfw_context.window(), 1);
         }
