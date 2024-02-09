@@ -40,6 +40,9 @@ TEST_CASE("Test Vect2d operations", "[vect2d]")
     CHECK(a + b == Vect2d<float>(7.f, 11.f));
     CHECK(b - a == Vect2d<float>(3.f, 5.f));
     CHECK(3.f * b == Vect2d<float>(15.f, 24.f));
+    CHECK(dot(a, b) == 34.f);
+    CHECK(cross_product(a, b) == 1.f);
+    CHECK(cross_product(b, a) == -1.f);
 }
 
 TEST_CASE("Test Vect3d operations", "[vect3d]")
@@ -50,6 +53,8 @@ TEST_CASE("Test Vect3d operations", "[vect3d]")
     CHECK(a + b == Vect3d<float>(7.f, 11.f, 5.f));
     CHECK(b - a == Vect3d<float>(3.f, 5.f, 7.f));
     CHECK(3.f * b == Vect3d<float>(15.f, 24.f, 18.f));
+    CHECK(dot(a, b) == 28.f);
+    CHECK(cross_product(a, b) == Vect3d<float>(26.f, -17.f, 1.f));
 }
 
 } // namespace shapes
