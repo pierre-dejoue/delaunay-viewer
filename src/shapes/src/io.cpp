@@ -303,8 +303,14 @@ ShapeAggregate<F> parse_shapes_from_stream_gen(std::istream& inputstream, const 
 template <typename F>
 struct StreamWriterInput
 {
-    StreamWriterInput(const ShapeAggregate<F>& shapes, char sep = '\n') : shapes(shapes), sep(sep) {}
+    StreamWriterInput(const ShapeAggregate<F>& shapes, std::string_view head_comment = std::string_view(), char sep = '\n')
+        : shapes(shapes)
+        , head_comment(head_comment)
+        , sep(sep)
+    {}
+
     const ShapeAggregate<F>& shapes;
+    std::string_view head_comment;
     char sep;
 };
 
@@ -314,10 +320,17 @@ void save_shapes_as_stream_gen(std::ostream& out, const StreamWriterInput<F>& in
     UNUSED(err_handler);
     const auto initial_fp_digits = stdutils::io::accurate_fp_precision<F>(out);
     const char sep = input.sep;
+    if (!input.head_comment.empty())
+    {
+        // TODO Add support for multiline head comment
+        out << "# " << input.head_comment << sep;
+    }
     for (const auto& shape_wrapper : input.shapes)
     {
         if (!shape_wrapper.descr.empty())
+        {
             out << "# " << shape_wrapper.descr << sep;
+        }
         std::visit(stdutils::Overloaded {
             [&out, sep](const shapes::PointCloud2d<F>& pc) {
                 out << "POINT_CLOUD\n";
@@ -429,9 +442,9 @@ void save_shapes_as_stream(std::ostream& outputstream, const ShapeAggregate<doub
     }
 }
 
-void save_shapes_as_file(std::filesystem::path filepath, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept
+void save_shapes_as_file(std::filesystem::path filepath, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler, std::string_view head_comment) noexcept
 {
-    stdutils::io::save_file<StreamWriterInput<double>, char>(filepath, save_shapes_as_stream_gen<double>, StreamWriterInput(shapes), err_handler);
+    stdutils::io::save_file<StreamWriterInput<double>, char>(filepath, save_shapes_as_stream_gen<double>, StreamWriterInput(shapes, head_comment), err_handler);
 }
 
 void save_shapes_as_oneliner_stream(std::ostream& outputstream, const ShapeAggregate<double>& shapes, std::string_view postfix) noexcept
@@ -442,7 +455,8 @@ void save_shapes_as_oneliner_stream(std::ostream& outputstream, const ShapeAggre
     };
     try
     {
-        save_shapes_as_stream_gen<double>(outputstream, StreamWriterInput(shapes, ' '), err_handler);
+        static std::string_view empty_head_comment{};
+        save_shapes_as_stream_gen<double>(outputstream, StreamWriterInput(shapes, empty_head_comment, ' '), err_handler);
     }
     catch (const std::exception& e)
     {
