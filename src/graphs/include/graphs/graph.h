@@ -17,30 +17,34 @@ namespace graphs {
  * Edge
  */
 template <typename I = std::uint32_t>
-struct Edge : private std::pair<I, I>
+class Edge
 {
+public:
     using index = I;
     static constexpr I undef() { return IndexTraits<I>::undef(); }
 
     // Ctors
-    constexpr Edge() : std::pair<I, I>(undef(), undef()) {}
-    constexpr Edge(I orig, I dest) : std::pair<I, I>(orig, dest) {}
+    constexpr Edge() : m_pair(undef(), undef()) {}
+    constexpr Edge(I orig, I dest) : m_pair(orig, dest) {}
+    template <typename U>
+    explicit constexpr Edge(const std::pair<U, U>& pair) : m_pair(pair) {}
     Edge(const Edge&) = default;
     Edge& operator=(const Edge&) = default;
     Edge(Edge&&) = default;
     Edge& operator=(Edge&&) = default;
-    template <typename U>
-    constexpr Edge(const std::pair<U, U>& pair) : std::pair<I, I>(pair) {}
 
     // The vertices can be accessed with edge[0] and edge[1]
-    constexpr const I& operator[](std::uint8_t idx) const { assert(idx < 2); return idx == 0u ? std::pair<I, I>::first : std::pair<I, I>::second; }
-    constexpr I& operator[](std::uint8_t idx)             { assert(idx < 2); return idx == 0u ? std::pair<I, I>::first : std::pair<I, I>::second; }
+    constexpr const I& operator[](std::uint8_t idx) const { assert(idx < 2); return idx == 0u ? m_pair.first : m_pair.second; }
+    constexpr I& operator[](std::uint8_t idx)             { assert(idx < 2); return idx == 0u ? m_pair.first : m_pair.second; }
 
     // The vertices can be accessed with orig() and dest()
-    constexpr const I& orig() const { return std::pair<I, I>::first; }
-    constexpr I& orig()             { return std::pair<I, I>::first; }
-    constexpr const I& dest() const { return std::pair<I, I>::second; }
-    constexpr I& dest()             { return std::pair<I, I>::second; }
+    constexpr const I& orig() const { return m_pair.first; }
+    constexpr I& orig()             { return m_pair.first; }
+    constexpr const I& dest() const { return m_pair.second; }
+    constexpr I& dest()             { return m_pair.second; }
+
+private:
+    std::pair<I, I> m_pair;
 };
 
 template <typename I>

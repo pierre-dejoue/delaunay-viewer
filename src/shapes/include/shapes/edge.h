@@ -42,7 +42,8 @@ bool is_valid(const Edges<P, I>& edges)
     const bool all_valid = std::all_of(std::cbegin(edges.indices), std::cend(edges.indices), [nb_vertices](const graphs::Edge<I>& e) {
         return graphs::is_valid(e) && e.orig() < nb_vertices && e.dest() < nb_vertices;
     });
-    return all_valid && !graphs::has_duplicates(edges.indices);
+    const bool no_dups = !graphs::has_duplicated_edges(edges.indices);
+    return all_valid & no_dups;
 }
 
 template <typename P, typename I>

@@ -6,15 +6,20 @@
 #include <graphs/graph_algos.h>
 
 #include <cassert>
-#include <vector>
+#include <cstdint>
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 namespace graphs {
 
+namespace {
+namespace tests {
+namespace assets {
+
 template <typename I = std::uint32_t>
-Path<I> test_open_path()
+Path<I> open_path()
 {
     Path<I> out;
     out.closed = false;
@@ -25,7 +30,7 @@ Path<I> test_open_path()
 }
 
 template <typename I = std::uint32_t>
-Path<I> test_closed_path()
+Path<I> closed_path()
 {
     Path<I> out;
     out.closed = true;
@@ -36,42 +41,42 @@ Path<I> test_closed_path()
 }
 
 template <typename I = std::uint32_t>
-EdgeSoup<I> test_edge_soup_open_path()
+EdgeSoup<I> edge_soup_open_path()
 {
     // Derived from the test open path above
     EdgeSoup<I> out;
-    out.push_back(std::make_pair<I, I>(1, 2));
-    out.push_back(std::make_pair<I, I>(2, 4));
+    out.push_back(Edge<I>(1, 2));
+    out.push_back(Edge<I>(2, 4));
     return out;
 }
 
 template <typename I = std::uint32_t>
-EdgeSoup<I> test_edge_soup_closed_path()
+EdgeSoup<I> edge_soup_closed_path()
 {
     // Derived from the test closed path above
     EdgeSoup<I> out;
-    out.push_back(std::make_pair<I, I>(2, 3));
-    out.push_back(std::make_pair<I, I>(3, 6));
-    out.push_back(std::make_pair<I, I>(6, 2));
+    out.push_back(Edge<I>(2, 3));
+    out.push_back(Edge<I>(3, 6));
+    out.push_back(Edge<I>(6, 2));
     return out;
 }
 
 template <typename I = std::uint32_t>
-EdgeSoup<I> test_edge_soup_non_manifold_letter_a()
+EdgeSoup<I> edge_soup_non_manifold_letter_a()
 {
     // Shaped like the capital letter A
     EdgeSoup<I> out;
-    out.push_back(std::make_pair<I, I>(0, 1));
-    out.push_back(std::make_pair<I, I>(0, 3));
-    out.push_back(std::make_pair<I, I>(1, 2));
-    out.push_back(std::make_pair<I, I>(2, 3));
-    out.push_back(std::make_pair<I, I>(1, 4));
-    out.push_back(std::make_pair<I, I>(3, 5));
+    out.push_back(Edge<I>(0, 1));
+    out.push_back(Edge<I>(0, 3));
+    out.push_back(Edge<I>(1, 2));
+    out.push_back(Edge<I>(2, 3));
+    out.push_back(Edge<I>(1, 4));
+    out.push_back(Edge<I>(3, 5));
     return out;
 }
 
 template <typename I = std::uint32_t>
-EdgeSoup<I> test_edge_soup_non_manifold_lollipop()
+EdgeSoup<I> edge_soup_non_manifold_lollipop()
 {
     //                                   //
     //                   5               //
@@ -81,39 +86,43 @@ EdgeSoup<I> test_edge_soup_non_manifold_lollipop()
     //                   3               //
     //                                   //
     EdgeSoup<I> out;
-    out.push_back(std::make_pair<I, I>(0, 1));
-    out.push_back(std::make_pair<I, I>(1, 2));
-    out.push_back(std::make_pair<I, I>(2, 3));
-    out.push_back(std::make_pair<I, I>(3, 4));
-    out.push_back(std::make_pair<I, I>(4, 5));
-    out.push_back(std::make_pair<I, I>(5, 2));
+    out.push_back(Edge<I>(0, 1));
+    out.push_back(Edge<I>(1, 2));
+    out.push_back(Edge<I>(2, 3));
+    out.push_back(Edge<I>(3, 4));
+    out.push_back(Edge<I>(4, 5));
+    out.push_back(Edge<I>(5, 2));
     return out;
 }
 
 template <typename I = std::uint32_t>
-EdgeSoup<I> test_edge_soup_non_manifold_plus_sign()
+EdgeSoup<I> edge_soup_non_manifold_plus_sign()
 {
     // One vertex of degree 4
     EdgeSoup<I> out;
-    out.push_back(std::make_pair<I, I>(2, 3));
-    out.push_back(std::make_pair<I, I>(2, 5));
-    out.push_back(std::make_pair<I, I>(2, 7));
-    out.push_back(std::make_pair<I, I>(2, 9));
+    out.push_back(Edge<I>(2, 3));
+    out.push_back(Edge<I>(2, 5));
+    out.push_back(Edge<I>(2, 7));
+    out.push_back(Edge<I>(2, 9));
     return out;
 }
 
 template <typename I = std::uint32_t>
-EdgeSoup<I> test_edge_soup_non_manifold_five_star()
+EdgeSoup<I> edge_soup_non_manifold_five_star()
 {
     // One vertex of degree 5
     EdgeSoup<I> out;
-    out.push_back(std::make_pair<I, I>(0, 5));
-    out.push_back(std::make_pair<I, I>(1, 5));
-    out.push_back(std::make_pair<I, I>(2, 5));
-    out.push_back(std::make_pair<I, I>(3, 5));
-    out.push_back(std::make_pair<I, I>(4, 5));
+    out.push_back(Edge<I>(0, 5));
+    out.push_back(Edge<I>(1, 5));
+    out.push_back(Edge<I>(2, 5));
+    out.push_back(Edge<I>(3, 5));
+    out.push_back(Edge<I>(4, 5));
     return out;
 }
+
+} // namespace assets
+} // namespace tests
+} // namespace
 
 TEST_CASE("Edge: basic tests", "[graphs]")
 {
@@ -166,22 +175,22 @@ TEST_CASE("Invalid paths: A closed path must have at least 3 vertices", "[graphs
     CHECK(is_valid(path) == true);
 }
 
-TEST_CASE("Invalid paths: Duplicate vertices", "[graphs]")
+TEST_CASE("Simple paths", "[graphs]")
 {
     Path<> path;
     path.closed = false;
     path.vertices = { 0, 1, 2, 3, 2 };
-    CHECK(is_valid(path) == false);
-    CHECK(has_duplicates(path) == true);
+    CHECK(is_valid(path) == true);
+    CHECK(is_simple(path) == false);
 
     path.vertices.pop_back();
     CHECK(is_valid(path) == true);
-    CHECK(has_duplicates(path) == false);
+    CHECK(is_simple(path) == true);
 }
 
 TEST_CASE("Open paths", "[graphs]")
 {
-    const auto path = test_open_path<>();
+    const auto path = tests::assets::open_path<>();
     REQUIRE(is_valid(path));
     CHECK(nb_vertices(path) == 3);
     CHECK(nb_edges(path) == 2);
@@ -195,7 +204,7 @@ TEST_CASE("Open paths", "[graphs]")
 
 TEST_CASE("Closed paths", "[graphs]")
 {
-    const auto path = test_closed_path<>();
+    const auto path = tests::assets::closed_path<>();
     REQUIRE(is_valid(path));
     CHECK(nb_vertices(path) == 3);
     CHECK(nb_edges(path) == 3);
@@ -204,7 +213,7 @@ TEST_CASE("Closed paths", "[graphs]")
 TEST_CASE("Path compact indexing", "[graphs]")
 {
     using I = std::uint8_t;
-    auto path = test_closed_path<I>();
+    auto path = tests::assets::closed_path<I>();
     REQUIRE(is_valid(path));
     const auto [min_idx, max_idx] = minmax_indices(path);
     CHECK(min_idx == 2);
@@ -215,24 +224,24 @@ TEST_CASE("Path compact indexing", "[graphs]")
 
 TEST_CASE("Edge soup from open path", "[graphs]")
 {
-    const auto edge_soup = test_edge_soup_open_path();
+    const auto edge_soup = tests::assets::edge_soup_open_path();
     REQUIRE(is_valid(edge_soup) == true);
     CHECK(nb_vertices(edge_soup) == 3);
     CHECK(nb_edges(edge_soup) == 2);
 
-    const auto path = test_open_path();
+    const auto path = tests::assets::open_path();
     const auto edge_soup_compare = to_edge_soup(path);
     CHECK(edge_soup == edge_soup_compare);
 }
 
 TEST_CASE("Edge soup from closed path", "[graphs]")
 {
-    const auto edge_soup = test_edge_soup_closed_path();
+    const auto edge_soup = tests::assets::edge_soup_closed_path();
     REQUIRE(is_valid(edge_soup) == true);
     CHECK(nb_vertices(edge_soup) == 3);
     CHECK(nb_edges(edge_soup) == 3);
 
-    const auto path = test_closed_path();
+    const auto path = tests::assets::closed_path();
     const auto edge_soup_compare = to_edge_soup(path);
     CHECK(edge_soup == edge_soup_compare);
 }
@@ -245,7 +254,7 @@ TEST_CASE("Invalid EdgeSoup: Duplicate edges", "[graphs]")
     edges.emplace_back(1, 0);
 
     CHECK(is_valid(edges) == false);
-    CHECK(has_duplicates(edges) == true);
+    CHECK(has_duplicated_edges(edges) == true);
 
     edges.pop_back();
     CHECK(is_valid(edges) == true);
@@ -275,12 +284,12 @@ TEST_CASE("EdgeSoup: min_degree, max_degree and minmax_degree", "[graphs]")
     };
 
     std::vector<TestCase> test_cases;
-    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 2}, test_edge_soup_open_path() });
-    test_cases.emplace_back(TestCase{ MinMaxDeg{2, 2}, test_edge_soup_closed_path() });
-    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 3}, test_edge_soup_non_manifold_letter_a() });
-    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 3}, test_edge_soup_non_manifold_lollipop() });
-    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 4}, test_edge_soup_non_manifold_plus_sign() });
-    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 5}, test_edge_soup_non_manifold_five_star() });
+    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 2}, tests::assets::edge_soup_open_path() });
+    test_cases.emplace_back(TestCase{ MinMaxDeg{2, 2}, tests::assets::edge_soup_closed_path() });
+    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 3}, tests::assets::edge_soup_non_manifold_letter_a() });
+    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 3}, tests::assets::edge_soup_non_manifold_lollipop() });
+    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 4}, tests::assets::edge_soup_non_manifold_plus_sign() });
+    test_cases.emplace_back(TestCase{ MinMaxDeg{1, 5}, tests::assets::edge_soup_non_manifold_five_star() });
 
     unsigned int test_loop_idx = 0;
     for (const auto& test : test_cases)
@@ -307,12 +316,12 @@ TEST_CASE("EdgeSoup: minmax_indices", "[graphs]")
     };
 
     std::vector<TestCase> test_cases;
-    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(1, 4), test_edge_soup_open_path<I>() });
-    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(2, 6), test_edge_soup_closed_path<I>() });
-    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), test_edge_soup_non_manifold_letter_a<I>() });
-    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), test_edge_soup_non_manifold_lollipop<I>() });
-    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(2, 9), test_edge_soup_non_manifold_plus_sign<I>() });
-    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), test_edge_soup_non_manifold_five_star<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(1, 4), tests::assets::edge_soup_open_path<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(2, 6), tests::assets::edge_soup_closed_path<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), tests::assets::edge_soup_non_manifold_letter_a<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), tests::assets::edge_soup_non_manifold_lollipop<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(2, 9), tests::assets::edge_soup_non_manifold_plus_sign<I>() });
+    test_cases.emplace_back(TestCase{ std::make_pair<I, I>(0, 5), tests::assets::edge_soup_non_manifold_five_star<I>() });
 
     unsigned int test_loop_idx = 0;
     for (const auto& test : test_cases)
@@ -336,12 +345,12 @@ TEST_CASE("EdgeSoup: nb_vertices and compact indexing", "[graphs]")
     };
 
     std::vector<TestCase> test_cases;
-    test_cases.emplace_back(TestCase{ 3, test_edge_soup_open_path<I>() });
-    test_cases.emplace_back(TestCase{ 3, test_edge_soup_closed_path<I>() });
-    test_cases.emplace_back(TestCase{ 6, test_edge_soup_non_manifold_letter_a<I>() });
-    test_cases.emplace_back(TestCase{ 6, test_edge_soup_non_manifold_lollipop<I>() });
-    test_cases.emplace_back(TestCase{ 5, test_edge_soup_non_manifold_plus_sign<I>() });
-    test_cases.emplace_back(TestCase{ 6, test_edge_soup_non_manifold_five_star<I>() });
+    test_cases.emplace_back(TestCase{ 3, tests::assets::edge_soup_open_path<I>() });
+    test_cases.emplace_back(TestCase{ 3, tests::assets::edge_soup_closed_path<I>() });
+    test_cases.emplace_back(TestCase{ 6, tests::assets::edge_soup_non_manifold_letter_a<I>() });
+    test_cases.emplace_back(TestCase{ 6, tests::assets::edge_soup_non_manifold_lollipop<I>() });
+    test_cases.emplace_back(TestCase{ 5, tests::assets::edge_soup_non_manifold_plus_sign<I>() });
+    test_cases.emplace_back(TestCase{ 6, tests::assets::edge_soup_non_manifold_five_star<I>() });
 
     unsigned int test_loop_idx = 0;
     for (auto& test : test_cases)
@@ -369,7 +378,7 @@ TEST_CASE("Algo: Extract paths of a edge soup with a single edge", "[graphs]")
 {
     using I = std::uint32_t;
     EdgeSoup<I> test;
-    test.push_back(std::make_pair<I, I>(2, 4));
+    test.emplace_back(Edge<I>(2, 4));
     REQUIRE(is_valid(test) == true);
     const auto paths = extract_paths(test);
     REQUIRE(paths.size() == 1);
@@ -387,12 +396,12 @@ TEST_CASE("Algo: Extract paths from edge soup", "[graphs]")
     };
 
     std::vector<TestCase> test_cases;
-    test_cases.emplace_back(TestCase{ 1, 0, test_edge_soup_open_path() });
-    test_cases.emplace_back(TestCase{ 0, 1, test_edge_soup_closed_path() });
-    test_cases.emplace_back(TestCase{ 4, 0, test_edge_soup_non_manifold_letter_a() });
-    test_cases.emplace_back(TestCase{ 1, 1, test_edge_soup_non_manifold_lollipop() });
-    test_cases.emplace_back(TestCase{ 4, 0, test_edge_soup_non_manifold_plus_sign() });
-    test_cases.emplace_back(TestCase{ 5, 0, test_edge_soup_non_manifold_five_star() });
+    test_cases.emplace_back(TestCase{ 1, 0, tests::assets::edge_soup_open_path() });
+    test_cases.emplace_back(TestCase{ 0, 1, tests::assets::edge_soup_closed_path() });
+    test_cases.emplace_back(TestCase{ 4, 0, tests::assets::edge_soup_non_manifold_letter_a() });
+    test_cases.emplace_back(TestCase{ 1, 1, tests::assets::edge_soup_non_manifold_lollipop() });
+    test_cases.emplace_back(TestCase{ 4, 0, tests::assets::edge_soup_non_manifold_plus_sign() });
+    test_cases.emplace_back(TestCase{ 5, 0, tests::assets::edge_soup_non_manifold_five_star() });
 
     unsigned int test_loop_idx = 0;
     for (const auto& test : test_cases)

@@ -13,14 +13,13 @@
 #include <limits>
 #include <numeric>
 #include <set>
+#include <utility>
 
 namespace graphs {
 
 // Validate (exclude loop edges, duplicate edges, invalid triangles, improper size, etc.)
 template <typename I>
-bool has_duplicates(const EdgeSoup<I>& edges);
-template <typename I>
-bool has_duplicates(const Path<I>& path);
+bool has_duplicated_edges(const EdgeSoup<I>& edges);
 template <typename I>
 bool is_valid(const Edge<I>& edge);
 template <typename I>
@@ -31,6 +30,10 @@ template <typename I>
 bool is_valid(const Triangle<I>& t);
 template <typename I>
 bool is_valid(const TriangleSoup<I>& triangles);
+
+// Simple paths (no repeated vertices)
+template <typename I>
+bool is_simple(const Path<I>& path);
 
 // Return an edge <i, j> such that i < j
 template <typename I>
@@ -101,11 +104,12 @@ using MinMaxDeg = std::pair<std::size_t, std::size_t>;
 template <typename I>
 MinMaxDeg minmax_degree(const EdgeSoup<I>& edges);
 
-// Extract Paths from EdgeSoup
+// Extract paths from EdgeSoup
 //
 // Notes:
 //  - All input edges are represented once in the output
 //  - The input graph doesn't have to be 1-manifold, however vertices whose degree is > 2 are considered path endpoints
+//  - All output paths are simple
 //
 template <typename I>
 std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges);
@@ -119,17 +123,10 @@ std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges);
 
 
 template <typename I>
-bool has_duplicates(const EdgeSoup<I>& edges)
+bool has_duplicated_edges(const EdgeSoup<I>& edges)
 {
     std::set<Edge<I>> ordered_edges;
     return std::any_of(edges.cbegin(), edges.cend(), [&ordered_edges](const auto& e) { return !ordered_edges.insert(ordered_edge(e)).second; });
-}
-
-template <typename I>
-bool has_duplicates(const Path<I>& path)
-{
-    std::set<I> unique_vertices;
-    return std::any_of(path.vertices.cbegin(), path.vertices.cend(), [&unique_vertices](const auto& p) { return !unique_vertices.insert(p).second; });
 }
 
 template <typename I>
@@ -144,14 +141,15 @@ bool is_valid(const EdgeSoup<I>& edges)
 {
     static_assert(IndexTraits<I>::is_valid());
     const bool all_valid = std::all_of(std::cbegin(edges), std::cend(edges), [](const auto&e) { return is_valid(e); });
-    return all_valid && !has_duplicates(edges);
+    return all_valid && !has_duplicated_edges(edges);
 }
 
 template <typename I>
 bool is_valid(const Path<I>& path)
 {
     static_assert(IndexTraits<I>::is_valid());
-    return !has_duplicates(path) && (!path.closed || path.vertices.size() > 2);
+    const bool valid_size = !path.closed || path.vertices.size() > 2;
+    return valid_size;
 }
 
 // Exclude triangles with repeated indices
@@ -169,9 +167,17 @@ bool is_valid(const TriangleSoup<I>& triangles)
 }
 
 template <typename I>
+bool is_simple(const Path<I>& path)
+{
+    assert(is_valid(path));
+    std::set<I> unique_vertices;
+    return std::all_of(path.vertices.cbegin(), path.vertices.cend(), [&unique_vertices](const auto& p) { return unique_vertices.insert(p).second; });
+}
+
+template <typename I>
 constexpr Edge<I> ordered_edge(const Edge<I>& edge)
 {
-    return std::minmax(edge[0], edge[1]);
+    return Edge<I>(std::minmax(edge[0], edge[1]));
 }
 
 template <typename I>
@@ -189,7 +195,7 @@ void filter_out_duplicates(EdgeSoup<I>& edges)
         return !inserted;
     });
     assert(edges.size() == ordered_edges.size());
-    assert(!has_duplicates(edges));
+    assert(!has_duplicated_edges(edges));
 }
 
 template <typename I>
@@ -481,8 +487,12 @@ namespace details {
     std::vector<std::pair<I, std::size_t>> vertex_degree(const EdgeSoup<I>& edges)
     {
         assert(is_valid(edges));
-        const auto [min_idx, max_idx] = minmax_indices(edges);
-        std::vector<std::pair<I, std::size_t>> result(1 + max_idx - min_idx, std::pair<I, std::size_t>(0, 0));
+        const auto [min_idx, max_idx] = minmax_indices<I>(edges);
+        const auto init_pair = std::make_pair<I, std::size_t>(0, 0);
+        assert(min_idx != IndexTraits<I>::undef());
+        assert(max_idx != IndexTraits<I>::undef());
+        assert(min_idx <= max_idx);
+        std::vector<std::pair<I, std::size_t>> result(static_cast<std::size_t>(1u + max_idx - min_idx), init_pair);
         I idx = static_cast<I>(min_idx);
         std::for_each(result.begin(), result.end(), [&idx](auto& pair) { pair.first = idx++; });
         for (const auto& e : edges)
@@ -602,7 +612,7 @@ template <typename I>
 std::size_t min_degree(const EdgeSoup<I>& edges)
 {
     if (edges.empty()) { return 0; }
-    const auto vertex_deg = details::vertex_degree(edges);
+    const auto vertex_deg = details::vertex_degree<I>(edges);
     assert(!vertex_deg.empty());
     return std::min_element(std::cbegin(vertex_deg), std::cend(vertex_deg), [](const auto& a, const auto& b) { return a.second < b.second; })->second;
 }
@@ -611,7 +621,7 @@ template <typename I>
 std::size_t max_degree(const EdgeSoup<I>& edges)
 {
     if (edges.empty()) { return 0; }
-    const auto vertex_deg = details::vertex_degree(edges);
+    const auto vertex_deg = details::vertex_degree<I>(edges);
     assert(!vertex_deg.empty());
     return std::max_element(std::cbegin(vertex_deg), std::cend(vertex_deg), [](const auto& a, const auto& b) { return a.second < b.second; })->second;
 }
@@ -620,7 +630,7 @@ template <typename I>
 std::pair<std::size_t, std::size_t> minmax_degree(const EdgeSoup<I>& edges)
 {
     if (edges.empty()) { return std::pair<std::size_t, std::size_t>(0, 0); }
-    const auto vertex_deg = details::vertex_degree(edges);
+    const auto vertex_deg = details::vertex_degree<I>(edges);
     assert(!vertex_deg.empty());
     const auto pair_it = std::minmax_element(std::cbegin(vertex_deg), std::cend(vertex_deg), [](const auto& a, const auto& b) { return a.second < b.second; });
     return std::make_pair(pair_it.first->second, pair_it.second->second);
@@ -634,7 +644,7 @@ std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges)
     if (edges.empty())
         return result;
 
-    std::vector<std::pair<I, std::size_t>> degrees = details::vertex_degree(edges);
+    std::vector<std::pair<I, std::size_t>> degrees = details::vertex_degree<I>(edges);
     const auto max_deg = std::max_element(std::cbegin(degrees), std::cend(degrees), [](const auto& a, const auto& b) { return a.second < b.second; })->second;
 
     // All vertices of deg != 2 are endpoints, and we shall process those ones first. The remaining vertices of deg = 2 are part of closed 1-manifold paths.
@@ -676,6 +686,7 @@ std::vector<Path<I>> extract_paths(const EdgeSoup<I>& edges)
             }
             assert(path.vertices.size() > 1);
             assert(is_valid(path));
+            assert(is_simple(path));
             result.emplace_back(std::move(path));
         }
     }
