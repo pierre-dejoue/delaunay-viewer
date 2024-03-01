@@ -4,12 +4,15 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iterator>
 #include <queue>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 namespace stdutils {
 
+// Min/max updates
 template <class T>
 constexpr void max_update(T& to, const T& from) { to = std::max(to, from); }
 template< class T, class Compare>
@@ -24,6 +27,18 @@ template <class T>
 constexpr void minmax_update(std::pair<T, T>& to, const T& from) { assert(to.first <= to.second); if (from < to.first) { to.first = from; } else if (to.second < from) { to.second = from; } }
 template <class T, class Compare>
 constexpr void minmax_update(std::pair<T, T>& to, const T& from, Compare comp) { assert(!comp(to.second, to.first)); if (comp(from, to.first)) { to.first = from; } else if (comp(to.second, from)) { to.second = from; } }
+
+// Like std::clamp but with an output boolean flag 'clamped'
+template <class T>
+constexpr const T& clamp(const T& v, const T& lo, const T& hi, bool& clamped) { assert(lo <= hi); const T& r = std::clamp(v, lo, hi); clamped = (r != v); return r; }
+template <class T, class Compare>
+constexpr const T& clamp(const T& v, const T& lo, const T& hi, Compare comp, bool& clamped) { assert(!comp(hi, lo)); const T& r = std::clamp(v, lo, hi, comp); clamped = (r != v); return r; }
+
+// Sort three elements
+template <typename T>
+void three_sort(T* arr);
+template <typename T, typename Compare>
+void three_sort(T* arr, Compare comp);
 
 // Equivalent to std::erase/erase_if in C++20
 constexpr bool SHRINK_TO_FIT = true;
@@ -51,6 +66,14 @@ T pop(C<T>& container);
 template <typename T>
 T pop(std::queue<T>& queue);
 
+// Clear using pop. Use with: queue, stack, priority_queue
+template <typename T, template <typename...> class C>
+void clear_using_pop(C<T>& container);
+
+// Stable merge (based on std::merge)
+template <typename T, template <typename...> class C, typename Compare>
+void merge(C<T>& dst, const C<T>& src, Compare comp);
+
 
 //
 //
@@ -58,6 +81,26 @@ T pop(std::queue<T>& queue);
 //
 //
 
+
+template <typename T>
+void three_sort(T* arr)
+{
+    assert(arr != nullptr);
+    bool need_last_comp = false;
+    if (                  !(arr[0] < arr[1])) { std::swap(arr[0], arr[1]); }
+    if (                  !(arr[1] < arr[2])) { std::swap(arr[1], arr[2]); need_last_comp = true; }
+    if (need_last_comp && !(arr[0] < arr[1])) { std::swap(arr[0], arr[1]); }
+}
+
+template <typename T, typename Compare>
+void three_sort(T* arr, Compare comp)
+{
+    assert(arr != nullptr);
+    bool need_last_comp = false;
+    if (                  !comp(arr[0], arr[1])) { std::swap(arr[0], arr[1]); }
+    if (                  !comp(arr[1], arr[2])) { std::swap(arr[1], arr[2]); need_last_comp = true; }
+    if (need_last_comp && !comp(arr[0], arr[1])) { std::swap(arr[0], arr[1]); }
+}
 
 template <class Container, class U>
 std::size_t erase(Container& c, const U& value, bool shrink_to_fit)
@@ -147,6 +190,21 @@ T pop(std::queue<T>& queue)
     T elt = std::move(queue.front());
     queue.pop();
     return elt;
+}
+
+template <typename T, template <typename...> class C>
+void clear_using_pop(C<T>& container)
+{
+    while (!container.empty()) { container.pop(); }
+}
+
+template <typename T, template <typename...> class C, typename Compare>
+void merge(C<T>& dst, const C<T>& src, Compare comp)
+{
+    C<T> tmp;
+    tmp.reserve(dst.size() + src.size());
+    std::merge(dst.cbegin(), dst.cend(), src.cbegin(), src.cend(), std::back_insert_iterator(tmp), comp);
+    std::swap(tmp, dst);
 }
 
 } // namespace stdutils

@@ -6,6 +6,8 @@
 #include <stdutils/span.h>
 #include <stdutils/testing.h>
 
+#include <cstdint>
+#include <functional>
 #include <list>
 #include <locale>
 #include <queue>
@@ -13,7 +15,41 @@
 #include <string>
 #include <vector>
 
-TEST_CASE("std::erase on a vector", "[algorithm]")
+TEST_CASE("stdutils::clamp", "[algorithm]")
+{
+    bool clamped = false;
+    int r = 0;
+    {
+        r = stdutils::clamp<int>(-129, INT8_MIN, INT8_MAX, clamped);
+        CHECK(r == INT8_MIN);
+        CHECK(clamped);
+        r = stdutils::clamp<int>(-128, INT8_MIN, INT8_MAX, clamped);
+        CHECK(r == INT8_MIN);
+        CHECK(!clamped);
+        r = stdutils::clamp<int>(42, INT8_MIN, INT8_MAX, clamped);
+        CHECK(r == 42);
+        CHECK(!clamped);
+        r = stdutils::clamp<int>(127, INT8_MIN, INT8_MAX, clamped);
+        CHECK(r == 127);
+        CHECK(!clamped);
+        r = stdutils::clamp<int>(128, INT8_MIN, INT8_MAX, clamped);
+        CHECK(r == 127);
+        CHECK(clamped);
+    }
+    {
+        r = stdutils::clamp<int>(-129, INT8_MIN, INT8_MAX, std::less<int>(), clamped);
+        CHECK(r == INT8_MIN);
+        CHECK(clamped);
+        r = stdutils::clamp<int>(-128, INT8_MIN, INT8_MAX, std::less<int>(), clamped);
+        CHECK(r == INT8_MIN);
+        CHECK(!clamped);
+        r = stdutils::clamp<int>(42, INT8_MIN, INT8_MAX, std::less<int>(), clamped);
+        CHECK(r == 42);
+        CHECK(!clamped);
+    }
+}
+
+TEST_CASE("stdutils::erase on a vector", "[algorithm]")
 {
     std::vector<int> vect { 0, 1, 2, 6, 0, 0, 5, 0, 1 };
     const auto erased = stdutils::erase(vect, 0);
@@ -21,7 +57,7 @@ TEST_CASE("std::erase on a vector", "[algorithm]")
     CHECK(vect == std::vector<int> { 1, 2, 6, 5, 1 });
 }
 
-TEST_CASE("std::erase_if on a string", "[algorithm]")
+TEST_CASE("stdutils::erase_if on a string", "[algorithm]")
 {
     std::string test = "Confederation Mondiale des Activites Subaquatiques";
     const std::size_t test_original_sz = test.size();
@@ -130,4 +166,21 @@ TEST_CASE("pop from a queue", "[algorithm]")
     CHECK(queue.empty());
     CHECK(vect.size() == 4);
     CHECK(vect == stdutils::testing::make_container_of_copymovestring<std::vector>({ "a", "b", "c", "d" }));
+}
+
+TEST_CASE("clear a queue using pop", "[algorithm]")
+{
+    std::queue<std::string> queue({ "a", "b", "c", "d" });
+    REQUIRE(!queue.empty());
+    CHECK(queue.size() == 4);
+    stdutils::clear_using_pop(queue);
+    CHECK(queue.empty());
+}
+
+TEST_CASE("merge", "[algorithm]")
+{
+    std::string dst = "aeiou";
+    std::string src = "bcdfghjklmnpqrstvwxyz";
+    stdutils::merge(dst, src, std::less<char>());
+    CHECK(dst == "abcdefghijklmnopqrstuvwxyz");
 }

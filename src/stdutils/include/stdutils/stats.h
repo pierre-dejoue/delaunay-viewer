@@ -58,6 +58,8 @@ public:
 
     CumulSamples& operator+=(const CumulSamples& other);
 
+    std::size_t nb_samples() const;
+
     const Result<F>& get_result() const;
 
     bool empty() const;
@@ -137,7 +139,7 @@ void CumulSamples<F>::add_samples(const CumulSamples<F>& other)
         m_result.min = other.m_result.min;
         m_result.max = other.m_result.max;
     }
-    else
+    else if (other.m_result.n != 0u)
     {
         min_update(m_result.min, other.m_result.min);
         max_update(m_result.max, other.m_result.max);
@@ -152,6 +154,12 @@ CumulSamples<F>& CumulSamples<F>::operator+=(const CumulSamples<F>& other)
 {
     add_samples(other);
     return *this;
+}
+
+template <typename F>
+std::size_t CumulSamples<F>::nb_samples() const
+{
+    return m_result.n;
 }
 
 template <typename F>

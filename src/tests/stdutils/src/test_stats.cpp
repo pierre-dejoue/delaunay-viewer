@@ -31,12 +31,14 @@ TEST_CASE("CumulSamples basic", "[stats]")
     stdutils::stats::CumulSamples<float> samples;
 
     CHECK(samples.empty() == true);
+    CHECK(samples.nb_samples() == 0);
     CHECK(samples.get_result().n == 0);
     CHECK(samples.get_result().mean == 0.f);
 
     samples.add_sample(3.f);
 
     CHECK(samples.empty() == false);
+    CHECK(samples.nb_samples() == 1);
     CHECK(samples.get_result().n == 1);
     CHECK(samples.get_result().min == 3.f);
     CHECK(samples.get_result().max == 3.f);
@@ -46,6 +48,7 @@ TEST_CASE("CumulSamples basic", "[stats]")
 
     samples.add_sample(7.f);
 
+    CHECK(samples.nb_samples() == 2);
     CHECK(samples.get_result().n == 2);
     CHECK(samples.get_result().min == 3.f);
     CHECK(samples.get_result().max == 7.f);
@@ -56,6 +59,7 @@ TEST_CASE("CumulSamples basic", "[stats]")
     std::array<float, 6> more_samples = { 1.f, 8.f, 5.f, 2.f, 4.f, 6.f };
     samples.add_samples(std::cbegin(more_samples), std::cend(more_samples));
 
+    CHECK(samples.nb_samples() == 8);
     CHECK(samples.get_result().n == 8);
     CHECK(samples.get_result().min == 1.f);
     CHECK(samples.get_result().max == 8.f);
@@ -83,6 +87,8 @@ TEST_CASE("CumulSamples: Merge two distributions", "[stats]")
     // Merge b and c together
     b += c;
 
+    CHECK(a.nb_samples() == samples.size());
+    CHECK(b.nb_samples() == samples.size());
     CHECK(a.get_result().n == samples.size());
     CHECK(b.get_result().n == samples.size());
     CHECK(a.get_result().min == b.get_result().min);
@@ -100,6 +106,7 @@ TEST_CASE("CumulSamples on circle distribution", "[stats]")
     samples.add_samples(std::cbegin(distrib), std::cend(distrib));
 
     CHECK(samples.empty() == false);
+    CHECK(samples.nb_samples() == 30);
     CHECK(samples.get_result().n == 30);
     CHECK_THAT(samples.get_result().mean, Catch::Matchers::WithinAbs(0.0, 0.0001));
     CHECK_THAT(samples.get_result().stdev, Catch::Matchers::WithinRel(1.4142f, 0.0001f));
