@@ -115,6 +115,12 @@ constexpr Vect2d<F> operator-(const Vect2d<F>& a, const Vect2d<F>& b)
 }
 
 template <typename F>
+constexpr Vect2d<F> operator-(const Vect2d<F>& a)
+{
+    return Vect2d<F>(-a.x, -a.y);
+}
+
+template <typename F>
 constexpr Vect2d<F> operator*(F s, const Vect2d<F>& a)
 {
     return Vect2d<F>(s * a.x, s * a.y);
@@ -130,6 +136,12 @@ template <typename F>
 constexpr Vect3d<F> operator-(const Vect3d<F>& a, const Vect3d<F>& b)
 {
     return Vect3d<F>(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+template <typename F>
+constexpr Vect3d<F> operator-(const Vect3d<F>& a)
+{
+    return Vect3d<F>(-a.x, -a.y, -a.z);
 }
 
 template <typename F>
