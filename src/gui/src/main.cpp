@@ -108,14 +108,15 @@ struct AppWindows
 
 void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTracker<scalar>& dt_tracker, bool& application_should_close, bool& gui_dark_mode)
 {
+    std::string filename = "no_file";
     application_should_close = false;
+    using scalar = ViewportWindow::scalar;
+    shapes::io::ShapeAggregate<scalar> shapes;
     if (ImGui::BeginMainMenuBar())
     {
         const stdutils::io::ErrorHandler io_err_handler(err_callback);
         if (ImGui::BeginMenu("File"))
         {
-            shapes::io::ShapeAggregate<double> shapes;
-            std::string filename = "no_file";
             if (ImGui::MenuItem("Open CDT"))
             {
                 const auto paths = pfd::source_paths(
@@ -188,12 +189,6 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
                 }
                 return false;
             });
-            if (!shapes.empty() && windows.viewport)
-            {
-                windows.viewport->reset();
-                renderer.draw_list().reset();
-                windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), dt_tracker, *windows.viewport);
-            }
             ImGui::Separator();
             bool save_input_as_dat_menu_enabled = static_cast<bool>(windows.shape_control);
             if (ImGui::MenuItem("Save input as DAT", "", false, save_input_as_dat_menu_enabled))
@@ -234,6 +229,12 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
+    }
+    if (!shapes.empty() && windows.viewport)
+    {
+        windows.viewport->reset();
+        renderer.draw_list().reset();
+        windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), dt_tracker, *windows.viewport);
     }
 }
 
