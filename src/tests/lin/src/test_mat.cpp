@@ -8,20 +8,20 @@
 
 namespace lin {
 
-TEST_CASE("Test identity matrix", "[lin::mat]")
+TEST_CASE("Test identity matrix", "[mat]")
 {
-    constexpr index N = 4;
+    constexpr dim_t N = 4;
 
     auto id = identity<float, N>();
-    for (index i = 0; i < N; i++)
-        for (index j = 0; j < N; j++)
+    for (dim_t i = 0; i < N; i++)
+        for (dim_t j = 0; j < N; j++)
         {
             CAPTURE(i); CAPTURE(j);
             CHECK(id[i][j] == ((i == j) ? 1.f : 0.f));
         }
 }
 
-TEST_CASE("Test matrix memory layout is row-major", "[lin::mat]")
+TEST_CASE("Test matrix memory layout is row-major", "[mat]")
 {
     const mat4d test = {
         1,  2,  3,  4,

@@ -9,13 +9,13 @@
 
 namespace lin {
 
-using index = std::size_t;
+using dim_t = std::size_t;
 
 //
 // Vectors
 //
 
-template <typename F, index N>
+template <typename F, dim_t N>
 using vect = std::array<F, N>;
 
 template <typename F>
@@ -36,7 +36,8 @@ using vect4d = vect4<double>;
 //
 // Vector maps
 //
-template <typename F, index N>
+
+template <typename F, dim_t N>
 using vect_map = stdutils::span<F, N>;
 
 template <typename F>

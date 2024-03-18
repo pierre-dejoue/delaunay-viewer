@@ -11,7 +11,7 @@
 namespace lin {
 
 // NxM matrix (mathematical notation, meaning N = Rows and M = Cols)
-template <typename F, index N, index M>
+template <typename F, dim_t N, dim_t M>
 class mat
 {
     using container = std::array<F, N * M>;
@@ -29,14 +29,14 @@ public:
     F* data() { return m_values.data(); }
     const F* data() const { return m_values.data(); }
 
-    vect_map<F, M> operator[](index row_idx)             { assert(row_idx < N); return vect_map<F, M>(m_values.data() + row_idx * M); }
-    vect_map<const F, M> operator[](index row_idx) const { assert(row_idx < N); return vect_map<const F, M>(m_values.data() + row_idx * M); }
+    vect_map<F, M> operator[](dim_t row_idx)             { assert(row_idx < N); return vect_map<F, M>(m_values.data() + row_idx * M); }
+    vect_map<const F, M> operator[](dim_t row_idx) const { assert(row_idx < N); return vect_map<const F, M>(m_values.data() + row_idx * M); }
 
 private:
     container m_values;     // Row-major layout
 };
 
-template <typename F, index N>
+template <typename F, dim_t N>
 mat<F, N, N> identity();
 
 template <typename F>
@@ -74,7 +74,7 @@ mat2<F>& inverse(mat2<F>& m, F* det_ptr = nullptr);
 //
 
 
-template <typename F, index N, index M>
+template <typename F, dim_t N, dim_t M>
 mat<F, N, M>::mat()
     : m_values()
 {
@@ -82,7 +82,7 @@ mat<F, N, M>::mat()
         v = F{0};
 }
 
-template <typename F, index N, index M>
+template <typename F, dim_t N, dim_t M>
 mat<F, N, M>::mat(std::initializer_list<F> init_list)
     : m_values()
 {
@@ -91,11 +91,11 @@ mat<F, N, M>::mat(std::initializer_list<F> init_list)
         m_values[idx++] = v;
 }
 
-template <typename F, index N>
+template <typename F, dim_t N>
 mat<F, N, N> identity()
 {
     mat<F, N, N>  result;
-    for (index i = 0; i < N; i++)
+    for (dim_t i = 0; i < N; i++)
         result[i][i] = F{1};
     return result;
 }
