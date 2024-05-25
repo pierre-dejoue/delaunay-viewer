@@ -2,11 +2,6 @@
 
 #include <string_view>
 
-#define THIS_PROJECT_NAME "@PROJECT_NAME@"
-#define THIS_PROJECT_DESCRIPTION "@delaunay_viewer_DESCRIPTION@"
-#define THIS_PROEJCT_VERSION_STRING "@delaunay_viewer_VERSION@"
-
-
 namespace project {
 
 // Get the project identifier (it is the CMAKE_PROJECT_NAME)
@@ -18,4 +13,4 @@ std::string_view get_short_desc();
 // Get the version of the project
 std::string_view get_version_string();
 
-}
+} // namespace project

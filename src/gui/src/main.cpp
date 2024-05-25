@@ -52,11 +52,21 @@ void err_callback(stdutils::io::SeverityCode sev, std::string_view msg)
     std::cerr << stdutils::io::str_severity_code(sev) << ": " << msg << std::endl;
 }
 
-std::string project_title()
+namespace details {
+
+    std::string s_project_title()
+    {
+        std::stringstream title;
+        title << project::get_short_desc() << ' ' << project::get_version_string();
+        return title.str();
+    }
+
+} // namespace details
+
+const std::string& project_title()
 {
-    std::stringstream title;
-    title << project::get_short_desc() << ' ' << project::get_version_string();
-    return title.str();
+    static std::string project_title = details::s_project_title();
+    return project_title;
 }
 
 argagg::parser argparser{ {

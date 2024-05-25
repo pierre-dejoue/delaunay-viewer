@@ -5,6 +5,8 @@ project(delaunay_viewer
     VERSION 0.1.0
 )
 
+set(DELAUNAY_VIEWER_OFFICIAL_RELEASE OFF)
+
 option(DELAUNAY_VIEWER_BUILD_POLY2TRI "Build with the library poly2tri" ON)
 option(DELAUNAY_VIEWER_BUILD_CDT "Build with the library CDT" ON)
 option(DELAUNAY_VIEWER_BUILD_TRIANGLE "Build with Shewchuk's Triangle library" ON)

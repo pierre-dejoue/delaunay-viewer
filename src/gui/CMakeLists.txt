@@ -8,7 +8,7 @@ include(pfd)
 add_subdirectory(gl3w)
 add_subdirectory(imgui)
 
-configure_file(src/project.h.in project.h @ONLY)
+configure_file(src/project_defines.h.in project_defines.h @ONLY)
 
 set(GUI_SOURCES
     src/imgui_helpers.cpp
