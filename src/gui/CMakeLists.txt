@@ -11,12 +11,14 @@ add_subdirectory(imgui)
 configure_file(src/project_defines.h.in project_defines.h @ONLY)
 
 set(GUI_SOURCES
+    src/drawing_settings.cpp
     src/imgui_helpers.cpp
     src/main.cpp
     src/opengl_and_glfw.cpp
     src/pfd_wrap.cpp
     src/project.cpp
     src/renderer.cpp
+    src/renderer_helpers.cpp
     src/settings.cpp
     src/settings_window.cpp
     src/shape_control_window.cpp

@@ -4,17 +4,19 @@
  * A tool to test and compare Delaunay triangulation libraries
  *
  * Copyright (c) 2023 Pierre DEJOUE
+ * This code is distributed under the terms of the MIT License
  ******************************************************************************/
 
 #include "argagg_wrap.h"
-#include "draw_shape.h"
+#include "drawing_settings.h"
 #include "dt_tracker.h"
 #include "project.h"
-#include "renderer.h"
+#include "renderer_helpers.h"
 #include "settings.h"
 #include "settings_window.h"
 #include "shape_control_window.h"
 #include "style.h"
+#include "viewport_window.h"
 #include "window_layout.h"
 
 #include <dt/dt_impl.h>
@@ -400,6 +402,7 @@ int main(int argc, char *argv[])
         }
 
         // Transfer draw lists to our renderer
+        const auto drawing_options = drawing_options_from_settings(settings);
         if (windows.shape_control)
         {
             const auto& dcls = windows.shape_control->get_draw_command_lists();
@@ -408,7 +411,7 @@ int main(int argc, char *argv[])
             if (draw_commands_it != std::cend(dcls))
             {
                 const bool update_buffers = geometry_has_changed || (selected_tab != previously_selected_tab);
-                update_opengl_draw_list<scalar>(draw_2d_renderer.draw_list(), draw_commands_it->second, update_buffers, settings);
+                update_opengl_draw_list<scalar>(draw_2d_renderer.draw_list(), draw_commands_it->second, update_buffers, drawing_options);
                 previously_selected_tab = selected_tab;
             }
         }

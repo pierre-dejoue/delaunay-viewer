@@ -1,3 +1,5 @@
+// Copyright (c) 2023 Pierre DEJOUE
+// This code is distributed under the terms of the MIT License
 #include "renderer.h"
 
 #include "opengl_and_glfw.h"
@@ -11,13 +13,20 @@ namespace renderer {
 
 namespace {
 
-const char* vertex_shader_source = R"SRC(
+struct VertexShaderSource
+{
+    static const char* main;
+};
+
+// The GLSL version number is added by our driver
+const char* VertexShaderSource::main = R"SRC(
 
 layout (location = 0) in vec3 v_pos;
 uniform mat4 mat_proj;
 uniform vec4 uni_color;
 uniform float pt_size;
 out vec4 color;
+
 void main()
 {
     gl_Position = mat_proj * vec4(v_pos, 1.0);
@@ -27,10 +36,17 @@ void main()
 
 )SRC";
 
-const char* fragment_shader_source = R"SRC(
+struct FragmentShaderSource
+{
+    static const char* main;
+};
+
+// The GLSL version number is added by our driver
+const char* FragmentShaderSource::main = R"SRC(
 
 in vec4 color;
 layout (location = 0) out vec4 out_color;
+
 void main()
 {
     out_color = color;
@@ -119,7 +135,7 @@ struct Draw2D::Impl
 
     bool init()
     {
-        gl_program_id = gl_compile_shaders(vertex_shader_source, fragment_shader_source, err_handler);
+        gl_program_id = gl_compile_shaders(VertexShaderSource::main, FragmentShaderSource::main, err_handler);
         if (gl_program_id == 0u)
             return false;
 
@@ -138,7 +154,6 @@ struct Draw2D::Impl
         glDisable(GL_CULL_FACE);
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_STENCIL_TEST);
-
         glEnable(GL_PROGRAM_POINT_SIZE);
 
         return success;
@@ -159,7 +174,7 @@ struct Draw2D::Impl
         glEnableVertexAttribArray(gl_locations.v_pos);
         glVertexAttribPointer(gl_locations.v_pos, 3, GL_FLOAT, /* normalized */ GL_FALSE, /* stride */ 0, GLoffsetf(0));
 
-        // Run program
+        // Run main program
         glUseProgram(gl_program_id);
         glUniformMatrix4fv(static_cast<GLint>(gl_locations.mat_proj), 1, GL_TRUE, mat_proj.data());
         glUniform4fv(static_cast<GLint>(gl_locations.uni_color), 1, background_color.data());
@@ -187,7 +202,7 @@ struct Draw2D::Impl
         }
         draw_list_last_buffer_version = draw_list.m_buffer_version;
 
-        // Run program
+        // Run main program
         glUseProgram(gl_program_id);
         glUniformMatrix4fv(static_cast<GLint>(gl_locations.mat_proj), 1, GL_TRUE, mat_proj.data());
         for (const auto& draw_call : draw_list.m_draw_calls)

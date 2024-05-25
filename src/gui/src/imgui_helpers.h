@@ -1,15 +1,16 @@
+// Copyright (c) 2023 Pierre DEJOUE
+// This code is distributed under the terms of the MIT License
 #pragma once
 
 #include "canvas.h"
+#include "drawing_options.h"
+#include "imgui_wrap.h"
 #include "renderer.h"
 #include "window_layout.h"
 
 #include <shapes/vect.h>
 
-#include <imgui_wrap.h>
-
 #include <ostream>
-
 
 template <typename F>
 Canvas<F> build_canvas(ImVec2 tl_corner, ImVec2 size, shapes::BoundingBox2d<F> bb, bool flip_y = false)
@@ -58,3 +59,6 @@ public:
     void render() const;
     void backend_info(std::ostream& out) const;
 };
+
+template <typename F>
+void update_imgui_draw_list(ImDrawList& draw_list, const DrawCommands<F>& draw_commands, const Canvas<F>& canvas, const DrawingOptions& options);

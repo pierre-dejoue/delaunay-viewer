@@ -1,6 +1,6 @@
 #include "viewport_window.h"
 
-#include "draw_shape.h"
+#include "drawing_settings.h"
 #include "imgui_helpers.h"
 #include "settings.h"
 
@@ -112,11 +112,8 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
 {
     can_be_erased = false; // Always ON
 
-    DrawingOptions options;
     const bool flip_y_axis = settings.read_general_settings().flip_y;
-    options.point_settings = settings.read_point_settings();
-    options.path_settings = settings.read_path_settings();
-    options.surface_settings = settings.read_surface_settings();
+    const DrawingOptions options = drawing_options_from_settings(settings);
 
     ImGui::SetNextWindowPosAndSize(win_pos_sz);
     ImGui::SetNextWindowBgAlpha(0.f);           // Not using ImGuiWindowFlags_NoBackground here because this also removes the window outer border
@@ -265,21 +262,7 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
 
                 // Render shapes with ImGui primitives
                 assert(m_draw_command_lists.count(tab_name));
-                for (const auto& draw_command : m_draw_command_lists[tab_name])
-                {
-                    assert(draw_command.shape);
-                    options.vertices = draw_command.vertices;
-                    options.edges = draw_command.edges;
-                    options.faces = draw_command.faces;
-                    std::visit(stdutils::Overloaded {
-                        [&draw_list, &canvas, &options](const shapes::PointCloud2d<scalar>& pc) { draw_point_cloud(pc, draw_list, canvas, options); },
-                        [&draw_list, &canvas, &options](const shapes::PointPath2d<scalar>& pp) { draw_point_path(pp, draw_list, canvas, options); },
-                        [&draw_list, &canvas, &options](const shapes::CubicBezierPath2d<scalar>& cbp) { draw_cubic_bezier_path(cbp, draw_list, canvas, options); },
-                        [&draw_list, &canvas, &options](const shapes::Edges2d<scalar>& es) { draw_edge_soup(es, draw_list, canvas, options); },
-                        [&draw_list, &canvas, &options](const shapes::Triangles2d<scalar>& tri) { draw_triangles(tri, draw_list, canvas, options); },
-                        [](const auto&) { assert(0); }
-                    }, *draw_command.shape);
-                }
+                update_imgui_draw_list<scalar>(*draw_list, m_draw_command_lists[tab_name], canvas, options);
 
                 // TODO : highlight bounding box
 

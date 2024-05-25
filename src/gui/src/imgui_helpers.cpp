@@ -1,9 +1,16 @@
+// Copyright (c) 2023 Pierre DEJOUE
+// This code is distributed under the terms of the MIT License
 #include "imgui_helpers.h"
+
+#include "draw_shapes.h"
 
 #include <imgui_wrap.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include "opengl_and_glfw.h"
+
+#include <cassert>
+#include <exception>
 
 void set_color(renderer::ColorData& color, ImU32 compact_color)
 {
@@ -97,3 +104,27 @@ void DearImGuiContext::backend_info(std::ostream& out) const
     out << "OpenGL Version " << glGetString(GL_VERSION) << std::endl;
     out << "OpenGL Renderer " << glGetString(GL_RENDERER) << std::endl;
 }
+
+template <typename F>
+void update_imgui_draw_list(ImDrawList& draw_list, const DrawCommands<F>& draw_commands, const Canvas<F>& canvas, const DrawingOptions& options)
+{
+    DrawingOptions local_options = options;
+    for (const auto& draw_command : draw_commands)
+    {
+        assert(draw_command.shape);
+        local_options.vertices = draw_command.vertices;
+        local_options.edges = draw_command.edges;
+        local_options.faces = draw_command.faces;
+        std::visit(stdutils::Overloaded {
+            [&draw_list, &canvas, &local_options](const shapes::PointCloud2d<F>& pc) { draw_point_cloud<F>(pc, &draw_list, canvas, local_options); },
+            [&draw_list, &canvas, &local_options](const shapes::PointPath2d<F>& pp) { draw_point_path<F>(pp, &draw_list, canvas, local_options); },
+            [&draw_list, &canvas, &local_options](const shapes::CubicBezierPath2d<F>& cbp) { draw_cubic_bezier_path<F>(cbp, &draw_list, canvas, local_options); },
+            [&draw_list, &canvas, &local_options](const shapes::Edges2d<F>& es) { draw_edge_soup<F>(es, &draw_list, canvas, local_options); },
+            [&draw_list, &canvas, &local_options](const shapes::Triangles2d<F>& tri) { draw_triangles<F>(tri, &draw_list, canvas, local_options); },
+            [](const auto&) { assert(0); }
+        }, *draw_command.shape);
+    }
+}
+
+// Explicit template instantiations
+template void update_imgui_draw_list<double>(ImDrawList&, const DrawCommands<double>&, const Canvas<double>&, const DrawingOptions&);
