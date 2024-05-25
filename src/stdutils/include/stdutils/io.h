@@ -52,6 +52,15 @@ template <typename F, typename CharT>
 int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out);
 
 /**
+ * Floating point IO precision
+ *
+ * Set the output stream precision. If passed a negative value, set to the same precision as stdutlls::accurate_fp_precision
+ * Return the original precision of the stream.
+ */
+template <typename F, typename CharT>
+int fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out, int precision = -1);
+
+/**
  * RAII class to save/restore stream format for numerical values
  */
 template <typename CharT = char>
@@ -165,6 +174,17 @@ int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& ou
     constexpr int max_fp_digits = std::numeric_limits<F>::max_digits10;
     const int initial_fp_digits = static_cast<int>(out.precision());
     out << std::setprecision(max_fp_digits);
+    return initial_fp_digits;
+}
+
+template <typename F, typename CharT>
+int fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out, int precision)
+{
+    const int initial_fp_digits = static_cast<int>(out.precision());
+    if (precision < 0)
+        out << std::setprecision(std::numeric_limits<F>::max_digits10);
+    else
+        out << std::setprecision(precision);
     return initial_fp_digits;
 }
 

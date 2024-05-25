@@ -38,7 +38,7 @@ using vect4d = vect4<double>;
 //
 
 template <typename F, dim_t N>
-using vect_map = stdutils::span<F, N>;
+using vect_map = stdutils::Span<F, N>;
 
 template <typename F>
 using vect_map2 = vect_map<F, 2>;

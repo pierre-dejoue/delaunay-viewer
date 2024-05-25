@@ -84,18 +84,18 @@ TEST_CASE("index_find_if", "[algorithm]")
     CHECK(index == 5);
 }
 
-TEST_CASE("Use index_find with stdutils::span", "[algorithm]")
+TEST_CASE("Use index_find with stdutils::Span", "[algorithm]")
 {
     std::vector<int> vect { 3, 1, 4, 1, 5, 9, 2, 6 };
     const int look_for = 9;
     {
         // Start search at index 0
-        const auto index = stdutils::index_find(stdutils::span<int>(&vect[0], 4u), 0, 4, look_for);
+        const auto index = stdutils::index_find(stdutils::Span<int>(&vect[0], 4u), 0, 4, look_for);
         CHECK(index == 4);      // Not found
     }
     {
         // Start search at index 4
-        const auto index = stdutils::index_find(stdutils::span<int>(&vect[4], 4u), 0, 4, look_for);
+        const auto index = stdutils::index_find(stdutils::Span<int>(&vect[4], 4u), 0, 4, look_for);
         CHECK(index == 1);      // Index in the original vector: 4 + 1
     }
 }

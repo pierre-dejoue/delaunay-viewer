@@ -32,6 +32,8 @@ TEST_CASE("CumulSamples basic", "[stats]")
 
     CHECK(samples.empty() == true);
     CHECK(samples.nb_samples() == 0);
+    CHECK(samples.sum() == 0.f);
+    CHECK(samples.sum_sq() == 0.f);
     CHECK(samples.get_result().n == 0);
     CHECK(samples.get_result().mean == 0.f);
 
@@ -39,6 +41,8 @@ TEST_CASE("CumulSamples basic", "[stats]")
 
     CHECK(samples.empty() == false);
     CHECK(samples.nb_samples() == 1);
+    CHECK(samples.sum() == 3.f);
+    CHECK(samples.sum_sq() == 9.f);
     CHECK(samples.get_result().n == 1);
     CHECK(samples.get_result().min == 3.f);
     CHECK(samples.get_result().max == 3.f);
@@ -49,6 +53,8 @@ TEST_CASE("CumulSamples basic", "[stats]")
     samples.add_sample(7.f);
 
     CHECK(samples.nb_samples() == 2);
+    CHECK(samples.sum() == 10.f);
+    CHECK(samples.sum_sq() == 58.f);
     CHECK(samples.get_result().n == 2);
     CHECK(samples.get_result().min == 3.f);
     CHECK(samples.get_result().max == 7.f);

@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
+#include <limits>
 #include <ostream>
 #include <stdexcept>
 #include <vector>
@@ -24,17 +25,21 @@ struct Result
     Result()
         : n(0u)
         , min{}, max{}, range{}
+        , median{std::numeric_limits<F>::quiet_NaN()}
         , mean{}
         , variance{}, stdev{}
     { }
 
     Result normalize_to(F unit) const;
     Result normalize_to_mean() const;
+    bool has_median() const;
+    Result add_median(F med) const;
 
     std::size_t n;
     F min;
     F max;
     F range;
+    F median;
     F mean;
     F variance;
     F stdev;
@@ -59,6 +64,9 @@ public:
     CumulSamples& operator+=(const CumulSamples& other);
 
     std::size_t nb_samples() const;
+
+    F sum() const;
+    F sum_sq() const;
 
     const Result<F>& get_result() const;
 
@@ -93,6 +101,7 @@ Result<F> Result<F>::normalize_to(F unit) const
     cpy.min *= inv_unit;
     cpy.max *= inv_unit;
     cpy.range = cpy.max - cpy.min;
+    if (std::isfinite(cpy.median)) { cpy.median *= inv_unit; }
     cpy.mean *= inv_unit;
     cpy.variance *= inv_unit * inv_unit;
     cpy.stdev *= inv_unit;
@@ -103,6 +112,21 @@ template <typename F>
 Result<F> Result<F>::normalize_to_mean() const
 {
     return normalize_to(mean);
+}
+
+template <typename F>
+bool Result<F>::has_median() const
+{
+    return std::isfinite(median);
+}
+
+template <typename F>
+Result<F> Result<F>::add_median(F med) const
+{
+    auto cpy = *this;
+    cpy.median = med;
+    assert(cpy.has_median());
+    return cpy;
 }
 
 template <typename F>
@@ -163,11 +187,24 @@ std::size_t CumulSamples<F>::nb_samples() const
 }
 
 template <typename F>
+F CumulSamples<F>::sum() const
+{
+    return m_sum;
+}
+
+template <typename F>
+F CumulSamples<F>::sum_sq() const
+{
+    return m_sum_sq;
+}
+
+template <typename F>
 const Result<F>& CumulSamples<F>::get_result() const
 {
     if (m_result.n != m_prev_n)
     {
         assert(m_result.n > 0u);
+        assert(!std::isfinite(m_result.median));
         // min, max are already up-to-date
         m_result.range = m_result.max - m_result.min;
         m_result.mean = m_sum / static_cast<F>(m_result.n);
@@ -200,8 +237,12 @@ std::ostream& operator<<(std::ostream& out, const Result<F>& result)
     out << "samples: " << result.n
         << std::setprecision(3) << std::scientific
         << ", min: " << result.min
-        << ", max: " << result.max
-        << ", mean: " << result.mean
+        << ", max: " << result.max;
+    if (result.has_median())
+    {
+        out << ", median: " << result.median;
+    }
+    out << ", mean: " << result.mean
         << ", stdev: " << result.stdev;
     return out;
 }
