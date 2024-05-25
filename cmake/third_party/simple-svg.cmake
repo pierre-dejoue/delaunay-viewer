@@ -13,7 +13,7 @@ FetchContent_Declare(
     #GIT_TAG 279c682320a882661f05e30e6e6e949a61a31293        # Nov 30, 2021
     # Fork:
     GIT_REPOSITORY https://github.com/pierre-dejoue/simple-svg.git
-    GIT_TAG eeb4ff7f35e3479c1acf59d5668dfe376f3e937d
+    GIT_TAG 4efa15e533d52f4aefc9fd2865cc2f1994326622
 )
 FetchContent_Populate(simple-svg)
 
@@ -40,6 +40,12 @@ if(MSVC)
     # https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
     target_compile_options(simple-svg PRIVATE "/Zc:__cplusplus")
 endif()
+
+# Debug trace
+target_compile_definitions(simple-svg PRIVATE
+    $<$<CONFIG:Debug>:SSVG_CONFIG_DEBUG=1>
+    $<$<CONFIG:Debug>:SSVG_CONFIG_BX_DEBUG=0>
+)
 
 target_link_libraries(simple-svg
     PRIVATE
