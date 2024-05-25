@@ -2,8 +2,6 @@
 // This code is distributed under the terms of the MIT License
 #include <shapes/vect.h>
 
-#include <stdutils/io.h>
-
 #include <iomanip>
 
 namespace shapes {
@@ -14,17 +12,13 @@ namespace shapes {
 template <typename F>
 std::ostream& operator<<(std::ostream& out, const Vect2d<F>& v)
 {
-    const auto initial_fp_digits = stdutils::io::accurate_fp_precision<F>(out);
-    out << "(" << v.x << ", " << v.y << ")";
-    return out << std::setprecision(initial_fp_digits);
+    return out << "(" << v.x << ", " << v.y << ")";
 }
 
 template <typename F>
 std::ostream& operator<<(std::ostream& out, const Vect3d<F>& v)
 {
-    const auto initial_fp_digits = stdutils::io::accurate_fp_precision<F>(out);
-    out << "(" << v.x << ", " << v.y << ", " << v.z << ")";
-    return out << std::setprecision(initial_fp_digits);
+    return out << "(" << v.x << ", " << v.y << ", " << v.z << ")";
 }
 
 // Explicit template instantiations

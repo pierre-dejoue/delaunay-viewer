@@ -32,7 +32,7 @@ struct Catch::StringMaker<shapes::Vect3d<float>>
 
 namespace shapes {
 
-TEST_CASE("Test Vect2d operations", "[vect2d]")
+TEST_CASE("Test Vect2d operations", "[vect]")
 {
     const Vect2d<float> a(2.f, 3.f);
     const Vect2d<float> b(5.f, 8.f);
@@ -48,7 +48,7 @@ TEST_CASE("Test Vect2d operations", "[vect2d]")
     CHECK(cross_product(b, a) == -1.f);
 }
 
-TEST_CASE("Test Vect3d operations", "[vect3d]")
+TEST_CASE("Test Vect3d operations", "[vect]")
 {
     const Vect3d<float> a(2.f, 3.f, -1.f);
     const Vect3d<float> b(5.f, 8.f, 6.f);
@@ -61,6 +61,26 @@ TEST_CASE("Test Vect3d operations", "[vect3d]")
     CHECK(3.f * b == Vect3d<float>(15.f, 24.f, 18.f));
     CHECK(dot(a, b) == 28.f);
     CHECK(cross_product(a, b) == Vect3d<float>(26.f, -17.f, 1.f));
+}
+
+TEST_CASE("Test vector norms", "[vect]")
+{
+    Vect2d<float> o(0.f, 0.f);
+
+    CHECK(isnull(o));
+    CHECK(isfinite(o));
+    CHECK(norm(o) == 0.f);
+    CHECK(normalize(o) == false);
+    CHECK(isfinite(o));
+
+    Vect2d<float> a(3.f, 4.f);
+
+    CHECK(norm(a) == 5.f);
+    CHECK(normalize(a) == true);
+    REQUIRE(isfinite(a));
+    CHECK(a.x == 0.6f);
+    CHECK(a.y == 0.8f);
+    CHECK(norm(a) == 1.f);
 }
 
 } // namespace shapes

@@ -222,6 +222,31 @@ constexpr F inf_norm(const Vect3d<F>& v)
 }
 
 //
+// Normalize
+//
+namespace details
+{
+
+    template <typename V>
+    constexpr bool normalize_vect(V& v)
+    {
+        using F = typename V::scalar;
+        const F norm_v = norm(v);
+        if (!(std::isfinite(norm_v) && norm_v > 0))
+            return false;
+        v = (F{1} / norm_v) * v;
+        return true;
+    }
+
+} // namespace details
+
+template <typename F>
+constexpr bool normalize(Vect2d<F>& v) { return details::normalize_vect<Vect2d<F>>(v); }
+
+template <typename F>
+constexpr bool normalize(Vect3d<F>& v) { return details::normalize_vect<Vect3d<F>>(v); }
+
+//
 // Function objects
 //
 template <typename F, typename V>
