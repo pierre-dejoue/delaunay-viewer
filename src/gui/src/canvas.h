@@ -139,6 +139,12 @@ public:
         return to_world(get_br_corner());
     }
 
+    // The bounding box of the geometry
+    const shapes::BoundingBox2d<F>& geometry_bounding_box() const
+    {
+        return bb;
+    }
+
     // The bounding box exactly matching the drawing canvas
     shapes::BoundingBox2d<F> actual_bounding_box() const
     {

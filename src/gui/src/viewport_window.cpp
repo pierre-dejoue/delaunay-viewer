@@ -214,11 +214,10 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
                 ImVec2 br_corner = ImVec2(tl_corner.x + canvas_sz.x, tl_corner.y + canvas_sz.y);
 
                 // Canvas
-                auto canvas = build_canvas(tl_corner, canvas_sz, m_canvas_bounding_box, flip_y_axis);
+                const auto canvas = build_canvas(tl_corner, canvas_sz, m_canvas_bounding_box, flip_y_axis);
                 MouseInCanvas mouse_in_canvas(canvas);
                 ImGuiIO& io = ImGui::GetIO();
                 ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-                mouse_in_canvas.canvas = canvas;
                 mouse_in_canvas.is_hovered = ImGui::IsItemHovered();
                 mouse_in_canvas.is_held = ImGui::IsItemActive();
                 mouse_in_canvas.mouse_pos = to_screen_pos(io.MousePos);
@@ -302,7 +301,7 @@ const ViewportWindow::Key& ViewportWindow::get_latest_selected_tab() const
 
 ViewportWindow::GeometryBB ViewportWindow::get_canvas_bounding_box() const
 {
-    return m_canvas_bounding_box;
+    return m_prev_mouse_in_canvas.canvas.geometry_bounding_box();
 }
 
 ViewportWindow::ScreenBB ViewportWindow::get_viewport_bounding_box() const
