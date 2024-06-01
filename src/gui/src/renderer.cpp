@@ -6,8 +6,10 @@
 
 #include <lin/mat.h>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
+#include <type_traits>
 
 namespace renderer {
 
@@ -96,6 +98,12 @@ void DrawList::reset()
 {
     clear();
     m_buffer_version++;
+}
+
+void stable_sort_draw_commands(DrawList& draw_list)
+{
+    using T = std::underlying_type_t<DrawCmd>;
+    std::stable_sort(std::begin(draw_list.m_draw_calls), std::end(draw_list.m_draw_calls), [](const auto& lhs, const auto& rhs) { return static_cast<T>(lhs.m_cmd) > static_cast<T>(rhs.m_cmd); });
 }
 
 // OpenGL Implementation

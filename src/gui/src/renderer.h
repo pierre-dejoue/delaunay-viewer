@@ -49,6 +49,9 @@ struct DrawList
     Version                     m_buffer_version = 0u;          // Used to knwow when to call glBufferData
 };
 
+// Reorder commands to draw surfaces first, then lines, then points
+void stable_sort_draw_commands(DrawList& draw_list);
+
 struct Flag
 {
     using type = std::uint32_t;

@@ -449,6 +449,7 @@ int main(int argc, char *argv[])
             const auto target_bb = shapes::cast<float, scalar>(windows.viewport->get_canvas_bounding_box());
             const auto screen_bb = windows.viewport->get_viewport_bounding_box();
             const auto canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
+            stable_sort_draw_commands(draw_2d_renderer.draw_list());
             draw_2d_renderer.render(canvas, flags);
         }
 
