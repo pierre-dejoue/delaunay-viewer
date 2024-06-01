@@ -278,7 +278,8 @@ int main(int argc, char *argv[])
     constexpr int WINDOW_HEIGHT = 720;
     stdutils::io::ErrorHandler err_handler(err_callback);
     bool any_fatal_err = false;
-    GLFWWindowContext glfw_context = create_glfw_window_load_opengl(WINDOW_WIDTH, WINDOW_HEIGHT, project_title(), any_fatal_err, &err_handler);
+    unsigned int back_framebuffer_id = 0;
+    GLFWWindowContext glfw_context = create_glfw_window_load_opengl(WINDOW_WIDTH, WINDOW_HEIGHT, project_title(), any_fatal_err, back_framebuffer_id, &err_handler);
     if (any_fatal_err)
         return EXIT_FAILURE;
     assert(glfw_context.window() != nullptr);
@@ -325,7 +326,7 @@ int main(int argc, char *argv[])
 
     // Renderer
     renderer::Draw2D draw_2d_renderer(&err_handler);
-    if (!draw_2d_renderer.init())
+    if (!draw_2d_renderer.init(back_framebuffer_id))
     {
         err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the renderer");
         return EXIT_FAILURE;
@@ -422,17 +423,23 @@ int main(int argc, char *argv[])
 #endif
 
         // OpenGL frame setup
-        int display_w, display_h;
-        glfwGetFramebufferSize(glfw_context.window(), &display_w, &display_h);
+        const auto [display_w, display_h] = glfw_context.window_size();
         const bool is_minimized = (display_w <= 0 || display_h <= 0);
         glViewport(0, 0, display_w, display_h);
         const auto clear_color = get_background_color(gui_dark_mode);
         glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT);           // No depth buffer to clear
 
         // Viewport rendering
         if (windows.viewport && !is_minimized)
         {
+            // Initialize framebuffer (does nothing unless the window size changed)
+            if(!draw_2d_renderer.init_framebuffer(display_w, display_h))
+            {
+                err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the framebuffer");
+                return EXIT_FAILURE;
+            }
+
             // Rendering flags
             renderer::Flag::type flags = 0;
             if (settings.get_general_settings()->flip_y) { flags |= renderer::Flag::FlipYAxis; }
@@ -442,7 +449,7 @@ int main(int argc, char *argv[])
             const auto target_bb = shapes::cast<float, scalar>(windows.viewport->get_canvas_bounding_box());
             const auto screen_bb = windows.viewport->get_viewport_bounding_box();
             const auto canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
-            draw_2d_renderer.render(canvas, static_cast<float>(display_h), flags);
+            draw_2d_renderer.render(canvas, flags);
         }
 
         // ImGui rendering (always on top of the viewport rendering)

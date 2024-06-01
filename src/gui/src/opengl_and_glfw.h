@@ -21,7 +21,7 @@
 #endif
 
 #include <string_view>
-
+#include <utility>
 
 // Wrapper class for GLFW initialization and window
 class GLFWWindowContext
@@ -30,6 +30,7 @@ public:
     GLFWWindowContext(int width, int height, const std::string_view& title, const stdutils::io::ErrorHandler* err_handler = nullptr);
     ~GLFWWindowContext();
     GLFWwindow* window() { return m_window_ptr; }
+    std::pair<int, int> window_size() const;                                        // i.e. The framebuffer size
 
 private:
     GLFWwindow*     m_window_ptr;
@@ -66,7 +67,7 @@ lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox3d<float>& bb, bool flip_y 
 lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox2d<float>& bb, bool flip_y = false, float n = 1.f, float f = -1.f);
 
 // Factory for the GLFW context that also load opengl and enable debugging
-GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const std::string_view& title, bool& any_fatal_error, const stdutils::io::ErrorHandler* err_handler = nullptr);
+GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const std::string_view& title, bool& any_fatal_error, unsigned int& back_framebuffer_id, const stdutils::io::ErrorHandler* err_handler = nullptr);
 
 // Helpers
 template <typename T>

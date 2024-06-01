@@ -63,8 +63,9 @@ public:
     Draw2D(const stdutils::io::ErrorHandler* err_handler = nullptr);
     ~Draw2D();
 
-    // return true upon successul initialization
-    bool init();
+    // Main init and framebuffer init. Return true upon successful initialization
+    bool init(unsigned int back_framebuffer_id = 0);
+    bool init_framebuffer(int width, int height);
 
     DrawList& draw_list();
 
@@ -72,7 +73,7 @@ public:
     void set_background_color(float r, float g, float b, float a = 1.f);
     void reset_background_color();
 
-    void render(const Canvas<float>& canvas, float window_height, Flag::type flags = Flag::None);
+    void render(const Canvas<float>& canvas, Flag::type flags = Flag::None);
 
 private:
     struct Impl;

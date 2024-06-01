@@ -95,6 +95,14 @@ GLFWWindowContext::~GLFWWindowContext()
         glfwTerminate();
 }
 
+std::pair<int, int> GLFWWindowContext::window_size() const
+{
+    std::pair<int, int> sz(0, 0);
+    assert(m_window_ptr);
+    glfwGetFramebufferSize(m_window_ptr, &sz.first, &sz.second);
+    return sz;
+}
+
 bool load_opengl(const stdutils::io::ErrorHandler* err_handler)
 {
     static bool called_once = false;
@@ -279,6 +287,7 @@ bool gl_get_attrib_location(GLuint program, const GLchar *name, GLuint* out_loca
 }
 
 namespace {
+
     // OpenGL debug output callaback;
     stdutils::io::ErrorHandler s_opengl_debug_output_err_handler;
     void gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum sev, GLsizei length,
@@ -355,11 +364,11 @@ namespace {
     {
         assert(context);
         bool success = false;
-        const auto err_report = [err_handler, context](const bool error, const std::string_view& msg) {
+        const auto err_report = [err_handler, shader_id, context](const bool error, const std::string_view& msg) {
             if (err_handler)
             {
                 std::stringstream out;
-                out << "Compile " << context << ": " << msg;
+                out << "Compile " << context << " " << shader_id << ": " << msg;
                 (*err_handler)(error ? stdutils::io::Severity::ERR : stdutils::io::Severity::INFO, out.str());
             }
         };
@@ -367,17 +376,35 @@ namespace {
         GLint status = 0;
         glGetShaderiv(shader_id, GL_COMPILE_STATUS, &status);
         success = (status == GL_TRUE);
-        err_report(!success, success ? "success" : "failed");
         if (info_log || !success)
+        {
+            err_report(!success, success ? "success" : "failed");
             gl_object_info_log<GlInfoLogType::Shader>(shader_id, err_handler);
+        }
         return success;
     }
-}
+
+} // namespace
 
 GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader, const stdutils::io::ErrorHandler* err_handler)
 {
     std::array<const char*, 2> shader_strs;
     shader_strs[0] = TARGET_GLSL_VERSION_STR;
+    constexpr bool INFO_LOG = false;
+
+    // Create the program
+    const GLuint program_id = glCreateProgram();
+    if (program_id == 0u)
+    {
+        if (err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glCreateProgram() failed"); }
+        return 0;
+    }
+    else if (err_handler && INFO_LOG)
+    {
+        std::stringstream out;
+        out << "Create program " << program_id;
+        (*err_handler)(stdutils::io::Severity::INFO, out.str());
+    }
 
     // Compile vertex shader
     const GLuint vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
@@ -389,7 +416,7 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     shader_strs[1] = vertex_shader;
     glShaderSource(vertex_shader_id, 2, &shader_strs[0], nullptr);
     glCompileShader(vertex_shader_id);
-    if (!check_shader_compilation(vertex_shader_id, "vertex shader", true, err_handler)) { return 0; }
+    if (!check_shader_compilation(vertex_shader_id, "vertex shader", INFO_LOG, err_handler)) { return 0; }
 
     // Compile fragment shader
     const GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
@@ -401,15 +428,9 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     shader_strs[1] = fragment_shader;
     glShaderSource(fragment_shader_id, 2, &shader_strs[0], nullptr);
     glCompileShader(fragment_shader_id);
-    if (!check_shader_compilation(fragment_shader_id, "fragment shader", true, err_handler)) { return 0; }
+    if (!check_shader_compilation(fragment_shader_id, "fragment shader", INFO_LOG, err_handler)) { return 0; }
 
     // Link the program
-    const GLuint program_id = glCreateProgram();
-    if (program_id == 0u)
-    {
-        if (err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glCreateProgram() failed"); }
-        return 0;
-    }
     glAttachShader(program_id, vertex_shader_id);
     glAttachShader(program_id, fragment_shader_id);
     glLinkProgram(program_id);
@@ -491,7 +512,7 @@ lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox2d<float>& bb, bool flip_y,
     return proj;
 }
 
-GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const std::string_view& title, bool& any_fatal_error, const stdutils::io::ErrorHandler* err_handler)
+GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const std::string_view& title, bool& any_fatal_error, unsigned int& back_framebuffer_id, const stdutils::io::ErrorHandler* err_handler)
 {
     any_fatal_error = false;
     GLFWWindowContext glfw_context(width, height, title, err_handler);
@@ -501,6 +522,17 @@ GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const st
         any_fatal_error = true;
     if (err_handler)
         gl_enable_debug(*err_handler);
+    // Read the id of the back framebuffer (Usually this will be 0)
+    {
+        GLint fb_id = 0;
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fb_id);
+        if (fb_id < 0)
+        {
+            if (err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "Negative back framebuffer identifier"); }
+            any_fatal_error = true;
+        }
+        back_framebuffer_id = static_cast<unsigned int>(fb_id);
+    }
     return glfw_context;
 }
 
