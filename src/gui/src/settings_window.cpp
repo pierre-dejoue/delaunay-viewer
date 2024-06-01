@@ -74,13 +74,10 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
     Settings::Path* path_settings = m_settings.get_path_settings();
     if (path_settings)
     {
-        const auto& limits = m_settings.read_path_limits();
         ImGui::Dummy(spacing);
-        ImGui::BulletText("Curve Segments");
+        ImGui::BulletText("Lines");
         ImGui::Indent();
         ImGui::Checkbox("Show##Path", &(path_settings->show));
-        ImGui::SameLine();
-        ImGui::SliderFloat("Width##Path", &path_settings->width, limits.width.min, limits.width.max, "%.3f", ImGuiSliderFlags_AlwaysClamp);
         ImGui::Unindent();
     }
 

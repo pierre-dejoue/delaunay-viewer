@@ -168,6 +168,8 @@ struct Draw2D::Impl
         glDisable(GL_CULL_FACE);
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_STENCIL_TEST);
+        glEnable(GL_LINE_SMOOTH);
+        glDisable(GL_POLYGON_SMOOTH);
         glEnable(GL_PROGRAM_POINT_SIZE);
 
         // Buffers
