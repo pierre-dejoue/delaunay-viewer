@@ -1,9 +1,9 @@
 #pragma once
 
 #include "canvas.h"
+#include "color_data.h"
 #include "draw_command.h"
 #include "dt_tracker.h"
-#include "renderer.h"
 #include "settings.h"
 #include "viewport_window.h"
 #include "window_layout.h"
@@ -58,9 +58,9 @@ private:
     {
         struct PrimitiveData
         {
-            PrimitiveData(std::size_t nb, const renderer::ColorData& color) : nb(nb), color(color), draw(true) {}
+            PrimitiveData(std::size_t nb, const ColorData& color) : nb(nb), color(color), draw(true) {}
             std::size_t nb;
-            renderer::ColorData color;
+            ColorData color;
             bool draw;
         };
         explicit ShapeControl(shapes::AllShapes<scalar>&& shape);

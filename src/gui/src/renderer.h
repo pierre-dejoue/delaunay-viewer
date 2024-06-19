@@ -3,6 +3,7 @@
 #pragma once
 
 #include "canvas.h"
+#include "color_data.h"
 
 #include <stdutils/io.h>
 
@@ -14,8 +15,6 @@
 #include <vector>
 
 namespace renderer {
-
-using ColorData = std::array<float, 4>;                     // r, g, b, a
 
 enum class DrawCmd
 {

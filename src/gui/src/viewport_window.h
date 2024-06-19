@@ -1,8 +1,8 @@
 #pragma once
 
 #include "canvas.h"
+#include "color_data.h"
 #include "draw_command.h"
-#include "renderer.h"
 #include "window_layout.h"
 
 #include <shapes/bounding_box.h>
@@ -51,7 +51,7 @@ public:
 
     ScreenBB get_viewport_bounding_box() const;
 
-    const renderer::ColorData& get_background_color() const;
+    const ColorData& get_background_color() const;
 
 private:
     using DrawCommandLists = std::map<Key, DrawCommands<scalar>>;
@@ -77,7 +77,7 @@ private:
     DrawCommandLists m_draw_command_lists;
     TabList m_tabs;
     Key m_latest_selected_tab;
-    renderer::ColorData m_background_color;
+    ColorData m_background_color;
     bool m_steiner_checked;
     SteinerCallback m_steiner_callback;
 };

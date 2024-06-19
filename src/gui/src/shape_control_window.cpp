@@ -44,34 +44,34 @@ namespace {
     const auto FaceColor_Float_Default      = to_float_color(FaceColor_Default);
     const auto EdgeColor_Float_Constraint   = to_float_color(EdgeColor_Constraint);
 
-    renderer::ColorData get_vertices_color(const renderer::ColorData& def, bool highlight, float alpha = 1.f)
+    ColorData get_vertices_color(const ColorData& def, bool highlight, float alpha = 1.f)
     {
         assert(0.f <= alpha && alpha <= 1.f);
-        static const renderer::ColorData vertex_highlight_color = to_float_color(VertexColor_Highlighted);
+        static const ColorData vertex_highlight_color = to_float_color(VertexColor_Highlighted);
         auto color = highlight ? vertex_highlight_color : def;
         color[3] *= alpha;
         return color;
     }
 
-    renderer::ColorData get_edges_color(const renderer::ColorData& def, bool highlight, float alpha = 1.f)
+    ColorData get_edges_color(const ColorData& def, bool highlight, float alpha = 1.f)
     {
         assert(0.f <= alpha && alpha <= 1.f);
-        static const renderer::ColorData edge_highlight_color = to_float_color(EdgeColor_Highlighted);
+        static const ColorData edge_highlight_color = to_float_color(EdgeColor_Highlighted);
         auto color = highlight ? edge_highlight_color : def;
         color[3] *= alpha;
         return color;
     }
 
-    renderer::ColorData get_faces_color(const renderer::ColorData& def, bool highlight, float alpha = 1.f)
+    ColorData get_faces_color(const ColorData& def, bool highlight, float alpha = 1.f)
     {
         assert(0.f <= alpha && alpha <= 1.f);
-        static const renderer::ColorData face_highlight_color = to_float_color(FaceColor_Highlighted);
+        static const ColorData face_highlight_color = to_float_color(FaceColor_Highlighted);
         auto color = highlight ? face_highlight_color : def;
         color[3] *= alpha;
         return color;
     }
 
-    renderer::ColorData& luminosity(renderer::ColorData& color, float ratio)
+    ColorData& luminosity(ColorData& color, float ratio)
     {
         color[0] = std::min(color[0] * ratio, 1.f);
         color[1] = std::min(color[1] * ratio, 1.f);

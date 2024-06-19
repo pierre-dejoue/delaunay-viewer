@@ -11,6 +11,7 @@
 #include "drawing_settings.h"
 #include "dt_tracker.h"
 #include "project.h"
+#include "renderer.h"
 #include "renderer_helpers.h"
 #include "settings.h"
 #include "settings_window.h"

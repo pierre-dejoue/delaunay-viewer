@@ -2,14 +2,14 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include "renderer.h"
+#include "color_data.h"
 
 #include <shapes/shapes.h>
 
 struct PrimitiveProperties
 {
-    PrimitiveProperties(renderer::ColorData color = { 0.f, 0.f, 0.f, 1.f }, bool draw = true) : color(color), draw(draw) {}
-    renderer::ColorData color;
+    PrimitiveProperties(ColorData color = { 0.f, 0.f, 0.f, 1.f }, bool draw = true) : color(color), draw(draw) {}
+    ColorData color;
     bool draw;
 };
 

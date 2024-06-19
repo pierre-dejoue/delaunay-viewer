@@ -3,6 +3,7 @@
 #pragma once
 
 #include "canvas.h"
+#include "color_data.h"
 #include "draw_command.h"
 #include "drawing_options.h"
 #include "imgui_helpers.h"
@@ -88,7 +89,7 @@ namespace details {
         draw_list->PathStroke(col, 0, thickness);
     }
 
-    inline ImU32 to_compact_color(const renderer::ColorData& color)
+    inline ImU32 to_compact_color(const ColorData& color)
     {
         const ImColor im_color(color[0], color[1], color[2], color[3]);
         return static_cast<ImU32>(im_color);

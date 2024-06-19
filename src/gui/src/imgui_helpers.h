@@ -3,9 +3,9 @@
 #pragma once
 
 #include "canvas.h"
+#include "color_data.h"
 #include "drawing_options.h"
 #include "imgui_wrap.h"
-#include "renderer.h"
 #include "window_layout.h"
 
 #include <shapes/vect.h>
@@ -33,9 +33,9 @@ inline ImVec2 to_imgui_vec2(ScreenPos pos)
     return ImVec2(pos.x, pos.y);
 }
 
-void set_color(renderer::ColorData& color, ImU32 compact_color);
+void set_color(ColorData& color, ImU32 compact_color);
 
-renderer::ColorData to_float_color(ImU32 compact_color);
+ColorData to_float_color(ImU32 compact_color);
 
 namespace ImGui {
 

@@ -309,7 +309,7 @@ ViewportWindow::ScreenBB ViewportWindow::get_viewport_bounding_box() const
     return ScreenBB().add(m_prev_mouse_in_canvas.canvas.get_tl_corner()).add(m_prev_mouse_in_canvas.canvas.get_br_corner());
 }
 
-const renderer::ColorData& ViewportWindow::get_background_color() const
+const ColorData& ViewportWindow::get_background_color() const
 {
     return m_background_color;
 }
