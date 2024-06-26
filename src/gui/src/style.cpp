@@ -23,7 +23,7 @@ void imgui_set_style(bool dark_mode)
     }
 }
 
-std::array<float, 4> get_background_color(bool dark_mode)
+std::array<float, 4> get_window_background_color(bool dark_mode)
 {
     const auto c = static_cast<ImVec4>(dark_mode ? WindowMainBackgroundColor_Dark : WindowMainBackgroundColor_Classic);
     return std::array<float, 4>{ c.x, c.y, c.z, c.w };

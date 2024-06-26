@@ -7,7 +7,8 @@
 template <typename F>
 void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool update_buffers, const DrawingOptions& options)
 {
-    draw_list.clear();
+    // TODO When buffer are not updated, they are written again (to identical values)
+    if (update_buffers) { draw_list.reset(); } else { draw_list.clear_no_reset(); }
 
     DrawingOptions local_options = options;
     for (const auto& draw_command : draw_commands)
@@ -25,8 +26,6 @@ void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F
             [](const auto&) { assert(0); }
         }, *draw_command.shape);
     }
-
-    if (update_buffers) { draw_list.m_buffer_version++; }
 }
 
 // Explicit template instantiations

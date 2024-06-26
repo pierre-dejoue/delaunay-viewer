@@ -46,6 +46,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -66,7 +67,7 @@ namespace details {
 
 } // namespace details
 
-const std::string& project_title()
+std::string_view project_title()
 {
     static std::string project_title = details::s_project_title();
     return project_title;
@@ -275,15 +276,19 @@ int main(int argc, char *argv[])
     }
 
     // Create GLFW window and load OpenGL
-    constexpr int WINDOW_WIDTH = 1280;
-    constexpr int WINDOW_HEIGHT = 720;
     stdutils::io::ErrorHandler err_handler(err_callback);
     bool any_fatal_err = false;
     unsigned int back_framebuffer_id = 0;
-    GLFWWindowContext glfw_context = create_glfw_window_load_opengl(WINDOW_WIDTH, WINDOW_HEIGHT, project_title(), any_fatal_err, back_framebuffer_id, &err_handler);
-    if (any_fatal_err)
+    GLFWWindowContext glfw_context = [&back_framebuffer_id, &any_fatal_err, &err_handler]() {
+        constexpr int WINDOW_WIDTH = 1280;
+        constexpr int WINDOW_HEIGHT = 720;
+        GLFWOptions options;
+        options.title = project_title();
+        auto context = create_glfw_window_load_opengl(WINDOW_WIDTH, WINDOW_HEIGHT, options, any_fatal_err, back_framebuffer_id, &err_handler);
+        return context;
+    }();
+    if (any_fatal_err || glfw_context.window() == nullptr)
         return EXIT_FAILURE;
-    assert(glfw_context.window() != nullptr);
 
     // Setup Dear ImGui context
     const DearImGuiContext dear_imgui_context(glfw_context.window(), any_fatal_err);
@@ -400,7 +405,7 @@ int main(int argc, char *argv[])
             bool can_be_erased = false;
             windows.viewport->visit(can_be_erased, settings, windows.layout.viewport);
             assert(!can_be_erased);     // Always ON
-            draw_2d_renderer.set_background_color(windows.viewport->get_background_color());
+            draw_2d_renderer.set_viewport_background_color(windows.viewport->get_background_color());
         }
 
         // Transfer draw lists to our renderer
@@ -426,32 +431,34 @@ int main(int argc, char *argv[])
         // OpenGL frame setup
         const auto [display_w, display_h] = glfw_context.window_size();
         const bool is_minimized = (display_w <= 0 || display_h <= 0);
-        glViewport(0, 0, display_w, display_h);
-        const auto clear_color = get_background_color(gui_dark_mode);
-        glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
-        glClear(GL_COLOR_BUFFER_BIT);           // No depth buffer to clear
+        if(!draw_2d_renderer.init_framebuffer(display_w, display_h))
+        {
+            err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the framebuffer");
+            return EXIT_FAILURE;
+        }
+        draw_2d_renderer.clear_framebuffer(get_window_background_color(gui_dark_mode));
 
         // Viewport rendering
         if (windows.viewport && !is_minimized)
         {
-            // Initialize framebuffer (does nothing unless the window size changed)
-            if(!draw_2d_renderer.init_framebuffer(display_w, display_h))
-            {
-                err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the framebuffer");
-                return EXIT_FAILURE;
-            }
-
             // Rendering flags
-            renderer::Flag::type flags = 0;
+            renderer::Flag::type flags = renderer::Flag::ViewportBackground;;
             if (settings.get_general_settings()->flip_y) { flags |= renderer::Flag::FlipYAxis; }
-            if (!windows.shape_control || settings.get_general_settings()->imgui_renderer) { flags |= renderer::Flag::OnlyBackground; }
+            const bool only_background = !windows.shape_control || settings.get_general_settings()->imgui_renderer;
 
             // Render
             const auto target_bb = shapes::cast<float, scalar>(windows.viewport->get_canvas_bounding_box());
             const auto screen_bb = windows.viewport->get_viewport_bounding_box();
-            const auto canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
+            const auto viewport_canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
             stable_sort_draw_commands(draw_2d_renderer.draw_list());
-            draw_2d_renderer.render(canvas, flags);
+            if (only_background)
+            {
+                draw_2d_renderer.render_viewport_background(viewport_canvas);
+            }
+            else
+            {
+                draw_2d_renderer.render(viewport_canvas, flags);
+            }
         }
 
         // ImGui rendering (always on top of the viewport rendering)

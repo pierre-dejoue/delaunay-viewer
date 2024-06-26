@@ -47,7 +47,7 @@ void glfw_error_callback(int error, const char* description)
 
 } // namespace
 
-GLFWWindowContext::GLFWWindowContext(int width, int height, const std::string_view& title, const stdutils::io::ErrorHandler* err_handler)
+GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& options, const stdutils::io::ErrorHandler* err_handler)
     : m_window_ptr(nullptr)
     , m_glfw_init(false)
 {
@@ -56,11 +56,16 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const std::string_vi
         return;
     call_once = true;
 
+    // Window title
+    if (options.title.empty() && err_handler) { (*err_handler)(stdutils::io::Severity::WARN, "Window title is not specified"); }
+    const std::string_view title = options.title.empty() ? "untitled" : options.title;
+
     if (err_handler)
     {
         s_glfw_err_handler = *err_handler;
         glfwSetErrorCallback(glfw_error_callback);
     }
+
     if (!glfwInit())
     {
         if (err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "GLFW failed to initialize"); }
@@ -76,6 +81,11 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const std::string_vi
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     if constexpr (TARGET_OPENGL_DEBUG_CONTEXT)
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+    if (options.framebuffer_msaa_samples > 0)
+    {
+        glfwWindowHint(GLFW_SAMPLES, static_cast<int>(options.framebuffer_msaa_samples));
+    }
+    assert(title.data());
     m_window_ptr = glfwCreateWindow(width, height, title.data(), nullptr, nullptr);
     if (m_window_ptr == nullptr)
     {
@@ -512,10 +522,10 @@ lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox2d<float>& bb, bool flip_y,
     return proj;
 }
 
-GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const std::string_view& title, bool& any_fatal_error, unsigned int& back_framebuffer_id, const stdutils::io::ErrorHandler* err_handler)
+GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GLFWOptions& options, bool& any_fatal_error, unsigned int& back_framebuffer_id, const stdutils::io::ErrorHandler* err_handler)
 {
     any_fatal_error = false;
-    GLFWWindowContext glfw_context(width, height, title, err_handler);
+    GLFWWindowContext glfw_context(width, height, options, err_handler);
     if (glfw_context.window() == nullptr)
         any_fatal_error = true;
     if (!load_opengl(err_handler))

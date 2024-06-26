@@ -23,8 +23,9 @@ enum class DrawCmd
     Triangles,
 };
 
-struct DrawList
+class DrawList
 {
+public:
     using HWindex = std::uint32_t;
     using IndexRange = std::pair<std::size_t, std::size_t>;
     using VertexData = std::array<float, 3>;                    // x, y, z
@@ -38,14 +39,17 @@ struct DrawList
         DrawCmd     m_cmd;
     };
 
-    static const DrawList& empty();
-    void clear();
+    Version buffer_version() const { return m_buffer_version; }
+
+    void clear_no_reset();
     void reset();
 
     std::vector<VertexData>     m_vertices;
     std::vector<HWindex>        m_indices;
     std::vector<DrawCall>       m_draw_calls;
-    Version                     m_buffer_version = 0u;          // Used to knwow when to call glBufferData
+
+private:
+    Version                     m_buffer_version{0u};           // Used to knwow when to call glBufferData
 };
 
 // Reorder commands to draw surfaces first, then lines, then points
@@ -55,27 +59,48 @@ struct Flag
 {
     using type = std::uint32_t;
     static constexpr type None = 0;
-    static constexpr type OnlyBackground = 1 << 0;
+    static constexpr type ViewportBackground = 1 << 0;
     static constexpr type FlipYAxis = 1 << 1;
 };
 
+/**
+ * Main class of the 2D renderer
+ *
+ * Draw 2D primitives: Points, edges and triangles
+ *
+ * We distinguish two screen spaces:
+ *  - The framebuffer, i.e. the whole window
+ *  - The viewport, i.e. the drawing area
+ */
 class Draw2D
 {
 public:
     Draw2D(const stdutils::io::ErrorHandler* err_handler = nullptr);
     ~Draw2D();
+    Draw2D(Draw2D&&) noexcept;
+    Draw2D& operator=(Draw2D&&) noexcept;
 
-    // Main init and framebuffer init. Return true upon successful initialization
+    // Main init. Return true upon successful initialization.
     bool init(unsigned int back_framebuffer_id = 0);
-    bool init_framebuffer(int width, int height);
+    bool initialized() const;
 
+    // Init and clear frambuffer(s), possibly resizing them. Return true if successful.
+    bool init_framebuffer(int width, int height);
+    void clear_framebuffer(ColorData clear_color);
+
+    // Viewport background color selection
+    void set_viewport_background_color(const ColorData& color);
+    void set_viewport_background_color(float r, float g, float b, float a = 1.f);
+    void no_viewport_background();
+
+    // The current draw list
     DrawList& draw_list();
 
-    void set_background_color(const ColorData& color);
-    void set_background_color(float r, float g, float b, float a = 1.f);
-    void reset_background_color();
+    // Render
+    void render(const Canvas<float>& viewport_canvas, Flag::type flags = Flag::None);
 
-    void render(const Canvas<float>& canvas, Flag::type flags = Flag::None);
+    // Render only the viewport background
+    void render_viewport_background(const Canvas<float>& viewport_canvas);
 
 private:
     struct Impl;
