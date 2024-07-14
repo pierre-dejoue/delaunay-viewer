@@ -11,6 +11,7 @@ namespace {
 
         result.flip_y = stdutils::parameter::limits_true;
         result.imgui_renderer = stdutils::parameter::limits_false;
+        result.line_smooth = stdutils::parameter::limits_true;
         result.cdt = stdutils::parameter::limits_true;
         result.proximity_graphs = stdutils::parameter::limits_false;
 
@@ -79,6 +80,7 @@ const Settings::General& Settings::read_general_settings() const
         general_settings = std::make_unique<General>();
         general_settings->flip_y = read_general_limits().flip_y.def;
         general_settings->imgui_renderer = read_general_limits().imgui_renderer.def;
+        general_settings->line_smooth = read_general_limits().line_smooth.def;
         general_settings->cdt = read_general_limits().cdt.def;
         general_settings->proximity_graphs = read_general_limits().proximity_graphs.def;
     }

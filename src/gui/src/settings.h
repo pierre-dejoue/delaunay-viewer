@@ -11,6 +11,7 @@ public:
     {
         stdutils::parameter::Limits<bool> flip_y;
         stdutils::parameter::Limits<bool> imgui_renderer;
+        stdutils::parameter::Limits<bool> line_smooth;
         stdutils::parameter::Limits<bool> cdt;
         stdutils::parameter::Limits<bool> proximity_graphs;
     };
@@ -18,6 +19,7 @@ public:
     {
         bool flip_y;        // If false, the Y-axis is in the "up" direction.
         bool imgui_renderer;
+        bool line_smooth;
         bool cdt;
         bool proximity_graphs;
     };

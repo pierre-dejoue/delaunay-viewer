@@ -332,8 +332,9 @@ int main(int argc, char *argv[])
     // Renderer
     renderer::Draw2D::Settings renderer_settings;
     renderer_settings.back_framebuffer_id = back_framebuffer_id;
-    renderer::Draw2D draw_2d_renderer(renderer_settings, &err_handler);
-    if (!draw_2d_renderer.initialized())
+    renderer_settings.line_smooth = settings.get_general_settings()->line_smooth;
+    auto draw_2d_renderer = std::make_unique<renderer::Draw2D>(renderer_settings, &err_handler);
+    if (!draw_2d_renderer || !draw_2d_renderer->initialized())
     {
         err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the renderer");
         return EXIT_FAILURE;
@@ -358,7 +359,7 @@ int main(int argc, char *argv[])
         // Main menu
         {
             bool app_should_close = false;
-            main_menu_bar(windows, draw_2d_renderer, dt_tracker, app_should_close, gui_dark_mode);
+            main_menu_bar(windows, *draw_2d_renderer, dt_tracker, app_should_close, gui_dark_mode);
             if (app_should_close)
                 glfwSetWindowShouldClose(glfw_context.window(), 1);
         }
@@ -371,6 +372,20 @@ int main(int argc, char *argv[])
             assert(!can_be_erased); // Always ON
         }
 
+        // Renderer update
+        const bool line_smooth_settings = settings.get_general_settings()->line_smooth;
+        if (renderer_settings.line_smooth != line_smooth_settings)
+        {
+            renderer_settings.line_smooth = line_smooth_settings;
+            draw_2d_renderer = std::make_unique<renderer::Draw2D>(renderer_settings, &err_handler);
+            if (!draw_2d_renderer || !draw_2d_renderer->initialized())
+            {
+                err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the renderer");
+                return EXIT_FAILURE;
+            }
+        }
+        assert(draw_2d_renderer);
+
         // Shape control window
         bool geometry_has_changed = false;
         if (windows.shape_control)
@@ -382,7 +397,7 @@ int main(int argc, char *argv[])
             {
                 windows.shape_control.reset();              // Close window
                 windows.viewport->reset();                  // Not closed, just reset
-                draw_2d_renderer.draw_list().clear_all();
+                draw_2d_renderer->draw_list().clear_all();
                 previously_selected_tab = "";
             }
         }
@@ -391,7 +406,7 @@ int main(int argc, char *argv[])
         if (windows.shape_control)
         {
             assert(windows.viewport);
-            const bool imgui_rendering = settings.get_general_settings()->imgui_renderer;
+            constexpr bool imgui_rendering = false; // settings.get_general_settings()->imgui_renderer;
             for (const auto& [key, cmds] : windows.shape_control->get_draw_command_lists())
             {
                 DrawCommands<scalar> filtered_cmds;
@@ -406,7 +421,7 @@ int main(int argc, char *argv[])
             bool can_be_erased = false;
             windows.viewport->visit(can_be_erased, settings, windows.layout.viewport);
             assert(!can_be_erased);     // Always ON
-            draw_2d_renderer.set_viewport_background_color(windows.viewport->get_background_color());
+            draw_2d_renderer->set_viewport_background_color(windows.viewport->get_background_color());
         }
 
         // Transfer draw lists to our renderer
@@ -419,7 +434,7 @@ int main(int argc, char *argv[])
             if (draw_commands_it != std::cend(dcls))
             {
                 const bool update_buffers = geometry_has_changed || (selected_tab != previously_selected_tab);
-                update_opengl_draw_list<scalar>(draw_2d_renderer.draw_list(), draw_commands_it->second, update_buffers, drawing_options);
+                update_opengl_draw_list<scalar>(draw_2d_renderer->draw_list(), draw_commands_it->second, update_buffers, drawing_options);
                 previously_selected_tab = selected_tab;
             }
         }
@@ -432,12 +447,12 @@ int main(int argc, char *argv[])
         // OpenGL frame setup
         const auto [display_w, display_h] = glfw_context.window_size();
         const bool is_minimized = (display_w <= 0 || display_h <= 0);
-        if(!draw_2d_renderer.init_framebuffer(display_w, display_h))
+        if(!draw_2d_renderer->init_framebuffer(display_w, display_h))
         {
             err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the framebuffer");
             return EXIT_FAILURE;
         }
-        draw_2d_renderer.clear_framebuffer(get_window_background_color(gui_dark_mode));
+        draw_2d_renderer->clear_framebuffer(get_window_background_color(gui_dark_mode));
 
         // Viewport rendering
         if (windows.viewport && !is_minimized)
@@ -445,20 +460,20 @@ int main(int argc, char *argv[])
             // Rendering flags
             renderer::Flag::type flags = renderer::Flag::ViewportBackground;;
             if (settings.get_general_settings()->flip_y) { flags |= renderer::Flag::FlipYAxis; }
-            const bool only_background = !windows.shape_control || settings.get_general_settings()->imgui_renderer;
+            const bool only_background = !windows.shape_control; // || settings.get_general_settings()->imgui_renderer;
 
             // Render
             const auto target_bb = shapes::cast<float, scalar>(windows.viewport->get_canvas_bounding_box());
             const auto screen_bb = windows.viewport->get_viewport_bounding_box();
             const auto viewport_canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
-            stable_sort_draw_commands(draw_2d_renderer.draw_list());
+            stable_sort_draw_commands(draw_2d_renderer->draw_list());
             if (only_background)
             {
-                draw_2d_renderer.render_viewport_background(viewport_canvas);
+                draw_2d_renderer->render_viewport_background(viewport_canvas);
             }
             else
             {
-                draw_2d_renderer.render(viewport_canvas, flags);
+                draw_2d_renderer->render(viewport_canvas, flags);
             }
         }
 
