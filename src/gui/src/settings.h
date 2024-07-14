@@ -1,6 +1,6 @@
 #pragma once
 
-#include "parameter.h"
+#include <stdutils/parameter.h>
 
 #include <memory>
 
@@ -9,10 +9,10 @@ class Settings
 public:
     struct GeneralLimits
     {
-        Parameter::Limits<bool> flip_y;
-        Parameter::Limits<bool> imgui_renderer;
-        Parameter::Limits<bool> cdt;
-        Parameter::Limits<bool> proximity_graphs;
+        stdutils::parameter::Limits<bool> flip_y;
+        stdutils::parameter::Limits<bool> imgui_renderer;
+        stdutils::parameter::Limits<bool> cdt;
+        stdutils::parameter::Limits<bool> proximity_graphs;
     };
     struct General
     {
@@ -23,8 +23,8 @@ public:
     };
     struct PointLimits
     {
-        Parameter::Limits<bool> show;
-        Parameter::Limits<float> size;
+        stdutils::parameter::Limits<bool> show;
+        stdutils::parameter::Limits<float> size;
     };
     struct Point
     {
@@ -33,8 +33,8 @@ public:
     };
     struct PathLimits
     {
-        Parameter::Limits<bool> show;
-        Parameter::Limits<float> width;
+        stdutils::parameter::Limits<bool> show;
+        stdutils::parameter::Limits<float> width;
     };
     struct Path
     {
@@ -43,8 +43,8 @@ public:
     };
     struct SurfaceLimits
     {
-        Parameter::Limits<bool> show;
-        Parameter::Limits<float> alpha;
+        stdutils::parameter::Limits<bool> show;
+        stdutils::parameter::Limits<float> alpha;
     };
     struct Surface
     {

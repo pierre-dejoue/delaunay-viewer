@@ -9,10 +9,10 @@ namespace {
     {
         Settings::GeneralLimits result;
 
-        result.flip_y = Parameter::limits_true;
-        result.imgui_renderer = Parameter::limits_false;
-        result.cdt = Parameter::limits_true;
-        result.proximity_graphs = Parameter::limits_false;
+        result.flip_y = stdutils::parameter::limits_true;
+        result.imgui_renderer = stdutils::parameter::limits_false;
+        result.cdt = stdutils::parameter::limits_true;
+        result.proximity_graphs = stdutils::parameter::limits_false;
 
         return result;
     }
@@ -21,7 +21,7 @@ namespace {
     {
         Settings::PointLimits result;
 
-        result.show = Parameter::limits_true;
+        result.show = stdutils::parameter::limits_true;
 
         result.size.def = 4.f;
         result.size.min = 1.f;
@@ -34,7 +34,7 @@ namespace {
     {
         Settings::PathLimits result;
 
-        result.show = Parameter::limits_true;
+        result.show = stdutils::parameter::limits_true;
 
         result.width.def = 1.f;
         result.width.min = 1.f;
@@ -47,7 +47,7 @@ namespace {
     {
         Settings::SurfaceLimits result;
 
-        result.show = Parameter::limits_true;
+        result.show = stdutils::parameter::limits_true;
 
         result.alpha.def = 0.75f;
         result.alpha.min = 0.0f;
