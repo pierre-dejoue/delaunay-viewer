@@ -246,7 +246,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
     if (!shapes.empty() && windows.viewport)
     {
         windows.viewport->reset();
-        renderer.draw_list().reset();
+        renderer.draw_list().clear_all();
         windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), dt_tracker, *windows.viewport);
     }
 }
@@ -330,8 +330,10 @@ int main(int argc, char *argv[])
     });
 
     // Renderer
-    renderer::Draw2D draw_2d_renderer(&err_handler);
-    if (!draw_2d_renderer.init(back_framebuffer_id))
+    renderer::Draw2D::Settings renderer_settings;
+    renderer_settings.back_framebuffer_id = back_framebuffer_id;
+    renderer::Draw2D draw_2d_renderer(renderer_settings, &err_handler);
+    if (!draw_2d_renderer.initialized())
     {
         err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the renderer");
         return EXIT_FAILURE;
@@ -380,7 +382,7 @@ int main(int argc, char *argv[])
             {
                 windows.shape_control.reset();              // Close window
                 windows.viewport->reset();                  // Not closed, just reset
-                draw_2d_renderer.draw_list().reset();
+                draw_2d_renderer.draw_list().clear_all();
                 previously_selected_tab = "";
             }
         }

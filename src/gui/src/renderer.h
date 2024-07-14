@@ -17,9 +17,10 @@ namespace renderer {
 
 enum class DrawCmd
 {
-    Points,
+    Points = 0,
     Lines,
     Triangles,
+    _ENUM_SIZE_
 };
 
 class DrawList
@@ -38,10 +39,14 @@ public:
         DrawCmd     m_cmd;
     };
 
+    // Initially zero (for an empty draw list)
     Version buffer_version() const { return m_buffer_version; }
 
+    // Clear the draw calls and the buffers and increase the buffer version. Call this function before sending the first DrawList to the renderer.
+    void clear_all();
+
+    // Clear the draw calls and the buffers but the buffer version will remain the same, meaning the buffers won't be updated on the GPU side.
     void clear_no_reset();
-    void reset();
 
     std::vector<VertexData>     m_vertices;
     std::vector<HWindex>        m_indices;
@@ -74,13 +79,22 @@ struct Flag
 class Draw2D
 {
 public:
-    Draw2D(const stdutils::io::ErrorHandler* err_handler = nullptr);
+    struct Settings
+    {
+        unsigned int back_framebuffer_id{0};
+        bool line_smooth{false};
+    };
+
+    Draw2D(const Settings& settings, const stdutils::io::ErrorHandler* err_handler = nullptr);
     ~Draw2D();
+    // Not copyable
+    Draw2D(const Draw2D&) = delete;
+    Draw2D& operator=(const Draw2D&) = delete;
+    // Moveable
     Draw2D(Draw2D&&) noexcept;
     Draw2D& operator=(Draw2D&&) noexcept;
 
-    // Main init. Return true upon successful initialization.
-    bool init(unsigned int back_framebuffer_id = 0);
+    // Check proper initialization. Call it once right after construction.
     bool initialized() const;
 
     // Init and clear frambuffer(s), possibly resizing them. Return true if successful.

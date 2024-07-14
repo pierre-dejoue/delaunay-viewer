@@ -4,6 +4,7 @@
 
 #include <base/opengl_and_glfw.h>
 #include <lin/mat.h>
+#include <stdutils/enum.h>
 
 #include <algorithm>
 #include <array>
@@ -55,21 +56,11 @@ void main()
 
 )SRC";
 
-unsigned int to_gl_draw_cmd(DrawCmd cmd)
-{
-    switch (cmd)
-    {
-        case renderer::DrawCmd::Points:
-            return GL_POINTS;
-        case renderer::DrawCmd::Lines:
-            return GL_LINES;
-        case renderer::DrawCmd::Triangles:
-            return GL_TRIANGLES;
-        default:
-            assert(0);
-            return GL_TRIANGLES;
-    }
-}
+const std::array<GLenum, stdutils::enum_size<DrawCmd>()> lookup_gl_draw_cmd {
+    /* DrawCmd::Point */                GL_POINTS,
+    /* DrawCmd::Lines */                GL_LINES,
+    /* DrawCmd::Triangles */            GL_TRIANGLES
+};
 
 } // namespace
 
@@ -80,19 +71,20 @@ DrawList::DrawCall::DrawCall()
     , m_cmd(renderer::DrawCmd::Lines)
 {}
 
-void DrawList::clear_no_reset()
-{
-    m_vertices.clear();
-    m_indices.clear();
-    m_draw_calls.clear();
-}
-
-void DrawList::reset()
+void DrawList::clear_all()
 {
     m_vertices.clear();
     m_indices.clear();
     m_draw_calls.clear();
     m_buffer_version++;
+}
+
+void DrawList::clear_no_reset()
+{
+    assert(m_buffer_version > 0);
+    m_vertices.clear();
+    m_indices.clear();
+    m_draw_calls.clear();
 }
 
 void stable_sort_draw_commands(DrawList& draw_list)
@@ -115,220 +107,26 @@ struct Draw2D::Impl
         GLuint v_pos{0u};
     };
 
-    Impl(const stdutils::io::ErrorHandler* err_handler)
-        : initialized{false}
-        , draw_list()
-        , draw_list_last_buffer_version{0u}
-        , gl_program_ids{}
-        , gl_locations{}
-        , gl_back_framebuffer_id{0u}
-        , framebuffer_size(0, 0)
-        , gl_vaos()
-        , gl_buffers()
-        , has_background{false}
-        , background_corner_vertices()
-        , background_color{ 0.f, 0.f, 0.f, 1.f }
-        , err_handler(err_handler)
-    { }
-
-    ~Impl()
+    struct Background
     {
-        if (gl_program_ids.main != 0u) { glDeleteProgram(gl_program_ids.main); }
-        glDeleteBuffers(N_BUFFERS, &gl_buffers[0]);
-        glDeleteVertexArrays(N_VAOS, &gl_vaos[0]);
-    }
+        bool enabled{false};
+        std::array<float, 12> corner_vertices{};
+        ColorData color{ 0.f, 0.f, 0.f, 1.f };
+    };
 
-    bool init(unsigned int back_framebuffer_id)
-    {
-        assert(!initialized);               // Call once
-        if (initialized)
-            return true;
+    Impl(const Settings& settings, const stdutils::io::ErrorHandler* err_handler);
+    ~Impl();
 
-        // Store the back framebuffer identifier (usually 0)
-        gl_back_framebuffer_id = back_framebuffer_id;
-
-        // Programs
-        bool success = true;
-        {
-            gl_program_ids.main = gl_compile_shaders(VertexShaderSource::main, FragmentShaderSource::main, err_handler);
-            if (gl_program_ids.main == 0u)
-                return false;
-
-            success &= gl_get_uniform_location(gl_program_ids.main, "mat_proj",  &gl_locations.main.mat_proj, err_handler);
-            success &= gl_get_uniform_location(gl_program_ids.main, "uni_color", &gl_locations.main.uni_color, err_handler);
-            success &= gl_get_uniform_location(gl_program_ids.main, "pt_size",   &gl_locations.main.pt_size, err_handler);
-            success &= gl_get_attrib_location (gl_program_ids.main, "v_pos",     &gl_locations.main.v_pos, err_handler);
-        }
-
-        // Pipeline general configuration
-        glEnable(GL_BLEND);
-        glBlendEquation(GL_FUNC_ADD);
-        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
-        glDisable(GL_CULL_FACE);
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_STENCIL_TEST);
-        glEnable(GL_LINE_SMOOTH);
-        glDisable(GL_POLYGON_SMOOTH);
-        glEnable(GL_PROGRAM_POINT_SIZE);
-
-        // Buffers
-        // VBO 0: background corner vertices
-        // VBO 1: assets vertices
-        // VBO 2: assets indices
-        glGenBuffers(N_BUFFERS, &gl_buffers[0]);
-
-        // Vertex Arrays
-        glGenVertexArrays(N_VAOS, &gl_vaos[0]);
-
-        // VAO 0: background
-        glBindVertexArray(gl_vaos[0]);
-        glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[0]);
-        glEnableVertexAttribArray(gl_locations.main.v_pos);
-        glVertexAttribPointer(gl_locations.main.v_pos, 3, GL_FLOAT, /* normalized */ GL_FALSE, /* stride */ 0, GLoffsetf(0));
-
-        // VAO 1: main renderer
-        glBindVertexArray(gl_vaos[1]);
-        glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[1]);
-        glEnableVertexAttribArray(gl_locations.main.v_pos);
-        glVertexAttribPointer(gl_locations.main.v_pos, 3, GL_FLOAT, /* normalized */ GL_FALSE, /* stride */ 0, GLoffsetf{0});
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_buffers[2]);
-
-        initialized = success;
-        return initialized;
-    }
-
-    bool init_framebuffer(int width, int height)
-    {
-        if (width <= 0 || height <= 0)
-            return true;    // Minimized window. Do nothing.
-
-        framebuffer_size = std::pair<int, int>(width, height);
-        return true;
-    }
-
-    void clear_framebuffer(ColorData clear_color)
-    {
-        glViewport(0, 0, framebuffer_size.first, framebuffer_size.second);
-        glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
-        glClear(GL_COLOR_BUFFER_BIT);           // No depth buffer to clear
-    }
-
-    void set_opengl_viewport(const Canvas<float>& canvas)
-    {
-        // Set the viewport for the current framebuffer
-        // NB: The (0, 0) position in OpenGL is the bottom-left corner of the window, and the Y-axis is in the "up" direction.
-        // For that reason we need to transform the y value of the bottom-left corner of our canvas.
-        const ScreenPos canvas_bl(canvas.get_tl_corner().x, canvas.get_br_corner().y);
-        const auto canvas_sz = canvas.get_size();
-        const float window_height = static_cast<float>(framebuffer_size.second);
-        glViewport(static_cast<GLint>(canvas_bl.x), static_cast<GLint>(window_height - canvas_bl.y), static_cast<GLsizei>(canvas_sz.x), static_cast<GLsizei>(canvas_sz.y));
-    }
-
-    void update_corner_vertices(const Canvas<float>& canvas) {
-        const auto bb = canvas.actual_bounding_box();
-        background_corner_vertices = {
-            bb.min().x, bb.min().y, 0.f,
-            bb.min().x, bb.max().y, 0.f,
-            bb.max().x, bb.min().y, 0.f,
-            bb.max().x, bb.max().y, 0.f
-        };
-        glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[0]);
-        glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(background_corner_vertices), static_cast<const void*>(background_corner_vertices.data()), GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    void update_assets_buffers()
-    {
-        if (draw_list_last_buffer_version != draw_list.buffer_version())
-        {
-            glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[1]);
-            glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(draw_list.m_vertices), static_cast<const void*>(draw_list.m_vertices.data()), GL_STATIC_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_buffers[2]);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, gl_size_in_bytes(draw_list.m_indices), static_cast<const void*>(draw_list.m_indices.data()), GL_STATIC_DRAW);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        }
-        draw_list_last_buffer_version = draw_list.buffer_version();
-    }
-
-    void render_background(const lin::mat4f& mat_proj)
-    {
-        glBindVertexArray(gl_vaos[0]);
-        glUseProgram(gl_program_ids.main);
-        glUniformMatrix4fv(static_cast<GLint>(gl_locations.main.mat_proj), 1, GL_TRUE, mat_proj.data());
-        glUniform4fv(static_cast<GLint>(gl_locations.main.uni_color), 1, background_color.data());
-        glUniform1f(static_cast<GLint>(gl_locations.main.pt_size), 1.f);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-        glUseProgram(0);
-        glBindVertexArray(0);
-    }
-
-    void render_assets(const lin::mat4f& mat_proj)
-    {
-        if (draw_list.m_draw_calls.empty()) { return; }
-        if (draw_list.buffer_version() == 0) { return; }
-
-        // Run main program
-        glBindVertexArray(gl_vaos[1]);
-        glUseProgram(gl_program_ids.main);
-        glUniformMatrix4fv(static_cast<GLint>(gl_locations.main.mat_proj), 1, GL_TRUE, mat_proj.data());
-        for (const auto& draw_call : draw_list.m_draw_calls)
-        {
-            assert(draw_call.m_range.first <= draw_call.m_range.second);
-            const auto count = static_cast<GLsizei>(draw_call.m_range.second - draw_call.m_range.first);
-            glUniform4fv(static_cast<GLint>(gl_locations.main.uni_color), 1, draw_call.m_uniform_color.data());
-            glUniform1f(static_cast<GLint>(gl_locations.main.pt_size), draw_call.m_uniform_point_size);
-            glDrawElements(to_gl_draw_cmd(draw_call.m_cmd), count, GL_UNSIGNED_INT, GLoffsetui(draw_call.m_range.first));
-        }
-        glUseProgram(0);
-        glBindVertexArray(0);
-    }
-
-    void render(const Canvas<float>& viewport_canvas, Flag::type flags)
-    {
-        if (framebuffer_size.first == 0 || framebuffer_size.second == 0)
-            return;
-
-        // Set OpenGL viewport for the main framebuffer
-        set_opengl_viewport(viewport_canvas);
-
-        // Vertex buffers
-        update_corner_vertices(viewport_canvas);
-        update_assets_buffers();
-
-        // Projection matrix
-        const bool flip_y = flags & Flag::FlipYAxis;
-        const auto bb = viewport_canvas.actual_bounding_box();
-        const auto mat_proj = gl_orth_proj_mat(bb, flip_y);
-
-        // Render background
-        if ((flags & Flag::ViewportBackground) && has_background) { render_background(mat_proj); }
-
-        // Render assets
-        render_assets(mat_proj);
-    }
-
-    void render_viewport_background(const Canvas<float>& viewport_canvas)
-    {
-        if (framebuffer_size.first == 0 || framebuffer_size.second == 0)
-            return;
-
-        if (!has_background)
-            return;
-
-        // Set OpenGL viewport for the main framebuffer
-        set_opengl_viewport(viewport_canvas);
-
-        // Vertex buffers
-        update_corner_vertices(viewport_canvas);
-
-        // Projection matrix
-        const auto bb = viewport_canvas.actual_bounding_box();
-        const auto mat_proj = gl_orth_proj_mat(bb);
-
-        // Render background
-        render_background(mat_proj);
-    }
+    bool initialize_pipeline(const Settings& settings);
+    bool init_framebuffer(int width, int height);
+    void clear_framebuffer(ColorData clear_color);
+    void set_opengl_viewport(const Canvas<float>& canvas);
+    void update_corner_vertices(const Canvas<float>& canvas);
+    void update_assets_buffers();
+    void render_background();
+    void render_assets();
+    void render(const Canvas<float>& viewport_canvas, Flag::type flags);
+    void render_viewport_background(const Canvas<float>& viewport_canvas);
 
     bool initialized;
     DrawList draw_list;
@@ -343,14 +141,240 @@ struct Draw2D::Impl
     std::pair<int, int> framebuffer_size;
     std::array<GLuint, N_VAOS> gl_vaos;
     std::array<GLuint, N_BUFFERS> gl_buffers;
-    bool has_background;
-    std::array<float, 12> background_corner_vertices;
-    ColorData background_color;
+    lin::mat4f mat_proj;
+    Background background;
     const stdutils::io::ErrorHandler* err_handler;
 };
 
-Draw2D::Draw2D(const stdutils::io::ErrorHandler* err_handler)
-    : p_impl(std::make_unique<Impl>(err_handler))
+Draw2D::Impl::Impl(const Settings& settings, const stdutils::io::ErrorHandler* err_handler)
+    : initialized{false}
+    , draw_list()
+    , draw_list_last_buffer_version{0u}
+    , gl_program_ids{}
+    , gl_locations{}
+    , gl_back_framebuffer_id{settings.back_framebuffer_id}
+    , framebuffer_size(0, 0)
+    , gl_vaos()
+    , gl_buffers()
+    , mat_proj(lin::mat4f::identity())
+    , background{}
+    , err_handler(err_handler)
+{
+    // Programs
+    bool success = true;
+    {
+        gl_program_ids.main = gl_compile_shaders(VertexShaderSource::main, FragmentShaderSource::main, err_handler);
+        if (gl_program_ids.main == 0u)
+            return;
+
+        success &= gl_get_uniform_location(gl_program_ids.main, "mat_proj",  &gl_locations.main.mat_proj, err_handler);
+        success &= gl_get_uniform_location(gl_program_ids.main, "uni_color", &gl_locations.main.uni_color, err_handler);
+        success &= gl_get_uniform_location(gl_program_ids.main, "pt_size",   &gl_locations.main.pt_size, err_handler);
+        success &= gl_get_attrib_location (gl_program_ids.main, "v_pos",     &gl_locations.main.v_pos, err_handler);
+    }
+
+    success &= initialize_pipeline(settings);
+
+    initialized = success;
+}
+
+Draw2D::Impl::~Impl()
+{
+    glDeleteVertexArrays(N_VAOS, &gl_vaos[0]);
+    glDeleteBuffers(N_BUFFERS, &gl_buffers[0]);
+    if (gl_program_ids.main != 0u) { glDeleteProgram(gl_program_ids.main); }
+}
+
+bool Draw2D::Impl::initialize_pipeline(const Settings& settings)
+{
+    // Pipeline general configuration
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
+    glDisable(GL_MULTISAMPLE);
+    if (settings.line_smooth)
+        glEnable(GL_LINE_SMOOTH);
+    else
+        glDisable(GL_LINE_SMOOTH);
+    glDisable(GL_POLYGON_SMOOTH);
+    glEnable(GL_PROGRAM_POINT_SIZE);
+
+    // Buffers
+    // VBO 0: background corner vertices
+    // VBO 1: assets vertices
+    // VBO 2: assets indices
+    glGenBuffers(N_BUFFERS, &gl_buffers[0]);
+
+    // Vertex Arrays
+    glGenVertexArrays(N_VAOS, &gl_vaos[0]);
+
+    // VAO 0: background
+    glBindVertexArray(gl_vaos[0]);
+    glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[0]);
+    glEnableVertexAttribArray(gl_locations.main.v_pos);
+    glVertexAttribPointer(gl_locations.main.v_pos, 3, GL_FLOAT, /* normalized */ GL_FALSE, /* stride */ 0, GLoffsetf(0));
+
+    // VAO 1: main renderer
+    glBindVertexArray(gl_vaos[1]);
+    glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[1]);
+    glEnableVertexAttribArray(gl_locations.main.v_pos);
+    glVertexAttribPointer(gl_locations.main.v_pos, 3, GL_FLOAT, /* normalized */ GL_FALSE, /* stride */ 0, GLoffsetf{0});
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_buffers[2]);
+
+    glBindVertexArray(0);
+
+    return true;
+}
+
+bool Draw2D::Impl::init_framebuffer(int width, int height)
+{
+    assert(initialized);
+    if (width <= 0 || height <= 0)
+        return true;    // Minimized window. Do nothing.
+
+    framebuffer_size = std::pair<int, int>(width, height);
+    return true;
+}
+
+void Draw2D::Impl::clear_framebuffer(ColorData clear_color)
+{
+    assert(initialized);
+    glViewport(0, 0, framebuffer_size.first, framebuffer_size.second);
+    glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
+    glClear(GL_COLOR_BUFFER_BIT);           // No depth buffer to clear
+}
+
+void Draw2D::Impl::set_opengl_viewport(const Canvas<float>& canvas)
+{
+    assert(initialized);
+    // Set the viewport (coordinates transformation from clip space to window space)
+    // NB: The (0, 0) position in OpenGL is the bottom-left corner of the window, and the Y-axis is in the "up" direction.
+    // For that reason we need to transform the y value of the bottom-left corner of our canvas.
+    const ScreenPos canvas_bl(canvas.get_tl_corner().x, canvas.get_br_corner().y);
+    const auto canvas_sz = canvas.get_size();
+    const float window_height = static_cast<float>(framebuffer_size.second);
+    glViewport(static_cast<GLint>(canvas_bl.x), static_cast<GLint>(window_height - canvas_bl.y), static_cast<GLsizei>(canvas_sz.x), static_cast<GLsizei>(canvas_sz.y));
+}
+
+void Draw2D::Impl::update_corner_vertices(const Canvas<float>& canvas) {
+    assert(initialized);
+    const auto bb = canvas.actual_bounding_box();
+    background.corner_vertices = {
+        bb.min().x, bb.min().y, 0.f,
+        bb.min().x, bb.max().y, 0.f,
+        bb.max().x, bb.min().y, 0.f,
+        bb.max().x, bb.max().y, 0.f
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[0]);
+    glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(background.corner_vertices), static_cast<const void*>(background.corner_vertices.data()), GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void Draw2D::Impl::update_assets_buffers()
+{
+    assert(initialized);
+    assert(draw_list_last_buffer_version <= draw_list.buffer_version());
+    if (draw_list_last_buffer_version != draw_list.buffer_version())
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[1]);
+        glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(draw_list.m_vertices), static_cast<const void*>(draw_list.m_vertices.data()), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_buffers[2]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, gl_size_in_bytes(draw_list.m_indices), static_cast<const void*>(draw_list.m_indices.data()), GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+    draw_list_last_buffer_version = draw_list.buffer_version();
+}
+
+void Draw2D::Impl::render_background()
+{
+    assert(initialized);
+    glBindVertexArray(gl_vaos[0]);
+    glUseProgram(gl_program_ids.main);
+    glUniformMatrix4fv(static_cast<GLint>(gl_locations.main.mat_proj), 1, GL_TRUE, mat_proj.data());
+    glUniform4fv(static_cast<GLint>(gl_locations.main.uni_color), 1, background.color.data());
+    glUniform1f(static_cast<GLint>(gl_locations.main.pt_size), 1.f);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void Draw2D::Impl::render_assets()
+{
+    assert(initialized);
+    if (draw_list.m_draw_calls.empty()) { return; }
+    if (draw_list.buffer_version() == 0) { return; }
+
+    // Run main program
+    glBindVertexArray(gl_vaos[1]);
+    glUseProgram(gl_program_ids.main);
+    glUniformMatrix4fv(static_cast<GLint>(gl_locations.main.mat_proj), 1, GL_TRUE, mat_proj.data());
+    for (const auto& draw_call : draw_list.m_draw_calls)
+    {
+        assert(draw_call.m_range.first <= draw_call.m_range.second);
+        const auto count = static_cast<GLsizei>(draw_call.m_range.second - draw_call.m_range.first);
+        glUniform4fv(static_cast<GLint>(gl_locations.main.uni_color), 1, draw_call.m_uniform_color.data());
+        glUniform1f(static_cast<GLint>(gl_locations.main.pt_size), draw_call.m_uniform_point_size);
+        const auto draw_cmd = static_cast<std::size_t>(draw_call.m_cmd);                                                                    assert(draw_cmd < stdutils::enum_size<DrawCmd>());
+        glDrawElements(lookup_gl_draw_cmd[draw_cmd], count, GL_UNSIGNED_INT, GLoffsetui(draw_call.m_range.first));
+    }
+    glUseProgram(0);
+    glBindVertexArray(0);
+}
+
+void Draw2D::Impl::render(const Canvas<float>& viewport_canvas, Flag::type flags)
+{
+    assert(initialized);
+    if (framebuffer_size.first == 0 || framebuffer_size.second == 0)
+        return;
+
+    // Set OpenGL viewport
+    set_opengl_viewport(viewport_canvas);
+
+    // Vertex buffers
+    update_corner_vertices(viewport_canvas);
+    update_assets_buffers();
+
+    // Projection matrix
+    const bool flip_y = flags & Flag::FlipYAxis;
+    const auto bb = viewport_canvas.actual_bounding_box();
+    mat_proj = gl_orth_proj_mat(bb, flip_y);
+
+    // Render background
+    if ((flags & Flag::ViewportBackground) && background.enabled) { render_background(); }
+
+    // Render assets
+    render_assets();
+}
+
+void Draw2D::Impl::render_viewport_background(const Canvas<float>& viewport_canvas)
+{
+    assert(initialized);
+    if (framebuffer_size.first == 0 || framebuffer_size.second == 0)
+        return;
+
+    if (!background.enabled)
+        return;
+
+    // Set OpenGL viewport
+    set_opengl_viewport(viewport_canvas);
+
+    // Vertex buffers
+    update_corner_vertices(viewport_canvas);
+
+    // Projection matrix
+    const auto bb = viewport_canvas.actual_bounding_box();
+    mat_proj = gl_orth_proj_mat(bb);
+
+    // Render background
+    render_background();
+}
+
+Draw2D::Draw2D(const Settings& settings, const stdutils::io::ErrorHandler* err_handler)
+    : p_impl(std::make_unique<Impl>(settings, err_handler))
 { }
 
 Draw2D::~Draw2D() = default;
@@ -358,11 +382,6 @@ Draw2D::~Draw2D() = default;
 Draw2D::Draw2D(Draw2D&&) noexcept = default;
 
 Draw2D& Draw2D::operator=(Draw2D&&) noexcept = default;
-
-bool Draw2D::init(unsigned int back_framebuffer_id)
-{
-    return p_impl->init(back_framebuffer_id);
-}
 
 bool Draw2D::initialized() const
 {
@@ -381,19 +400,19 @@ void Draw2D::clear_framebuffer(ColorData clear_color)
 
 void Draw2D::set_viewport_background_color(const ColorData& color)
 {
-    p_impl->has_background = true;
-    p_impl->background_color = color;
+    p_impl->background.enabled = true;
+    p_impl->background.color = color;
 }
 
 void Draw2D::set_viewport_background_color(float r, float g, float b, float a)
 {
-    p_impl->has_background = true;
-    p_impl->background_color = { r, g, b, a };
+    p_impl->background.enabled = true;
+    p_impl->background.color = { r, g, b, a };
 }
 
 void Draw2D::no_viewport_background()
 {
-    p_impl->has_background = false;
+    p_impl->background.enabled = false;
 }
 
 DrawList& Draw2D::draw_list()

@@ -8,7 +8,7 @@ template <typename F>
 void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F>& draw_commands, bool update_buffers, const DrawingOptions& options)
 {
     // TODO When buffer are not updated, they are written again (to identical values)
-    if (update_buffers) { draw_list.reset(); } else { draw_list.clear_no_reset(); }
+    if (update_buffers || draw_list.buffer_version() == 0) { draw_list.clear_all(); } else { draw_list.clear_no_reset(); }
 
     DrawingOptions local_options = options;
     for (const auto& draw_command : draw_commands)
