@@ -1,6 +1,6 @@
 // Copyright (c) 2023 Pierre DEJOUE
 // This code is distributed under the terms of the MIT License
-#include "opengl_and_glfw.h"
+#include <base/opengl_and_glfw.h>
 
 #include <stdutils/macros.h>
 

@@ -7,10 +7,13 @@
 #include <shapes/vect.h>
 
 #include <cassert>
-
+#include <type_traits>
 
 using ScreenPos = shapes::Vect2d<float>;
 using ScreenSize = shapes::Vect2d<float>;
+using ScreenBB = shapes::BoundingBox2d<float>;
+template <typename F>
+using WorldSpaceBB = shapes::BoundingBox2d<F>;
 
 /**
  * Canvas
@@ -25,6 +28,7 @@ using ScreenSize = shapes::Vect2d<float>;
 template <typename F>
 class Canvas
 {
+    static_assert(std::is_floating_point_v<F>);
 public:
     Canvas()
         : tl_corner(0.f, 0.f)
@@ -37,7 +41,7 @@ public:
         // NB: The default Canvas is invalid
     }
 
-    Canvas(ScreenPos tl_corner, ScreenSize size, const shapes::BoundingBox2d<F>& bb, bool flip_y = false)
+    Canvas(ScreenPos tl_corner, ScreenSize size, const WorldSpaceBB<F>& bb, bool flip_y = false)
         : tl_corner(tl_corner)
         , size(size)
         , bb_corner()
@@ -67,13 +71,22 @@ public:
         assert(scale > F{0});
     }
 
-    Canvas(float x, float y, float width, float height, const shapes::BoundingBox2d<F>& bb, bool flip_y = false)
+    Canvas(float x, float y, float width, float height, const WorldSpaceBB<F>& bb, bool flip_y = false)
         : Canvas(ScreenPos(x, y), ScreenSize(width, height), bb, flip_y)
+    {}
+
+    Canvas(const ScreenBB& screen_bb, const WorldSpaceBB<F>& bb, bool flip_y = false)
+        : Canvas(screen_bb.min(), screen_bb.extent(), bb, flip_y)
     {}
 
     F get_scale() const
     {
         return scale;
+    }
+
+    bool get_flip_y() const
+    {
+        return flip_y;
     }
 
     ScreenPos get_tl_corner() const
@@ -86,9 +99,19 @@ public:
         return ScreenPos(tl_corner.x + size.x, tl_corner.y + size.y);
     }
 
+    ScreenBB get_screen_bounding_box() const
+    {
+        return ScreenBB().add(tl_corner).add(get_br_corner());
+    }
+
     ScreenSize get_size() const
     {
         return size;
+    }
+
+    F to_screen(const F& length) const
+    {
+        return length * scale;
     }
 
     ScreenPos to_screen(const shapes::Point2d<F>& p) const
@@ -99,6 +122,11 @@ public:
             bb_corner.x + static_cast<float>(scale * (p.x - bb.rx.min)),
             bb_corner.y + static_cast<float>(scale * (flip_y ? (p.y - bb.ry.min) : (bb.ry.max - p.y)))
         );
+    }
+
+    F to_world(const F& length) const
+    {
+        return length / scale;
     }
 
     shapes::Point2d<F> to_world(const ScreenPos& p) const
@@ -140,26 +168,34 @@ public:
     }
 
     // The bounding box of the geometry
-    const shapes::BoundingBox2d<F>& geometry_bounding_box() const
+    const WorldSpaceBB<F>& geometry_bounding_box() const
     {
         return bb;
     }
 
     // The bounding box exactly matching the drawing canvas
-    shapes::BoundingBox2d<F> actual_bounding_box() const
+    WorldSpaceBB<F> actual_bounding_box() const
     {
-        return shapes::BoundingBox2d<F>().add(min()).add(max());
+        return WorldSpaceBB<F>().add(min()).add(max());
+    }
+
+    bool operator==(const Canvas<F>& other) const
+    {
+        return tl_corner == other.tl_corner
+            && size == other.size
+            && flip_y == other.flip_y
+            && bb == other.bb;
     }
 
 private:
     // Drawing canvas coordinates on the screen
     ScreenPos tl_corner;
     ScreenSize size;
-    ScreenPos bb_corner;       // /!\ Not the br_corner
-    bool flip_y;            // If false, the Y-axis of the world space is in the "up" direction.
+    ScreenPos bb_corner;        // /!\ Not the br_corner
+    bool flip_y;                // If false, the Y-axis of the world space is in the "up" direction.
 
     // Geometrical region (world space)
-    shapes::BoundingBox2d<F> bb;
+    WorldSpaceBB<F> bb;
 
     // Conversion scale that preserves the aspect ratio
     F scale;
@@ -169,6 +205,18 @@ template <typename F>
 bool is_valid(const Canvas<F>& canvas)
 {
     return canvas.get_scale() > F{0};
+}
+
+template <typename F0, typename F1>
+Canvas<F1> cast(const Canvas<F0>& canvas_src)
+{
+    const auto bb_tgt = shapes::cast<F0, F1>(canvas_src.geometry_bounding_box());
+    return Canvas<F1>(
+        canvas_src.get_tl_corner(),
+        canvas_src.get_size(),
+        bb_tgt,
+        canvas_src.get_flip_y()
+    );
 }
 
 /**

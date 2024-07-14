@@ -2,12 +2,20 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include "canvas.h"
-#include "color_data.h"
-#include "drawing_options.h"
-#include "imgui_wrap.h"
-#include "window_layout.h"
+/*********************************************************
+ *
+ * Dear ImGui + helper functions
+ *
+ *********************************************************/
+#if defined(__GNUC__)
+#pragma GCC system_header
+#endif
 
+#include <imgui.h>
+
+#include <base/canvas.h>
+#include <base/color_data.h>
+#include <base/window_layout.h>
 #include <shapes/vect.h>
 
 #include <ostream>
@@ -41,7 +49,8 @@ namespace ImGui {
 
 void HelpMarker(const char* desc);          // Function taken from imgui_demo.cpp
 void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond = 0);
-}
+
+} // namespace ImGui
 
 // Do not call this class ImGuiContext because this is an internal class of Dear ImGui
 struct GLFWwindow;
@@ -59,6 +68,3 @@ public:
     void render() const;
     void backend_info(std::ostream& out) const;
 };
-
-template <typename F>
-void update_imgui_draw_list(ImDrawList& draw_list, const DrawCommands<F>& draw_commands, const Canvas<F>& canvas, const DrawingOptions& options);

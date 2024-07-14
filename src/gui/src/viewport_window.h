@@ -1,10 +1,10 @@
 #pragma once
 
-#include "canvas.h"
-#include "color_data.h"
 #include "draw_command.h"
-#include "window_layout.h"
 
+#include <base/canvas.h>
+#include <base/color_data.h>
+#include <base/window_layout.h>
 #include <shapes/bounding_box.h>
 #include <shapes/point.h>
 #include <shapes/shapes.h>

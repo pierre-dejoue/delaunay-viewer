@@ -1,6 +1,6 @@
 #include "style.h"
 
-#include <imgui_wrap.h>
+#include <imgui/imgui.h>
 
 namespace {
     constexpr ImColor WindowBackgroundColor_Classic(29, 75, 99, 217);

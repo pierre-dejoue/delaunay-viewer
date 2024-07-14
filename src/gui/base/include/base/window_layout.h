@@ -2,7 +2,7 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include "canvas.h"
+#include <base/canvas.h>
 
 #include <algorithm>
 #include <cassert>

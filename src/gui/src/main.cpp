@@ -18,8 +18,8 @@
 #include "shape_control_window.h"
 #include "style.h"
 #include "viewport_window.h"
-#include "window_layout.h"
 
+#include <base/window_layout.h>
 #include <dt/dt_impl.h>
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
@@ -31,10 +31,9 @@
 #include <svg/svg.h>
 
 // Order matters in this section
-#include <imgui_wrap.h>
-#include "imgui_helpers.h"
+#include <imgui/imgui.h>
 #include <pfd_wrap.h>
-#include "opengl_and_glfw.h"
+#include <base/opengl_and_glfw.h>
 
 #include <algorithm>
 #include <array>

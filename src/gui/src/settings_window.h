@@ -2,7 +2,8 @@
 
 #include "dt_tracker.h"
 #include "viewport_window.h"
-#include "window_layout.h"
+
+#include <base/window_layout.h>
 
 #include <string>
 

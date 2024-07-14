@@ -2,8 +2,7 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include "color_data.h"
-
+#include <base/color_data.h>
 #include <shapes/shapes.h>
 
 struct PrimitiveProperties

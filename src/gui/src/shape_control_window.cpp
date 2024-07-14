@@ -1,19 +1,17 @@
 #include "shape_control_window.h"
 
-#include "imgui_helpers.h"
 #include "settings.h"
 
 #include <dt/dt_impl.h>
 #include <dt/dt_interface.h>
 #include <dt/proximity_graphs.h>
+#include <imgui/imgui.h>
 #include <shapes/bounding_box_algos.h>
 #include <shapes/sampling.h>
 #include <stdutils/chrono.h>
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
 #include <stdutils/visit.h>
-
-#include <imgui_wrap.h>
 
 #include <algorithm>
 #include <cassert>

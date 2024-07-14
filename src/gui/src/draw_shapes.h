@@ -2,20 +2,18 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include "canvas.h"
-#include "color_data.h"
 #include "draw_command.h"
 #include "drawing_options.h"
-#include "imgui_helpers.h"
 #include "renderer.h"
 
+#include <base/canvas.h>
+#include <base/color_data.h>
+#include <imgui/imgui.h>
 #include <shapes/edge.h>
 #include <shapes/point_cloud.h>
 #include <shapes/path.h>
 #include <shapes/path_algos.h>
 #include <shapes/triangle.h>
-
-#include <imgui_wrap.h>
 
 #include <cassert>
 

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "canvas.h"
-#include "color_data.h"
 #include "draw_command.h"
 #include "dt_tracker.h"
 #include "settings.h"
 #include "viewport_window.h"
-#include "window_layout.h"
 
+#include <base/canvas.h>
+#include <base/color_data.h>
+#include <base/window_layout.h>
 #include <shapes/bounding_box.h>
 #include <shapes/io.h>
 #include <shapes/point.h>
