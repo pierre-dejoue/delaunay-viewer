@@ -35,7 +35,7 @@ using PointPath3d = PointPath<Point3d<F>>;
 template <typename P>
 bool valid_size(const PointPath<P>& pp)
 {
-    return !pp.closed || pp.vertices.size() > 2;
+    return !pp.closed || pp.vertices.size() > 1;
 }
 
 template <typename P>
@@ -49,7 +49,7 @@ std::size_t nb_edges(const PointPath<P>& pp)
 {
     assert(valid_size(pp));
     const auto sz = pp.vertices.size();
-    return pp.closed ? (sz > 2 ? sz : 0) : (sz > 0 ? sz - 1 : 0);
+    return pp.closed ? (sz > 1 ? sz : 0) : (sz > 0 ? sz - 1 : 0);
 }
 
 
