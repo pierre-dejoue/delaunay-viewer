@@ -2,6 +2,8 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
+#include <stdutils/enum.h>
+
 #include <algorithm>
 #include <cassert>
 #include <iterator>
@@ -33,6 +35,11 @@ template <class T>
 constexpr const T& clamp(const T& v, const T& lo, const T& hi, bool& clamped) { assert(lo <= hi); const T& r = std::clamp(v, lo, hi); clamped = (r != v); return r; }
 template <class T, class Compare>
 constexpr const T& clamp(const T& v, const T& lo, const T& hi, Compare comp, bool& clamped) { assert(!comp(hi, lo)); const T& r = std::clamp(v, lo, hi, comp); clamped = (r != v); return r; }
+
+// Clamp enumeration values assuming the enumeration is a range starting with value 0 and ending with the special value _ENUM_SIZE_
+// NB: Cannot return const E& because the min/max clamp values are local to the definition
+template <class E>
+constexpr E clamp_enum(const E& v, bool& clamped) { static_assert(std::is_enum_v<E>); return clamp(v, enum_first_value<E>(), enum_last_value<E>(), clamped); }
 
 // Sort three elements
 template <typename T>
@@ -73,6 +80,9 @@ void clear_using_pop(C<T>& container);
 // Stable merge (based on std::merge)
 template <typename T, template <typename...> class C, typename Compare>
 void merge(C<T>& dst, const C<T>& src, Compare comp);
+
+template <typename Func>
+void repeat_n_times(std::size_t n, Func f);
 
 
 //
@@ -205,6 +215,12 @@ void merge(C<T>& dst, const C<T>& src, Compare comp)
     tmp.reserve(dst.size() + src.size());
     std::merge(dst.cbegin(), dst.cend(), src.cbegin(), src.cend(), std::back_insert_iterator(tmp), comp);
     std::swap(tmp, dst);
+}
+
+template <typename Func>
+void repeat_n_times(std::size_t n, Func f)
+{
+    while (n--) { f(); }
 }
 
 } // namespace stdutils

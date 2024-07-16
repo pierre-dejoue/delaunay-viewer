@@ -29,6 +29,7 @@ public:
     using const_reference = const T&;
 
 public:
+    Span() noexcept : m_ptr(nullptr), m_size(0) { }
     Span(T* ptr, std::size_t size) noexcept : m_ptr(ptr), m_size(size) { assert(m_ptr); }
     Span(const Span<T>&) noexcept = default;
     Span(Span<T>&&) noexcept = default;
@@ -37,16 +38,17 @@ public:
 
     // For qualification conversions (e.g. non-const T to const T)
     template <typename R>
-    Span(const Span<R>& other) noexcept : m_ptr(other.begin()), m_size(other.size()) { assert(m_ptr); }
+    Span(const Span<R>& other) noexcept : m_ptr(other.data()), m_size(other.size()) { assert(m_ptr); }
 
-    std::size_t size() const { return m_size; }
+    std::size_t size() const  noexcept { return m_size; }
+    bool empty() const noexcept { return m_size == 0 || m_ptr == nullptr; }
 
-    pointer data() { return m_ptr; }
-    pointer begin() { return m_ptr; }
-    pointer end() { return m_ptr + m_size; }
-    const_pointer data() const { return m_ptr; }
-    const_pointer begin() const { return m_ptr; }
-    const_pointer end() const { return m_ptr + m_size; }
+    pointer data() noexcept { return m_ptr; }
+    pointer begin() noexcept { return m_ptr; }
+    pointer end() noexcept { return m_ptr + m_size; }
+    const_pointer data() const noexcept { return m_ptr; }
+    const_pointer begin() const noexcept { return m_ptr; }
+    const_pointer end() const noexcept { return m_ptr + m_size; }
 
     reference operator[](std::size_t idx) { assert(idx < m_size); return *(m_ptr + idx); }
     const_reference operator[](std::size_t idx) const { assert(idx < m_size); return *(m_ptr + idx); }
@@ -74,6 +76,7 @@ template <typename T, std::size_t Sz>
 class Span<T, Sz, std::enable_if_t<Sz != dyn_extent>>
 {
     using this_type = Span<T, Sz, std::enable_if_t<Sz != dyn_extent>>;
+    static_assert(Sz > 0);
 
 public:
     using element_type = T;
@@ -96,14 +99,14 @@ public:
     template <typename R>
     Span(const Span<R, Sz, void>& other) noexcept : m_ptr(other.begin()) { assert(m_ptr); }
 
-    constexpr std::size_t size() const { return Sz; }
+    constexpr std::size_t size() const noexcept { return Sz; }
 
-    pointer data() { return m_ptr; }
-    pointer begin() { return m_ptr; }
-    pointer end() { return m_ptr + Sz; }
-    const_pointer data() const { return m_ptr; }
-    const_pointer begin() const { return m_ptr; }
-    const_pointer end() const { return m_ptr + Sz; }
+    pointer data() noexcept { return m_ptr; }
+    pointer begin() noexcept { return m_ptr; }
+    pointer end() noexcept { return m_ptr + Sz; }
+    const_pointer data() const noexcept { return m_ptr; }
+    const_pointer begin() const noexcept { return m_ptr; }
+    const_pointer end() const noexcept { return m_ptr + Sz; }
 
     reference operator[](std::size_t idx) { assert(idx < Sz); return *(m_ptr + idx); }
     const_reference operator[](std::size_t idx) const { assert(idx < Sz); return *(m_ptr + idx); }
