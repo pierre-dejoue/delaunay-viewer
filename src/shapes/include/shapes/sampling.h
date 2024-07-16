@@ -13,6 +13,7 @@
 #include <cassert>
 #include <execution>
 #include <iterator>
+#include <stack>
 
 namespace shapes {
 
@@ -100,6 +101,24 @@ using UniformSamplingCubicBezier2d = UniformSamplingCubicBezier<F, Point2d>;
  */
 template <typename F, template<typename> typename P>
 stdutils::stats::Result<F> path_normalized_uniformity_stats(const shapes::PointPath<P<F>>& pp);
+
+/**
+ * Casteljau sampling of a CBP
+ */
+template <typename F, template<typename> typename P>
+class CasteljauSamplingCubicBezier
+{};
+
+template <typename F>
+class CasteljauSamplingCubicBezier<F, Point2d>
+{
+public:
+    CasteljauSamplingCubicBezier();
+    PointPath<Point2d<F>> sample(const CubicBezierPath<Point2d<F>>& cbp, F resolution_length) const;
+};
+
+template <typename F>
+using CasteljauSamplingCubicBezier2d = CasteljauSamplingCubicBezier<F, Point2d>;
 
 
 //
@@ -477,6 +496,114 @@ stdutils::stats::Result<F> path_normalized_uniformity_stats(const shapes::PointP
     stdutils::stats::CumulSamples<F> stats;
     stats.add_samples(edge_lengths.cbegin(), edge_lengths.cend());
     return stats.get_result().normalize_to_mean();
+}
+
+
+namespace details {
+
+enum class CasteljauState
+{
+    First,
+    Mid,
+    Last,
+};
+
+template <typename F>
+using CasteljauStackElement = CasteljauCubicBezier2d<F>;
+
+template <typename F>
+bool casteljau_split_predicate(const CasteljauCubicBezier2d<F>& casteljau, F resolution_sq)
+{
+    assert(resolution_sq);
+    const auto bezier = casteljau.bezier();
+    const F* p = bezier.cps();
+    assert(p);
+    const Point2d<F> p0(p[0], p[1]);
+    const Point2d<F> p1(p[2], p[3]);
+    const Point2d<F> p2(p[4], p[5]);
+    const Point2d<F> p3(p[6], p[7]);
+    const Vect2d<F> q = p3 - p0;
+    const F a0 = std::abs(cross_product(q, p1 - p0));
+    const F a1 = std::abs(cross_product(q, p3 - p2));
+    return (a0 + a1) * (a0 + a1) > resolution_sq * sq_norm(q);
+}
+
+} // namespace details
+
+template <typename F>
+CasteljauSamplingCubicBezier<F, Point2d>::CasteljauSamplingCubicBezier() = default;
+
+template <typename F>
+PointPath<Point2d<F>> CasteljauSamplingCubicBezier<F, Point2d>::sample(const CubicBezierPath<Point2d<F>>& cbp, F resolution_length) const
+{
+    assert(resolution_length > F{0});
+    assert(!cbp.empty());
+
+    const F resolution_sq = resolution_length * resolution_length;
+    std::stack<details::CasteljauStackElement<F>> split_stack;
+
+    // Initialize the split stack with one element per CBP segment
+    if (cbp.closed)
+    {
+        const std::size_t N = cbp.vertices.size();
+        assert(N % 3 == 0);
+        // In the case of a closed CBP we're missing the last vertex and cannot directly map the last segment with a CubicBezierMap
+        std::array<Vect2d<F>, 4> last_segment;
+        last_segment[0] = cbp.vertices[N-3];
+        last_segment[1] = cbp.vertices[N-2];
+        last_segment[2] = cbp.vertices[N-1];
+        last_segment[3] = cbp.vertices[0];
+        split_stack.emplace(CasteljauCubicBezier2d<F>(CubicBezierMap2d<F>(&last_segment[0])));
+        const auto nb_segs = nb_segments(cbp);
+        // Skip the last segment which is already inserted onto the stack
+        for (std::size_t seg_idx_incr = nb_segs - 1; seg_idx_incr > 0; seg_idx_incr--)
+        {
+            const auto seg_idx = seg_idx_incr - 1;
+            split_stack.emplace(CasteljauCubicBezier2d<F>(CubicBezierMap2d<F>(&cbp.vertices[3 * seg_idx])));
+        }
+    }
+    else
+    {
+        const auto nb_segs = nb_segments(cbp);
+        for (std::size_t seg_idx_incr = nb_segs; seg_idx_incr > 0; seg_idx_incr--)
+        {
+            const auto seg_idx = seg_idx_incr - 1;
+            split_stack.emplace(CasteljauCubicBezier2d<F>(CubicBezierMap2d<F>(&cbp.vertices[3 * seg_idx])));
+        }
+    }
+    assert(split_stack.size() == nb_segments(cbp));
+
+    // Casteljau algo
+    PointPath2d<F> pp;
+    while (!split_stack.empty())
+    {
+        auto& casteljau = split_stack.top();
+
+        const bool must_split = details::casteljau_split_predicate<F>(casteljau, resolution_sq);
+
+        if (must_split)
+        {
+            // Split
+            CasteljauCubicBezier2d<F> casteljau_split0(casteljau.split0());
+            CasteljauCubicBezier2d<F> casteljau_split1(casteljau.split1());
+            std::swap(casteljau, casteljau_split1);
+            split_stack.emplace(std::move(casteljau_split0));
+        }
+        else
+        {
+            pp.vertices.emplace_back(casteljau.bezier().first());
+            split_stack.pop();
+        }
+    }
+
+    // Finalize the point path
+    if (!cbp.closed)
+    {
+        pp.vertices.emplace_back(cbp.vertices.back());
+    }
+    pp.closed = cbp.closed;
+
+    return pp;
 }
 
 } // namespace shapes

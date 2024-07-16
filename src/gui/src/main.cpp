@@ -19,6 +19,7 @@
 #include "style.h"
 #include "viewport_window.h"
 
+#include <base/canvas.h>
 #include <base/window_layout.h>
 #include <dt/dt_impl.h>
 #include <shapes/bounding_box.h>
@@ -339,9 +340,11 @@ int main(int argc, char *argv[])
         err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the renderer");
         return EXIT_FAILURE;
     }
+    CBPSegmentation<scalar> cbp_segmentation;
 
     // Main loop
     ViewportWindow::Key previously_selected_tab;
+    ViewportWindow::TabList tab_list;
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -388,6 +391,7 @@ int main(int argc, char *argv[])
 
         // Shape control window
         bool geometry_has_changed = false;
+        tab_list.clear();
         if (windows.shape_control)
         {
             assert(windows.viewport);
@@ -398,20 +402,13 @@ int main(int argc, char *argv[])
                 windows.shape_control.reset();              // Close window
                 windows.viewport->reset();                  // Not closed, just reset
                 draw_2d_renderer->draw_list().clear_all();
+                cbp_segmentation.clear_all();
                 previously_selected_tab = "";
             }
-        }
-
-        // Forward a selection of draw commands to the Viewport. Those will be rendered by ImGui on top of our rendering.
-        if (windows.shape_control)
-        {
-            assert(windows.viewport);
-            constexpr bool imgui_rendering = false; // settings.get_general_settings()->imgui_renderer;
-            for (const auto& [key, cmds] : windows.shape_control->get_draw_command_lists())
+            else
             {
-                DrawCommands<scalar> filtered_cmds;
-                std::copy_if(std::cbegin(cmds), std::cend(cmds), std::back_inserter(filtered_cmds), [imgui_rendering](const auto& cmd) { return imgui_rendering || is_bezier_path(*cmd.shape); });
-                windows.viewport->set_draw_commands(key, std::move(filtered_cmds));
+                const auto& dcls = windows.shape_control->get_draw_command_lists();
+                std::transform(std::cbegin(dcls), std::cend(dcls), std::back_inserter(tab_list), [](const auto& kvp) { return kvp.first; });
             }
         }
 
@@ -419,14 +416,14 @@ int main(int argc, char *argv[])
         if (windows.viewport)
         {
             bool can_be_erased = false;
-            windows.viewport->visit(can_be_erased, settings, windows.layout.viewport);
+            windows.viewport->visit(can_be_erased, tab_list, settings, windows.layout.viewport);
             assert(!can_be_erased);     // Always ON
             draw_2d_renderer->set_viewport_background_color(windows.viewport->get_background_color());
         }
 
         // Transfer draw lists to our renderer
         const auto drawing_options = drawing_options_from_settings(settings);
-        bool draw_list_up_to_date = false;
+        const DrawCommands<scalar>* draw_commands_ptr = nullptr;
         if (windows.shape_control)
         {
             const auto& dcls = windows.shape_control->get_draw_command_lists();
@@ -434,9 +431,8 @@ int main(int argc, char *argv[])
             const auto draw_commands_it = std::find_if(std::cbegin(dcls), std::cend(dcls), [&selected_tab](const auto& kvp) { return kvp.first == selected_tab; });
             if (draw_commands_it != std::cend(dcls))
             {
-                const bool update_buffers = geometry_has_changed || (selected_tab != previously_selected_tab);
-                update_opengl_draw_list<scalar>(draw_2d_renderer->draw_list(), draw_commands_it->second, update_buffers, drawing_options);
-                draw_list_up_to_date = true;
+                if (selected_tab != previously_selected_tab) { geometry_has_changed = true; }
+                draw_commands_ptr = &draw_commands_it->second;
                 previously_selected_tab = selected_tab;
             }
         }
@@ -462,18 +458,21 @@ int main(int argc, char *argv[])
             // Rendering flags
             renderer::Flag::type flags = renderer::Flag::ViewportBackground;;
             if (settings.get_general_settings()->flip_y) { flags |= renderer::Flag::FlipYAxis; }
-            const bool only_background = !windows.shape_control ||!draw_list_up_to_date; // || settings.get_general_settings()->imgui_renderer;
+            const bool only_background = !windows.shape_control || !draw_commands_ptr;
 
             // Render
-            const auto target_bb = shapes::cast<float, scalar>(windows.viewport->get_canvas_bounding_box());
-            const auto screen_bb = windows.viewport->get_viewport_bounding_box();
-            const auto viewport_canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
+            const auto viewport_canvas = cast<scalar, float>(windows.viewport->get_viewport_canvas());
             if (only_background)
             {
                 draw_2d_renderer->render_viewport_background(viewport_canvas);
             }
             else
             {
+                assert(draw_commands_ptr);
+                bool new_cbp_segmentation = false;
+                const DrawCommands<scalar>& transformed_draw_commands = cbp_segmentation.convert_cbps(*draw_commands_ptr, viewport_canvas, geometry_has_changed, new_cbp_segmentation);
+                const bool update_buffers = geometry_has_changed || new_cbp_segmentation;
+                update_opengl_draw_list<scalar>(draw_2d_renderer->draw_list(), transformed_draw_commands, update_buffers, drawing_options);
                 stable_sort_draw_commands(draw_2d_renderer->draw_list());
                 draw_2d_renderer->render(viewport_canvas, flags);
             }

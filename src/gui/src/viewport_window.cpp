@@ -1,7 +1,5 @@
 #include "viewport_window.h"
 
-#include "drawing_settings.h"
-#include "imgui_draw_list.h"
 #include "settings.h"
 
 #include <imgui/imgui.h>
@@ -34,8 +32,6 @@ ViewportWindow::ViewportWindow()
     , m_canvas_bounding_box()
     , m_prev_mouse_in_canvas(Canvas<scalar>())
     , m_zoom_selection_box()
-    , m_draw_command_lists()
-    , m_tabs()
     , m_latest_selected_tab()
     , m_background_color(to_float_color(CanvasBackgroundColor_Default))
     , m_steiner_checked(false)
@@ -46,11 +42,6 @@ ViewportWindow::ViewportWindow()
 
 void ViewportWindow::reset()
 {
-    // Reset tabs
-    m_tabs.clear();
-    m_draw_command_lists.clear();
-    m_draw_command_lists.emplace(s_default_tabs.front(), DrawCommands<scalar>());
-
     // Reset geometry properties
     m_geometry_bounding_box.add(scalar{0}, scalar{0}).add(scalar{1}, scalar{1});
     reset_zoom();
@@ -89,30 +80,11 @@ void ViewportWindow::pan(const shapes::Vect2d<scalar>& dir)
     m_canvas_bounding_box = shapes::BoundingBox2d<scalar>().add(tl_pan).add(br_pan);
 }
 
-void ViewportWindow::set_draw_commands(Key key, const DrawCommands<scalar>& draw_commands)
-{
-    // The tabs are arranged in the order they are initially received
-    if (m_draw_command_lists.count(key) == 0)
-        m_tabs.push_back(key);
-
-    m_draw_command_lists[key] = draw_commands;
-}
-
-void ViewportWindow::set_draw_commands(Key key, DrawCommands<scalar>&& draw_commands)
-{
-    // The tabs are arranged in the order they are initially received
-    if (m_draw_command_lists.count(key) == 0)
-        m_tabs.push_back(key);
-
-    m_draw_command_lists[key] = std::move(draw_commands);
-}
-
-void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz)
+void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const Settings& settings, const WindowLayout& win_pos_sz)
 {
     can_be_erased = false; // Always ON
 
     const bool flip_y_axis = settings.read_general_settings().flip_y;
-    const DrawingOptions options = drawing_options_from_settings(settings);
 
     ImGui::SetNextWindowPosAndSize(win_pos_sz);
     ImGui::SetNextWindowBgAlpha(0.f);           // Not using ImGuiWindowFlags_NoBackground here because this also removes the window outer border
@@ -193,7 +165,7 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
 
     if (ImGui::BeginTabBar("##TabBar"))
     {
-        const auto& tabs = !m_tabs.empty() ? m_tabs : s_default_tabs;
+        const auto& tabs = tab_list.empty() ? s_default_tabs : tab_list;
         assert(!tabs.empty());
         for (const auto& tab_name : tabs)
             if (ImGui::BeginTabItem(tab_name.c_str()))
@@ -258,10 +230,6 @@ void ViewportWindow::visit(bool& can_be_erased, const Settings& settings, const 
                 // Clip rectangle
                 draw_list->PushClipRect(tl_corner, br_corner, true);
 
-                // Render shapes with ImGui primitives
-                assert(m_draw_command_lists.count(tab_name));
-                update_imgui_draw_list<scalar>(*draw_list, m_draw_command_lists[tab_name], canvas, options);
-
                 // TODO : highlight bounding box
 
                 // Zoom rectangle
@@ -306,6 +274,15 @@ ViewportWindow::GeometryBB ViewportWindow::get_canvas_bounding_box() const
 ViewportWindow::ScreenBB ViewportWindow::get_viewport_bounding_box() const
 {
     return ScreenBB().add(m_prev_mouse_in_canvas.canvas.get_tl_corner()).add(m_prev_mouse_in_canvas.canvas.get_br_corner());
+}
+
+ViewportWindow::ViewportCanvas ViewportWindow::get_viewport_canvas() const
+{
+    const bool flip_y = m_prev_mouse_in_canvas.canvas.get_flip_y();
+    return Canvas<scalar>(
+        get_viewport_bounding_box(),
+        get_canvas_bounding_box(),
+        flip_y);
 }
 
 const ColorData& ViewportWindow::get_background_color() const

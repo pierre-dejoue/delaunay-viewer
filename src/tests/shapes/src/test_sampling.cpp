@@ -175,4 +175,35 @@ TEST_CASE("Sample cubic Bezier curves and measure accuracy", "[sampling]")
     }
 }
 
+TEST_CASE("Casteljau sampling of a CBP", "[sampling]")
+{
+    auto trace_out = stdutils::trace_open_file("cbp_sampling_casteljau.txt", "sampling");
+
+    using F = double;
+    shapes::CubicBezierPath2d<F> cbp;
+    cbp.closed = false;
+    cbp.vertices = std::vector<shapes::Point2d<F>> {
+        Point2d<F>(1, 0),
+        Point2d<F>(0, 1),
+        Point2d<F>(3, 1),
+        Point2d<F>(2, 0)
+    };
+
+    shapes::CasteljauSamplingCubicBezier2d<F> sampler;
+
+    shapes::io::ShapeAggregate<F> result;
+    result.emplace_back(cbp, "Source");
+    for (const auto resolution : std::vector<F> { 0.1, 0.01, 0.001 })
+    {
+        const auto pp = sampler.sample(cbp, resolution);
+        CHECK(pp.closed == cbp.closed);
+        trace_out << "Resolution length: " << resolution << "; sampling edges: " << nb_edges(pp) << "\n";
+        {
+            std::stringstream out;
+            out << "Casteljau sampling with resolution length = " << resolution;
+            result.emplace_back(pp, out.str());
+        }
+    }
+}
+
 } // namespace shapes

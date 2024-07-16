@@ -22,6 +22,8 @@ struct PointPath
     static constexpr int dim = P::dim;
     using scalar = typename P::scalar;
     PointPath() : closed(false), vertices() {}
+    bool is_closed() const;
+    bool empty() const;
     bool closed;
     std::vector<P> vertices;
 };
@@ -42,6 +44,18 @@ template <typename P>
 bool is_valid(const PointPath<P>& pp)
 {
     return valid_size(pp) && std::all_of(pp.vertices.begin(), pp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); });
+}
+
+template <typename P>
+bool PointPath<P>::is_closed() const
+{
+    return closed;
+}
+
+template <typename P>
+bool PointPath<P>::empty() const
+{
+    return vertices.empty();
 }
 
 template <typename P>
@@ -66,6 +80,8 @@ struct CubicBezierPath
     static constexpr int dim = P::dim;
     using scalar = typename P::scalar;
     CubicBezierPath() : closed(true), vertices() {}
+    bool is_closed() const;
+    bool empty() const;
     bool closed;
     std::vector<P> vertices;
 };
@@ -89,9 +105,21 @@ bool is_valid(const CubicBezierPath<P>& cbp)
 }
 
 template <typename P>
+bool CubicBezierPath<P>::is_closed() const
+{
+    return closed;
+}
+
+template <typename P>
+bool CubicBezierPath<P>::empty() const
+{
+    return vertices.empty();
+}
+
 // For CBP, replace the notion of edges (resp. vertices) of point paths by that of segments (resp. endpoints.)
 //  - The segments are the individual cubic Bezier curves that are linked together to for a cubic Bezier path.
 //  - The endpoints are the vertices at the extremities of the segments.
+template <typename P>
 std::size_t nb_segments(const CubicBezierPath<P>& cbp)
 {
     assert(valid_size(cbp));

@@ -1,0 +1,3 @@
+Resolution length: 0.1; sampling edges: 8
+Resolution length: 0.01; sampling edges: 28
+Resolution length: 0.001; sampling edges: 96

@@ -26,8 +26,10 @@ class ViewportWindow
 public:
     using scalar = double;
     using Key = std::string;
+    using TabList = std::vector<Key>;
     using GeometryBB = shapes::BoundingBox2d<scalar>;
     using ScreenBB = shapes::BoundingBox2d<float>;
+    using ViewportCanvas = Canvas<scalar>;
     using SteinerCallback = std::function<void(const shapes::Point2d<scalar>& steiner_point)>;
 
     ViewportWindow();
@@ -36,10 +38,7 @@ public:
 
     void reset();
 
-    void visit(bool& can_be_erased, const Settings& settings, const WindowLayout& win_pos_sz);
-
-    void set_draw_commands(Key key, const DrawCommands<scalar>& draw_commands);
-    void set_draw_commands(Key key, DrawCommands<scalar>&& draw_commands);
+    void visit(bool& can_be_erased, const TabList& tab_list, const Settings& settings, const WindowLayout& win_pos_sz);
 
     void set_geometry_bounding_box(const GeometryBB& bounding_box);
 
@@ -51,12 +50,11 @@ public:
 
     ScreenBB get_viewport_bounding_box() const;
 
+    ViewportCanvas get_viewport_canvas() const;
+
     const ColorData& get_background_color() const;
 
 private:
-    using DrawCommandLists = std::map<Key, DrawCommands<scalar>>;
-    using TabList = std::vector<Key>;
-
     struct ZoomSelectionBox
     {
         bool is_ongoing = false;
@@ -74,8 +72,6 @@ private:
     GeometryBB m_canvas_bounding_box;
     MouseInCanvas<scalar> m_prev_mouse_in_canvas;
     ZoomSelectionBox m_zoom_selection_box;
-    DrawCommandLists m_draw_command_lists;
-    TabList m_tabs;
     Key m_latest_selected_tab;
     ColorData m_background_color;
     bool m_steiner_checked;

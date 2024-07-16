@@ -24,8 +24,11 @@ template <typename F>
 struct ShapeWrapper
 {
     ShapeWrapper(shapes::AllShapes<F>&& shape, std::string descr = "") : shape(std::move(shape)), descr(descr) {}
-    template <typename T>
-    ShapeWrapper(T&& geom, std::string descr = "") : shape(std::move(geom)), descr(descr) {}
+
+    // TODO: Fix properly. This ctor might move the geometry if T is resolved into a reference type
+    //template <typename T>
+    //ShapeWrapper(T&& geom, std::string descr = "") : shape(std::move(geom)), descr(descr) {}
+
     template <typename T>
     ShapeWrapper(const T& geom, std::string descr = "") : shape(geom), descr(descr) {}
 

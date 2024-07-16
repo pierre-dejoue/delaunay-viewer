@@ -3,103 +3,79 @@
 #pragma once
 
 #include <shapes/point.h>
+#include <stdutils/range.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <limits>
 #include <ostream>
+#include <type_traits>
 
 namespace shapes {
 
-template <typename F>
-struct Range
-{
-    Range() : min(std::numeric_limits<F>::max()), max(std::numeric_limits<F>::lowest()) {}
-    Range(F min, F max) : min(min), max(max) { assert(min <= max); }
-    bool is_populated() const { return min <= max; }
-    Range<F>& add(F v);
-    Range<F>& merge(const Range<F>& o);
-    F length() const { return min <= max ? max - min : F(0); }
-    F diameter() const { return length(); }
-    F min;
-    F max;
-};
+template <typename T>
+using Range = stdutils::Range<T>;
 
-template <typename F>
+template <typename T>
 struct BoundingBox2d
 {
+    using scalar = T;
     bool is_populated() const { return rx.is_populated() && ry.is_populated(); }
-    BoundingBox2d<F>& add(const Point2d<F>& p);
-    BoundingBox2d<F>& add(F x, F y);
-    BoundingBox2d<F>& merge(const BoundingBox2d& o);
-    Point2d<F> min() const;
-    Point2d<F> max() const;
-    Vect2d<F> extent() const { return { rx.length(), ry.length() }; }
-    F width() const { return rx.length(); }
-    F height() const { return ry.length(); }
-    F diameter() const { const F w = width(); const F h = height(); return std::sqrt(w * w + h * h); }
-    Range<F> rx;
-    Range<F> ry;
+    BoundingBox2d<T>& add(const Point2d<T>& p);
+    BoundingBox2d<T>& add(T x, T y);
+    BoundingBox2d<T>& add_border(const Vect2d<T>& v);
+    BoundingBox2d<T>& add_border(T x, T y);
+    BoundingBox2d<T>& add_border(T v);
+    BoundingBox2d<T>& merge(const BoundingBox2d& o);
+    Point2d<T> min() const;
+    Point2d<T> max() const;
+    Vect2d<T> extent() const { return { rx.length(), ry.length() }; }
+    T width() const { return rx.length(); }
+    T height() const { return ry.length(); }
+    T diameter() const { const T w = width(); const T h = height(); return std::sqrt(w * w + h * h); }
+    bool operator==(const BoundingBox2d<T>& o) const { return rx == o.rx && ry == o.ry; }
+    bool intersect(const BoundingBox2d<T>& o) const { return rx.intersect(o.rx) && ry.intersect(o.ry); }
+    Range<T> rx;
+    Range<T> ry;
 };
 
-template <typename F>
+template <typename T>
 struct BoundingBox3d
 {
+    using scalar = T;
     bool is_populated() const { return rx.is_populated() && ry.is_populated() && rz.is_populated(); }
-    BoundingBox3d<F>& add(const Point3d<F>& p);
-    BoundingBox3d<F>& add(F x, F y, F z);
-    BoundingBox3d<F>& merge(const BoundingBox3d& o);
-    Point3d<F> min() const;
-    Point3d<F> max() const;
-    Vect3d<F> extent() const { return { rx.length(), ry.length(), rz.length() }; }
-    F width() const { return rx.length(); }
-    F height() const { return ry.length(); }
-    F depth() const { return rz.length(); }
-    F diameter() const { const F w = width(); const F h = height(); const F d = depth(); return std::sqrt(w * w + h * h + d * d); }
-    Range<F> rx;
-    Range<F> ry;
-    Range<F> rz;
+    BoundingBox3d<T>& add(const Point3d<T>& p);
+    BoundingBox3d<T>& add(T x, T y, T z);
+    BoundingBox3d<T>& add_border(const Vect3d<T>& v);
+    BoundingBox3d<T>& add_border(T x, T y, T z);
+    BoundingBox3d<T>& add_border(T v);
+    BoundingBox3d<T>& merge(const BoundingBox3d& o);
+    Point3d<T> min() const;
+    Point3d<T> max() const;
+    Vect3d<T> extent() const { return { rx.length(), ry.length(), rz.length() }; }
+    T width() const { return rx.length(); }
+    T height() const { return ry.length(); }
+    T depth() const { return rz.length(); }
+    T diameter() const { const T w = width(); const T h = height(); const T d = depth(); return std::sqrt(w * w + h * h + d * d); }
+    bool operator==(const BoundingBox2d<T>& o) const { return rx == o.rx && ry == o.ry && rz == o.rz; }
+    bool intersect(const BoundingBox2d<T>& o) const { return rx.intersect(o.rx) && ry.intersect(o.ry) && rz.intersect(o.rz); }
+    Range<T> rx;
+    Range<T> ry;
+    Range<T> rz;
 };
 
-template <typename F>
-std::ostream& operator<<(std::ostream& out, const Range<F>& range);
-template <typename F>
-std::ostream& operator<<(std::ostream& out, const BoundingBox2d<F>& bb);
-template <typename F>
-std::ostream& operator<<(std::ostream& out, const BoundingBox3d<F>& bb);
-
-//
 // Conversions
-//
+template <typename T0, typename T1>
+BoundingBox2d<T1> cast(const BoundingBox2d<T0>& bb);
+template <typename T0, typename T1>
+BoundingBox3d<T1> cast(const BoundingBox3d<T0>& bb);
 
-template <typename F1, typename F0>
-Range<F1> cast(const Range<F0>& range)
-{
-    if (range.min <= range.max)
-        return Range<F1>(static_cast<F1>(range.min), static_cast<F1>(range.max));
-    else
-        return Range<F1>();
-}
-
-template <typename F1, typename F0>
-BoundingBox2d<F1> cast(const BoundingBox2d<F0>& bb)
-{
-    BoundingBox2d<F1> result;
-    result.rx = cast<F1, F0>(bb.rx);
-    result.ry = cast<F1, F0>(bb.ry);
-    return result;
-}
-
-template <typename F1, typename F0>
-BoundingBox3d<F1> cast(const BoundingBox3d<F0>& bb)
-{
-    BoundingBox3d<F1> result;
-    result.rx = cast<F1, F0>(bb.rx);
-    result.ry = cast<F1, F0>(bb.ry);
-    result.rz = cast<F1, F0>(bb.rz);
-    return result;
-}
+// IO
+template <typename T>
+std::ostream& operator<<(std::ostream& out, const BoundingBox2d<T>& bb);
+template <typename T>
+std::ostream& operator<<(std::ostream& out, const BoundingBox3d<T>& bb);
 
 
 //
@@ -108,62 +84,71 @@ BoundingBox3d<F1> cast(const BoundingBox3d<F0>& bb)
 //
 //
 
-template <typename F>
-Range<F>& Range<F>::add(F v)
-{
-    min = std::min(min, v);
-    max = std::max(max, v);
-    return *this;
-}
 
-template <typename F>
-Range<F>& Range<F>::merge(const Range<F>& o)
-{
-    min = std::min(min, o.min);
-    max = std::max(max, o.max);
-    return *this;
-}
-
-template <typename F>
-BoundingBox2d<F>& BoundingBox2d<F>::add(const Point2d<F>& p)
+template <typename T>
+BoundingBox2d<T>& BoundingBox2d<T>::add(const Point2d<T>& p)
 {
     rx.add(p.x);
     ry.add(p.y);
     return *this;
 }
 
-template <typename F>
-BoundingBox2d<F>& BoundingBox2d<F>::add(F x, F y)
+template <typename T>
+BoundingBox2d<T>& BoundingBox2d<T>::add(T x, T y)
 {
     rx.add(x);
     ry.add(y);
     return *this;
 }
 
-template <typename F>
-BoundingBox2d<F>& BoundingBox2d<F>::merge(const BoundingBox2d<F>& o)
+template <typename T>
+BoundingBox2d<T>& BoundingBox2d<T>::add_border(const Vect2d<T>& v)
+{
+    rx.add_border(v.x);
+    ry.add_border(v.y);
+    return *this;
+}
+
+template <typename T>
+BoundingBox2d<T>& BoundingBox2d<T>::add_border(T x, T y)
+{
+    rx.add_border(x);
+    ry.add_border(y);
+    return *this;
+}
+
+template <typename T>
+BoundingBox2d<T>& BoundingBox2d<T>::add_border(T v)
+{
+    rx.add_border(v);
+    ry.add_border(v);
+    return *this;
+}
+
+template <typename T>
+BoundingBox2d<T>& BoundingBox2d<T>::merge(const BoundingBox2d<T>& o)
 {
     rx.merge(o.rx);
     ry.merge(o.ry);
     return *this;
 }
 
-template <typename F>
-Point2d<F> BoundingBox2d<F>::min() const
+template <typename T>
+Point2d<T> BoundingBox2d<T>::min() const
 {
     assert(is_populated());
-    return Point2d<F>(rx.min, ry.min);
+    return Point2d<T>(rx.min, ry.min);
 }
 
-template <typename F>
-Point2d<F> BoundingBox2d<F>::max() const
+template <typename T>
+Point2d<T> BoundingBox2d<T>::max() const
 {
     assert(is_populated());
-    return Point2d<F>(rx.max, ry.max);
+    return Point2d<T>(rx.max, ry.max);
 }
 
-template <typename F>
-BoundingBox3d<F>& BoundingBox3d<F>::add(const Point3d<F>& p)
+template <typename T>
+BoundingBox3d<T>& BoundingBox3d<T>::add(const Point3d<T>& p)
 {
     rx.add(p.x);
     ry.add(p.y);
@@ -171,8 +156,8 @@ BoundingBox3d<F>& BoundingBox3d<F>::add(const Point3d<F>& p)
     return *this;
 }
 
-template <typename F>
-BoundingBox3d<F>& BoundingBox3d<F>::add(F x, F y, F z)
+template <typename T>
+BoundingBox3d<T>& BoundingBox3d<T>::add(T x, T y, T z)
 {
     rx.add(x);
     ry.add(y);
@@ -180,8 +165,36 @@ BoundingBox3d<F>& BoundingBox3d<F>::add(F x, F y, F z)
     return *this;
 }
 
-template <typename F>
-BoundingBox3d<F>& BoundingBox3d<F>::merge(const BoundingBox3d<F>& o)
+
+template <typename T>
+BoundingBox3d<T>& BoundingBox3d<T>::add_border(const Vect3d<T>& v)
+{
+    rx.add_border(v.x);
+    ry.add_border(v.y);
+    rz.add_border(v.z);
+    return *this;
+}
+
+template <typename T>
+BoundingBox3d<T>& BoundingBox3d<T>::add_border(T x, T y, T z)
+{
+    rx.add_border(x);
+    ry.add_border(y);
+    rz.add_border(z);
+    return *this;
+}
+
+template <typename T>
+BoundingBox3d<T>& BoundingBox3d<T>::add_border(T v)
+{
+    rx.add_border(v);
+    ry.add_border(v);
+    rz.add_border(v);
+    return *this;
+}
+
+template <typename T>
+BoundingBox3d<T>& BoundingBox3d<T>::merge(const BoundingBox3d<T>& o)
 {
     rx.merge(o.rx);
     ry.merge(o.ry);
@@ -189,39 +202,48 @@ BoundingBox3d<F>& BoundingBox3d<F>::merge(const BoundingBox3d<F>& o)
     return *this;
 }
 
-template <typename F>
-Point3d<F> BoundingBox3d<F>::min() const
+template <typename T>
+Point3d<T> BoundingBox3d<T>::min() const
 {
     assert(is_populated());
-    return Point3d<F>(rx.min, ry.min, rz.min);
+    return Point3d<T>(rx.min, ry.min, rz.min);
 }
 
-template <typename F>
-Point3d<F> BoundingBox3d<F>::max() const
+template <typename T>
+Point3d<T> BoundingBox3d<T>::max() const
 {
     assert(is_populated());
-    return Point3d<F>(rx.max, ry.max, rz.max);
+    return Point3d<T>(rx.max, ry.max, rz.max);
 }
 
-template <typename F>
-std::ostream& operator<<(std::ostream& out, const Range<F>& range)
+template <typename T0, typename T1>
+BoundingBox2d<T1> cast(const BoundingBox2d<T0>& bb)
 {
-    if (range.is_populated())
-        out << "[ " << range.min << ", " << range.max << " ]" ;
-    else
-        out << "[ empty ]";
-    return out;
+    BoundingBox2d<T1> result;
+    result.rx = cast<T0, T1>(bb.rx);
+    result.ry = cast<T0, T1>(bb.ry);
+    return result;
 }
 
-template <typename F>
-std::ostream& operator<<(std::ostream& out, const BoundingBox2d<F>& bb)
+template <typename T0, typename T1>
+BoundingBox3d<T1> cast(const BoundingBox3d<T0>& bb)
+{
+    BoundingBox3d<T1> result;
+    result.rx = cast<T0, T1>(bb.rx);
+    result.ry = cast<T0, T1>(bb.ry);
+    result.rz = cast<T0, T1>(bb.rz);
+    return result;
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& out, const BoundingBox2d<T>& bb)
 {
     out << "{ rx: " << bb.rx << ", ry: " << bb.ry << " }";
     return out;
 }
 
-template <typename F>
-std::ostream& operator<<(std::ostream& out, const BoundingBox3d<F>& bb)
+template <typename T>
+std::ostream& operator<<(std::ostream& out, const BoundingBox3d<T>& bb)
 {
     out << "{ rx: " << bb.rx << ", ry: " << bb.ry << ", rz: " << bb.rz << " }";
     return out;

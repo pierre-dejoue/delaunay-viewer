@@ -35,8 +35,9 @@ void draw_point_path(const shapes::PointPath2d<F>& pp, renderer::DrawList& draw_
 
 template <typename F>
 void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options);
-template <typename F>
-void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, renderer::DrawList& draw_list,  const DrawingOptions& options);
+// Does not exist: CBP are converted to point paths
+//template <typename F>
+//void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, renderer::DrawList& draw_list,  const DrawingOptions& options);
 
 template <typename F>
 void draw_edge_soup(const shapes::Edges2d<F>& pp, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options);
@@ -252,14 +253,6 @@ void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, ImDrawList*
 }
 
 template <typename F>
-void draw_cubic_bezier_path(const shapes::CubicBezierPath2d<F>& cbp, renderer::DrawList& draw_list, const DrawingOptions& options)
-{
-    UNUSED(cbp); UNUSED(draw_list); UNUSED(options);
-    // To be implemented
-    // For now, the cubic Bezier curves are rendered thanks to ImGui primitives, on top of our rendering of the other shapes.
-}
-
-template <typename F>
 void draw_edge_soup(const shapes::Edges2d<F>& es, ImDrawList* draw_list, const Canvas<F>& canvas, const DrawingOptions& options)
 {
     assert(draw_list);
@@ -454,4 +447,3 @@ void draw_triangles(const shapes::Triangles2d<F, I>& tri, renderer::DrawList& dr
         draw_call.m_cmd = renderer::DrawCmd::Points;
     }
 }
-
