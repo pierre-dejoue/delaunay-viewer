@@ -426,6 +426,7 @@ int main(int argc, char *argv[])
 
         // Transfer draw lists to our renderer
         const auto drawing_options = drawing_options_from_settings(settings);
+        bool draw_list_up_to_date = false;
         if (windows.shape_control)
         {
             const auto& dcls = windows.shape_control->get_draw_command_lists();
@@ -435,6 +436,7 @@ int main(int argc, char *argv[])
             {
                 const bool update_buffers = geometry_has_changed || (selected_tab != previously_selected_tab);
                 update_opengl_draw_list<scalar>(draw_2d_renderer->draw_list(), draw_commands_it->second, update_buffers, drawing_options);
+                draw_list_up_to_date = true;
                 previously_selected_tab = selected_tab;
             }
         }
@@ -460,19 +462,19 @@ int main(int argc, char *argv[])
             // Rendering flags
             renderer::Flag::type flags = renderer::Flag::ViewportBackground;;
             if (settings.get_general_settings()->flip_y) { flags |= renderer::Flag::FlipYAxis; }
-            const bool only_background = !windows.shape_control; // || settings.get_general_settings()->imgui_renderer;
+            const bool only_background = !windows.shape_control ||!draw_list_up_to_date; // || settings.get_general_settings()->imgui_renderer;
 
             // Render
             const auto target_bb = shapes::cast<float, scalar>(windows.viewport->get_canvas_bounding_box());
             const auto screen_bb = windows.viewport->get_viewport_bounding_box();
             const auto viewport_canvas = Canvas(screen_bb.min(), screen_bb.extent(), target_bb);
-            stable_sort_draw_commands(draw_2d_renderer->draw_list());
             if (only_background)
             {
                 draw_2d_renderer->render_viewport_background(viewport_canvas);
             }
             else
             {
+                stable_sort_draw_commands(draw_2d_renderer->draw_list());
                 draw_2d_renderer->render(viewport_canvas, flags);
             }
         }

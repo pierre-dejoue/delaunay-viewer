@@ -5,6 +5,7 @@
 #include <base/canvas.h>
 #include <base/color_data.h>
 #include <stdutils/io.h>
+#include <stdutils/locked_buffer.h>
 
 #include <array>
 #include <cstddef>
@@ -22,6 +23,9 @@ enum class DrawCmd
     Triangles,
     _ENUM_SIZE_
 };
+
+template <typename T>
+using LockedBuffer = stdutils::LockedBuffer<T, std::vector>;
 
 class DrawList
 {
@@ -45,12 +49,15 @@ public:
     // Clear the draw calls and the buffers and increase the buffer version. Call this function before sending the first DrawList to the renderer.
     void clear_all();
 
-    // Clear the draw calls and the buffers but the buffer version will remain the same, meaning the buffers won't be updated on the GPU side.
-    void clear_no_reset();
+    // Clear the draw calls but keep the vertices and indices buffers. The buffer version must be > 0 and will remain the same.
+    void clear_draw_calls();
 
-    std::vector<VertexData>     m_vertices;
-    std::vector<HWindex>        m_indices;
+public:
     std::vector<DrawCall>       m_draw_calls;
+
+    // Locked buffers are used to store the data copied to the GPU
+    LockedBuffer<VertexData>    m_vertices;
+    LockedBuffer<HWindex>       m_indices;
 
 private:
     Version                     m_buffer_version{0u};           // Used to knwow when to call glBufferData

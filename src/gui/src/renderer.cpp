@@ -71,20 +71,31 @@ DrawList::DrawCall::DrawCall()
     , m_cmd(renderer::DrawCmd::Lines)
 {}
 
+
 void DrawList::clear_all()
 {
+    // Clear draw calls
+    m_draw_calls.clear();
+
+    // Clear the buffers
     m_vertices.clear();
     m_indices.clear();
-    m_draw_calls.clear();
+
+    // Increment buffer version number
     m_buffer_version++;
 }
 
-void DrawList::clear_no_reset()
+void DrawList::clear_draw_calls()
 {
+    // Clear the draw calls
     assert(m_buffer_version > 0);
-    m_vertices.clear();
-    m_indices.clear();
     m_draw_calls.clear();
+
+    // Reset the buffers indices but keep the data
+    m_vertices.index_reset();
+    m_indices.index_reset();
+    assert(m_vertices.is_locked());
+    assert(m_indices.is_locked());
 }
 
 void stable_sort_draw_commands(DrawList& draw_list)
@@ -269,7 +280,7 @@ void Draw2D::Impl::update_corner_vertices(const Canvas<float>& canvas) {
         bb.max().x, bb.max().y, 0.f
     };
     glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[0]);
-    glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(background.corner_vertices), static_cast<const void*>(background.corner_vertices.data()), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, gl_container_size_in_bytes(background.corner_vertices), static_cast<const void*>(background.corner_vertices.data()), GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -279,11 +290,13 @@ void Draw2D::Impl::update_assets_buffers()
     assert(draw_list_last_buffer_version <= draw_list.buffer_version());
     if (draw_list_last_buffer_version != draw_list.buffer_version())
     {
+        assert(draw_list.m_vertices.is_locked());
+        assert(draw_list.m_indices.is_locked());
         glBindBuffer(GL_ARRAY_BUFFER, gl_buffers[1]);
-        glBufferData(GL_ARRAY_BUFFER, gl_size_in_bytes(draw_list.m_vertices), static_cast<const void*>(draw_list.m_vertices.data()), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, gl_container_size_in_bytes<DrawList::VertexData>(draw_list.m_vertices), static_cast<const void*>(draw_list.m_vertices.data()), GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_buffers[2]);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, gl_size_in_bytes(draw_list.m_indices), static_cast<const void*>(draw_list.m_indices.data()), GL_STATIC_DRAW);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, gl_container_size_in_bytes<DrawList::HWindex>(draw_list.m_indices), static_cast<const void*>(draw_list.m_indices.data()), GL_STATIC_DRAW);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
     draw_list_last_buffer_version = draw_list.buffer_version();

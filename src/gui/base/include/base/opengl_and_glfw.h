@@ -89,7 +89,15 @@ using GLoffsetf = GLoffset<float>;
 using GLoffseti = GLoffset<std::int32_t>;
 using GLoffsetui = GLoffset<std::uint32_t>;
 
-template <typename T>
-GLsizeiptr gl_size_in_bytes(const std::vector<T>& vect) { return static_cast<GLsizeiptr>(vect.size() * sizeof(T)); }
+template <typename T, typename C>
+GLsizeiptr gl_container_size_in_bytes(const C& cont)
+{
+    static_assert(std::is_same_v<typename C::value_type, T>);
+    return static_cast<GLsizeiptr>(cont.size() * sizeof(T));
+}
+
 template <typename T, std::size_t N>
-constexpr GLsizeiptr gl_size_in_bytes(const std::array<T, N>&) { return static_cast<GLsizeiptr>(N * sizeof(T)); }
+constexpr GLsizeiptr gl_container_size_in_bytes(const std::array<T, N>&)
+{
+    return static_cast<GLsizeiptr>(N * sizeof(T));
+}
