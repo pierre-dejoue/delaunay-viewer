@@ -13,7 +13,7 @@
 #include <variant>
 
 namespace {
-constexpr ViewportWindow::scalar DEFAULT_ZOOM = 0.9;
+constexpr ViewportWindow::scalar DEFAULT_ZOOM = 1.1;
 
 constexpr ImU32 CanvasBackgroundColor_Default = IM_COL32(40, 40, 40, 255);
 constexpr ImU32 CanvasBorderColor_Default =     IM_COL32(250, 250, 250, 255);
