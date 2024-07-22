@@ -425,7 +425,7 @@ ShapeAggregate<double> parse_shapes_from_stream(std::istream& inputstream, const
 
 ShapeAggregate<double> parse_shapes_from_file(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
-    return stdutils::io::open_and_parse_file<ShapeAggregate<double>, char>(filepath, parse_shapes_from_stream_gen<double>, err_handler);
+    return stdutils::io::open_and_parse_txt_file<ShapeAggregate<double>, char>(filepath, parse_shapes_from_stream_gen<double>, err_handler);
 }
 
 void save_shapes_as_stream(std::ostream& outputstream, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler) noexcept
@@ -444,7 +444,7 @@ void save_shapes_as_stream(std::ostream& outputstream, const ShapeAggregate<doub
 
 void save_shapes_as_file(std::filesystem::path filepath, const ShapeAggregate<double>& shapes, const stdutils::io::ErrorHandler& err_handler, std::string_view head_comment) noexcept
 {
-    stdutils::io::save_file<StreamWriterInput<double>, char>(filepath, save_shapes_as_stream_gen<double>, StreamWriterInput(shapes, head_comment), err_handler);
+    stdutils::io::save_txt_file<StreamWriterInput<double>, char>(filepath, save_shapes_as_stream_gen<double>, StreamWriterInput(shapes, head_comment), err_handler);
 }
 
 void save_shapes_as_oneliner_stream(std::ostream& outputstream, const ShapeAggregate<double>& shapes, std::string_view postfix) noexcept
@@ -759,7 +759,7 @@ unsigned int peek_point_dimension(std::istream& inputstream, const stdutils::io:
 
 unsigned int peek_point_dimension(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
-    return stdutils::io::open_and_parse_file<unsigned int, char>(filepath, peek_point_dimension_gen<double, std::uint32_t>, err_handler);
+    return stdutils::io::open_and_parse_txt_file<unsigned int, char>(filepath, peek_point_dimension_gen<double, std::uint32_t>, err_handler);
 }
 
 shapes::Soup2d<double> parse_2d_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
@@ -783,7 +783,7 @@ shapes::Soup2d<double> parse_2d_shapes_from_file(std::filesystem::path filepath,
 {
     using P = shapes::Point2d<double>;
     using I = std::uint32_t;
-    return stdutils::io::open_and_parse_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I>, err_handler);
+    return stdutils::io::open_and_parse_txt_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I>, err_handler);
 }
 
 shapes::Soup3d<double> parse_3d_shapes_from_stream(std::istream& inputstream, const stdutils::io::ErrorHandler& err_handler) noexcept
@@ -807,7 +807,7 @@ shapes::Soup3d<double> parse_3d_shapes_from_file(std::filesystem::path filepath,
 {
     using P = shapes::Point3d<double>;
     using I = std::uint32_t;
-    return stdutils::io::open_and_parse_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I>, err_handler);
+    return stdutils::io::open_and_parse_txt_file<shapes::Soup<P,I>, char>(filepath, parse_shapes_from_stream_gen<P, I>, err_handler);
 }
 
 } // namespace cdt

@@ -23,7 +23,7 @@ namespace {
 ssvg::ShapeAttributes init_default_shape_attr()
 {
     ssvg::ShapeAttributes defaultAttrs;
-    std::memset(&defaultAttrs, 0, sizeof(ssvg::ShapeAttributes));
+    IGNORE_RETURN std::memset(&defaultAttrs, 0, sizeof(ssvg::ShapeAttributes));
     defaultAttrs.m_Parent = nullptr;
     defaultAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
     defaultAttrs.m_StrokePaint.m_ColorABGR = 0x00000000;
@@ -42,7 +42,8 @@ ssvg::ShapeAttributes init_default_shape_attr()
     defaultAttrs.m_FillRule = ssvg::FillRule::NonZero;
     //defaultAttrs.m_ID
     const std::string font_family = "sans-serif";
-    std::memcpy(&defaultAttrs.m_FontFamily[0], font_family.data(), font_family.size());
+    const std::size_t memcpy_sz = std::min(font_family.size(), static_cast<std::size_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1));
+    IGNORE_RETURN std::memcpy(&defaultAttrs.m_FontFamily[0], font_family.data(), memcpy_sz);
     return defaultAttrs;
 }
 
@@ -450,7 +451,7 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
         err_handler(stdutils::io::Severity::ERR, oss.str());
         return Paths<F>();
     }
-    const auto svg_buffer = stdutils::io::open_and_parse_file<std::vector<char>, char>(filepath, [sz](auto& istream, const auto&) {
+    const auto svg_buffer = stdutils::io::open_and_parse_txt_file<std::vector<char>, char>(filepath, [sz](auto& istream, const auto&) {
         std::vector<char> buf(sz + 1, 0u);
         istream.read(buf.data(), static_cast<std::streamsize>(sz));
         return buf;

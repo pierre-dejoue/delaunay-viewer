@@ -82,7 +82,10 @@ template <typename Ret, typename CharT>
 using StreamParser = std::function<Ret(std::basic_istream<CharT, std::char_traits<CharT>>&, const stdutils::io::ErrorHandler&)>;
 
 template <typename Ret, typename CharT>
-Ret open_and_parse_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept;
+Ret open_and_parse_txt_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept;
+template <typename Ret, typename CharT>
+Ret open_and_parse_bin_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept;
+
 
 /**
  * Save a file with a writer to std::basic_ostream
@@ -91,7 +94,9 @@ template <typename Obj, typename CharT>
 using StreamWriter = std::function<void(std::basic_ostream<CharT, std::char_traits<CharT>>&, const Obj&, const stdutils::io::ErrorHandler&)>;
 
 template <typename Obj, typename CharT>
-void save_file(const std::filesystem::path& filepath, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept;
+void save_txt_file(const std::filesystem::path& filepath, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept;
+template <typename Obj, typename CharT>
+void save_bin_file(const std::filesystem::path& filepath, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept;
 
 /**
  * LineStream: A wrapper around std::getline to count line nb
@@ -202,13 +207,17 @@ SaveNumericFormat<CharT>::~SaveNumericFormat()
     m_out.precision(m_precision);
 }
 
+namespace details {
+
 template <typename Ret, typename CharT>
-Ret open_and_parse_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept
+Ret open_and_parse_file(const std::filesystem::path& filepath, bool binary, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
     static_assert(std::is_nothrow_default_constructible_v<Ret>);
     try
     {
-        std::basic_ifstream<CharT> inputstream(filepath);
+        std::ios_base::openmode mode = std::ios_base::in;
+        if (binary) { mode |= std::ios_base::binary; }
+        std::basic_ifstream<CharT> inputstream(filepath, mode);
         if (inputstream.is_open())
         {
             return stream_parser(inputstream, err_handler);
@@ -223,18 +232,20 @@ Ret open_and_parse_file(const std::filesystem::path& filepath, const StreamParse
     catch(const std::exception& e)
     {
         std::stringstream oss;
-        oss << "stdutils::io::open_and_parse_file(): " << e.what();
+        oss << "stdutils::io::details::open_and_parse_file(" << filepath << ", " << (binary ? "BIN" : "TXT") << "): " << e.what();
         err_handler(stdutils::io::Severity::EXCPT, oss.str());
     }
     return Ret();
 }
 
 template <typename Obj, typename CharT>
-void save_file(const std::filesystem::path& filepath, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept
+void save_file(const std::filesystem::path& filepath, bool binary, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
     try
     {
-        std::basic_ofstream<CharT> outputstream(filepath);
+        std::ios_base::openmode mode = std::ios_base::out;
+        if (binary) { mode |= std::ios_base::binary; }
+        std::basic_ofstream<CharT> outputstream(filepath, mode);
         if (outputstream.is_open())
         {
             stream_writer(outputstream, obj, err_handler);
@@ -249,9 +260,39 @@ void save_file(const std::filesystem::path& filepath, const StreamWriter<Obj, Ch
     catch(const std::exception& e)
     {
         std::stringstream oss;
-        oss << "stdutils::io::save_file(): " << e.what();
+        oss << "stdutils::io::details::save_file(" << filepath << ", " << (binary ? "BIN" : "TXT") << "): " << e.what();
         err_handler(stdutils::io::Severity::EXCPT, oss.str());
     }
+}
+
+} // namespace details
+
+template <typename Ret, typename CharT>
+Ret open_and_parse_txt_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept
+{
+    const bool binary_file = false;
+    return details::open_and_parse_file(filepath, binary_file, stream_parser, err_handler);
+}
+
+template <typename Ret, typename CharT>
+Ret open_and_parse_bin_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept
+{
+    const bool binary_file = true;
+    return details::open_and_parse_file(filepath, binary_file, stream_parser, err_handler);
+}
+
+template <typename Obj, typename CharT>
+void save_txt_file(const std::filesystem::path& filepath, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept
+{
+    const bool binary_file = false;
+    details::save_file(filepath, binary_file, stream_writer, obj, err_handler);
+}
+
+template <typename Obj, typename CharT>
+void save_bin_file(const std::filesystem::path& filepath, const StreamWriter<Obj, CharT>& stream_writer, const Obj& obj, const stdutils::io::ErrorHandler& err_handler) noexcept
+{
+    const bool binary_file = true;
+    details::save_file(filepath, binary_file, stream_writer, obj, err_handler);
 }
 
 template <typename CharT>
