@@ -42,7 +42,11 @@ function(
     -Wnon-virtual-dtor # warn the user if a class with virtual functions has a non-virtual destructor. This helps
     -Wold-style-cast # warn for c-style casts
     -Wcast-align # warn for potential performance problem casts
-    -Wunused # warn on anything being unused
+    -Wno-unused-function
+    -Wunused-label
+    -Wunused-parameter
+    -Wunused-variable
+    -Wunused-value
     -Woverloaded-virtual # warn if you overload (not override) a virtual function
     -Wpedantic # warn if non-standard C++ is used
     -Wconversion # warn on type conversions that may lose data
