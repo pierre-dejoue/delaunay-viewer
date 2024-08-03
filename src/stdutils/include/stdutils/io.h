@@ -31,12 +31,13 @@ struct Severity
 {
     static constexpr SeverityCode FATAL = -2;
     static constexpr SeverityCode EXCPT = -1;
-    static constexpr SeverityCode ERR   = 1;
-    static constexpr SeverityCode WARN  = 2;
-    static constexpr SeverityCode INFO  = 3;
+    static constexpr SeverityCode ERR   =  1;
+    static constexpr SeverityCode WARN  =  2;
+    static constexpr SeverityCode INFO  =  3;
+    static constexpr SeverityCode TRACE =  4;
 };
 
-std::string_view str_severity_code(SeverityCode code);
+std::string_view str_severity_code(SeverityCode code) noexcept;
 
 using ErrorMessage = std::string_view;
 
@@ -86,7 +87,6 @@ Ret open_and_parse_txt_file(const std::filesystem::path& filepath, const StreamP
 template <typename Ret, typename CharT>
 Ret open_and_parse_bin_file(const std::filesystem::path& filepath, const StreamParser<Ret, CharT>& stream_parser, const stdutils::io::ErrorHandler& err_handler) noexcept;
 
-
 /**
  * Save a file with a writer to std::basic_ostream
  */
@@ -105,21 +105,25 @@ template <typename CharT>
 class Basic_LineStream
 {
 public:
-    using stream_type = std::basic_istream<CharT, std::char_traits<CharT>>;
+    using istream_t = std::basic_istream<CharT, std::char_traits<CharT>>;
 
-    Basic_LineStream(stream_type& source);
+    explicit Basic_LineStream(istream_t& source);
 
-    const stream_type& stream() const { return m_stream; }
-    std::size_t line_nb() const { return m_line_nb; }
-
-    // Return the last value of static_cast<bool>(std::getline(...))
-    // When false is returned, neither the content of out_str nor the line_nb() should be trusted.
+    // Return a line read from the input string, and the line number (starting with line 1)
+    // When false is returned, out_str is cleared, the line number is the one of the last line successfully read
+    // which is also equal to the total number of lines in the input stream
     // Note: When EOF is first encountered, true is returned. false will be returned on the next call.
-    bool getline(std::basic_string<CharT>& out_str);
+    bool getline(std::basic_string<CharT>& out_str, std::size_t& line_nb);
+
+    // Line number of the last line read from the input stream
+    // After reading the stream entirely this is equal to the total number of lines
+    std::size_t line_nb() const noexcept { return m_line_nb; }
+
+    const istream_t& stream() const { return m_stream; }
 
 private:
-    stream_type& m_stream;
-    std::size_t  m_line_nb;
+    istream_t&  m_stream;
+    std::size_t m_line_nb;
 };
 
 using LineStream = Basic_LineStream<char>;
@@ -131,19 +135,23 @@ template <typename CharT>
 class Basic_SkipLineStream
 {
 public:
-    Basic_SkipLineStream(typename Basic_LineStream<CharT>::stream_type& source);
-    Basic_SkipLineStream(const Basic_LineStream<CharT>& linestream);       // Implicit conversion from Basic_LineStream
+    using istream_t = typename Basic_LineStream<CharT>::istream_t;
 
-    const typename Basic_LineStream<CharT>::stream_type& stream() const { return m_linestream.stream(); }
-    std::size_t line_nb() const { return m_linestream.line_nb(); }
+    explicit Basic_SkipLineStream(istream_t& source);
+    explicit Basic_SkipLineStream(const Basic_LineStream<CharT>& linetream);
 
     // Skip lines
     Basic_SkipLineStream<CharT>& skip_empty_lines();
     Basic_SkipLineStream<CharT>& skip_blank_lines();
     Basic_SkipLineStream<CharT>& skip_comment_lines(std::string_view comment_token);
 
-    // See notes on Basic_LineStream::getline()
-    bool getline(std::basic_string<CharT>& out_str);
+    // Read comments on Basic_LineStream::getline()
+    bool getline(std::basic_string<CharT>& out_str, std::size_t& line_nb);
+
+    // Read comments on Basic_LineStream::line_nb()
+    std::size_t line_nb() const noexcept { return m_linestream.line_nb(); }
+
+    const typename Basic_LineStream<CharT>::istream_t& stream() const { return m_linestream.stream(); }
 
 private:
     bool skip_line(const std::string& line) const;
@@ -226,7 +234,7 @@ Ret open_and_parse_file(const std::filesystem::path& filepath, bool binary, cons
         {
             std::stringstream oss;
             oss << "Cannot open file " << filepath;
-            err_handler(stdutils::io::Severity::FATAL, oss.str());
+            err_handler(stdutils::io::Severity::ERR, oss.str());
         }
     }
     catch(const std::exception& e)
@@ -254,7 +262,7 @@ void save_file(const std::filesystem::path& filepath, bool binary, const StreamW
         {
             std::stringstream oss;
             oss << "Cannot open file " << filepath;
-            err_handler(stdutils::io::Severity::FATAL, oss.str());
+            err_handler(stdutils::io::Severity::ERR, oss.str());
         }
     }
     catch(const std::exception& e)
@@ -296,27 +304,25 @@ void save_bin_file(const std::filesystem::path& filepath, const StreamWriter<Obj
 }
 
 template <typename CharT>
-Basic_LineStream<CharT>::Basic_LineStream(stream_type& source)
+Basic_LineStream<CharT>::Basic_LineStream(istream_t& source)
     : m_stream(source)
     , m_line_nb(0)
 {
 }
 
 template <typename CharT>
-bool Basic_LineStream<CharT>::getline(std::basic_string<CharT>& out_str)
+bool Basic_LineStream<CharT>::getline(std::basic_string<CharT>& out_str, std::size_t& line_nb)
 {
-    bool no_fail = !m_stream.fail();
-    if (no_fail)
-    {
-        m_line_nb++;
-        no_fail = static_cast<bool>(std::getline(m_stream, out_str));
-    }
+    out_str.clear();
+    const bool no_fail = !m_stream.fail() && static_cast<bool>(std::getline(m_stream, out_str));
+    if (no_fail) { m_line_nb++; }
+    line_nb = m_line_nb;
     return no_fail;
 }
 
 
 template <typename CharT>
-Basic_SkipLineStream<CharT>::Basic_SkipLineStream(typename Basic_LineStream<CharT>::stream_type& source)
+Basic_SkipLineStream<CharT>::Basic_SkipLineStream(typename Basic_LineStream<CharT>::istream_t& source)
     : m_linestream(source)
     , m_skip_tokens()
     , m_skip_empty_lines(false)
@@ -377,13 +383,13 @@ bool Basic_SkipLineStream<CharT>::skip_line(const std::string& line) const
 }
 
 template <typename CharT>
-bool Basic_SkipLineStream<CharT>::getline(std::basic_string<CharT>& out_str)
+bool Basic_SkipLineStream<CharT>::getline(std::basic_string<CharT>& out_str, std::size_t& line_nb)
 {
     bool no_fail = false;
     bool skip = false;
     do
     {
-        no_fail = m_linestream.getline(out_str);
+        no_fail = m_linestream.getline(out_str, line_nb);
         skip = no_fail && skip_line(out_str);
     } while (skip);
     return no_fail;
@@ -393,10 +399,10 @@ template <typename CharT>
 std::size_t countlines(std::basic_istream<CharT, std::char_traits<CharT>>& istream)
 {
     LineStream line_stream(istream);
-    std::size_t result = 0;
     std::string line;
-    while (line_stream.getline(line)) { result++; }
-    return result;
+    std::size_t line_nb{0u};
+    while (line_stream.getline(line, line_nb));
+    return line_nb;
 }
 
 } // namespace io

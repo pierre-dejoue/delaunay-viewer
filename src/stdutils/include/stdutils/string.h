@@ -9,11 +9,19 @@
 namespace stdutils {
 namespace string {
 
+/**
+ * String conversion functions
+ */
 std::string tolower(const std::string& in);
 
 std::string toupper(const std::string& in);
 
 std::string capitalize(const std::string& in);
+
+/**
+ * Current local date and time
+ */
+std::string current_local_date_and_time();
 
 /**
  * Indent: Utility class to easily output indentation to a stream

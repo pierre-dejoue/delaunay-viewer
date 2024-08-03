@@ -264,12 +264,13 @@ ShapeAggregate<F> parse_shapes_from_stream_gen(std::istream& inputstream, const 
 {
     ShapeAggregate<F> result;
     std::string line;
+    std::size_t line_nb{0u};
     ShapeBuffer<F, 3> buffer;
     auto linestream = stdutils::io::SkipLineStream(inputstream).skip_blank_lines().skip_comment_lines("#");
     while (linestream.stream().good())
     {
         // Read point series
-        while (linestream.getline(line) && parse_numeric_line(line, buffer.vertices)) {}
+        while (linestream.getline(line, line_nb) && parse_numeric_line(line, buffer.vertices)) {}
 
         // Control line, or EOF
         // 1. Store the previous shape
@@ -283,7 +284,7 @@ ShapeAggregate<F> parse_shapes_from_stream_gen(std::istream& inputstream, const 
         }
         // 2. Reset shape buffer
         buffer = ShapeBuffer<F, 3>();
-        buffer.line_nb_start = linestream.line_nb();
+        buffer.line_nb_start = line_nb;
         // 3. Type of the next shape
         TokenIterator token_iterator(line);
         const std::string first_token = token_iterator.next_token();
@@ -541,15 +542,16 @@ unsigned int peek_point_dimension_gen(std::istream& inputstream, const stdutils:
     while (linestream.stream().good() && cdt_state != CDT_State::Done)
     {
         std::string line;
+        std::size_t line_nb{0u};
         switch (cdt_state)
         {
             case CDT_State::HeaderLine:
             {
                 NumericLineBuffer<I, 3> count_buffer;
-                while (linestream.getline(line) && !parse_numeric_line(line, count_buffer))
+                while (linestream.getline(line, line_nb) && !parse_numeric_line(line, count_buffer))
                 {
                     std::stringstream out;
-                    out << "CDT_State: HeaderLine. Invalid line (" << linestream.line_nb() << ") was skipped.";
+                    out << "CDT_State: HeaderLine. Invalid line (" << line_nb << ") was skipped.";
                     err_handler(stdutils::io::Severity::WARN, out.str());
                 }
                 if (count_buffer.lines.size() == 1)
@@ -566,7 +568,7 @@ unsigned int peek_point_dimension_gen(std::istream& inputstream, const stdutils:
             case CDT_State::ParseVertices:
             {
                 NumericLineBuffer<F, 3> vertex_buffer;
-                while (vertex_buffer.lines.size() < 1 && linestream.getline(line) && parse_numeric_line(line, vertex_buffer)) { }
+                while (vertex_buffer.lines.size() < 1 && linestream.getline(line, line_nb) && parse_numeric_line(line, vertex_buffer)) { }
                 result = vertex_buffer.dim;
                 cdt_state = CDT_State::Done;
                 break;
@@ -610,15 +612,16 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
     while (linestream.stream().good() && cdt_state != CDT_State::Done)
     {
         std::string line;
+        std::size_t line_nb{0u};
         switch (cdt_state)
         {
             case CDT_State::HeaderLine:
             {
                 NumericLineBuffer<I, 3> count_buffer;
-                while (linestream.getline(line) && !parse_numeric_line(line, count_buffer))
+                while (linestream.getline(line, line_nb) && !parse_numeric_line(line, count_buffer))
                 {
                     std::stringstream out;
-                    out << "CDT_State: HeaderLine. Invalid line (" << linestream.line_nb() << ") was skipped.";
+                    out << "CDT_State: HeaderLine. Invalid line (" << line_nb << ") was skipped.";
                     err_handler(stdutils::io::Severity::WARN, out.str());
                 }
                 if (count_buffer.lines.size() == 1)
@@ -638,7 +641,7 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
             case CDT_State::ParseVertices:
             {
                 NumericLineBuffer<F, POINT_DIM> vertex_buffer;
-                while (vertex_buffer.lines.size() < nb_vertices && linestream.getline(line) && parse_numeric_line(line, vertex_buffer)) { }
+                while (vertex_buffer.lines.size() < nb_vertices && linestream.getline(line, line_nb) && parse_numeric_line(line, vertex_buffer)) { }
                 append_vertices(vertices, vertex_buffer);
                 cdt_state = CDT_State::ParseEdgeIndices;
                 break;
@@ -646,7 +649,7 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
             case CDT_State::ParseEdgeIndices:
             {
                 NumericLineBuffer<I, 2> edge_buffer;
-                while (edge_buffer.lines.size() < nb_edges && linestream.getline(line) && parse_numeric_line(line, edge_buffer, undef)) { }
+                while (edge_buffer.lines.size() < nb_edges && linestream.getline(line, line_nb) && parse_numeric_line(line, edge_buffer, undef)) { }
                 edges.reserve(nb_edges);
                 for (const auto& arr : edge_buffer.lines) { edges.emplace_back(arr[0], arr[1]); }
                 cdt_state = CDT_State::ParseTriangleIndices;
@@ -655,7 +658,7 @@ shapes::Soup<P, I> parse_shapes_from_stream_gen(std::istream& inputstream, const
             case CDT_State::ParseTriangleIndices:
             {
                 NumericLineBuffer<I, 3> triangle_buffer;
-                while (triangle_buffer.lines.size() < nb_triangles && linestream.getline(line) && parse_numeric_line(line, triangle_buffer, undef)) { }
+                while (triangle_buffer.lines.size() < nb_triangles && linestream.getline(line, line_nb) && parse_numeric_line(line, triangle_buffer, undef)) { }
                 triangles.reserve(nb_triangles);
                 for (const auto& arr : triangle_buffer.lines) { triangles.emplace_back(arr[0], arr[1], arr[2]); }
                 cdt_state = CDT_State::Done;
