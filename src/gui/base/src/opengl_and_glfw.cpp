@@ -12,7 +12,14 @@
 #include <sstream>
 #include <string>
 
+#ifndef SUPPORT_OPENGL_DEBUG_OUTPUT
+#define SUPPORT_OPENGL_DEBUG_OUTPUT 0
+#endif
+
 namespace {
+
+// Additional trace logs during GLFW initialization
+constexpr bool TRACE_GLFW_WINDOW_PROPERTIES = false;
 
 // Target OpenGL 3.3 for this project
 constexpr int TARGET_OPENGL_MAJOR = 3;
@@ -21,7 +28,7 @@ constexpr bool TARGET_OPENGL_CORE_PROFILE = true;       // 3.2+ only. Recommende
 constexpr const char* TARGET_GLSL_VERSION_STR = "#version 330 core";
 
 // Forward Compatibility: Disable all the deprecated, yet still in the core profile, functionalities.
-// This is particularly important on MacOS.
+// This is particularly important on macOS.
 // See: https://www.khronos.org/opengl/wiki/OpenGL_Context#Forward_compatibility
 //      https://www.glfw.org/faq.html#41---how-do-i-create-an-opengl-30-context
 constexpr bool TARGET_OPENGL_FORWARD_COMPATIBILITY = TARGET_OPENGL_CORE_PROFILE && TARGET_OPENGL_MAJOR >= 3;
@@ -105,12 +112,72 @@ GLFWWindowContext::~GLFWWindowContext()
         glfwTerminate();
 }
 
-std::pair<int, int> GLFWWindowContext::window_size() const
+std::pair<int, int> GLFWWindowContext::framebuffer_size() const
 {
     std::pair<int, int> sz(0, 0);
     assert(m_window_ptr);
     glfwGetFramebufferSize(m_window_ptr, &sz.first, &sz.second);
     return sz;
+}
+
+std::pair<int, int> GLFWWindowContext::window_size() const
+{
+    std::pair<int, int> sz(0, 0);
+    assert(m_window_ptr);
+    glfwGetWindowSize(m_window_ptr, &sz.first, &sz.second);
+    return sz;
+}
+
+float GLFWWindowContext::get_framebuffer_scale() const
+{
+    float scale{1.f};
+    assert(m_window_ptr);
+
+    std::pair<int, int> fb_sz(0, 0);
+    glfwGetFramebufferSize(m_window_ptr, &fb_sz.first, &fb_sz.second);
+    std::pair<int, int> window_sz(0, 0);
+    glfwGetWindowSize(m_window_ptr, &window_sz.first, &window_sz.second);
+
+    if (window_sz.first == 0 || window_sz.second == 0)
+        return scale;
+
+    const std::pair<float, float> fb_scale(
+        static_cast<float>(fb_sz.first)  / static_cast<float>(window_sz.first),
+        static_cast<float>(fb_sz.second) / static_cast<float>(window_sz.second)
+    );
+
+    // Trace the window properties
+    if constexpr (TRACE_GLFW_WINDOW_PROPERTIES)
+    {
+        if (s_glfw_err_handler)
+        {
+            std::pair<float, float> content_scale(0.f, 0.f);
+            glfwGetWindowContentScale(m_window_ptr, &content_scale.first, &content_scale.second);
+            std::stringstream out;
+            out << "Framebuffer size: " << fb_sz.first << "x" << fb_sz.second;
+            s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
+            out = std::stringstream();
+            out << "Window size:      " << window_sz.first << "x" << window_sz.second;
+            s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
+            out = std::stringstream();
+            out << "Window content scale: " << content_scale.first << ", " << content_scale.second;
+            s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
+        }
+    }
+
+    // If the scales are different on the X and Y axis, log an error and arbitrarily use scale.x
+    if (fb_scale.first != fb_scale.second && s_glfw_err_handler)
+    {
+        std::stringstream out;
+        out << "Different coordinate scales on the X and Y axis";
+        out << "; Framebuffer: " << fb_sz.first << "x" << fb_sz.second;
+        out << "; Window: " << window_sz.first << "x" << window_sz.second;
+        s_glfw_err_handler(stdutils::io::Severity::ERR, out.str());
+    }
+    scale = fb_scale.first;
+
+    assert(scale > 0.f);
+    return scale;
 }
 
 bool load_opengl(const stdutils::io::ErrorHandler* err_handler)
@@ -477,16 +544,21 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     return program_id;
 }
 
-
 void gl_enable_debug(const stdutils::io::ErrorHandler& err_handler)
 {
+#if SUPPORT_OPENGL_DEBUG_OUTPUT
     if (!s_opengl_debug_output_err_handler) { s_opengl_debug_output_err_handler = err_handler; }
     glEnable(GL_DEBUG_OUTPUT);
 #ifndef NDEBUG
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 #endif
+    // Requires OpenGL 4.3 (will crash on macOS)
     glDebugMessageCallback(gl_debug_output_callback, nullptr);
     //glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+#else
+    UNUSED(err_handler);
+    assert(0);
+#endif
 }
 
 lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox3d<float>& bb, bool flip_y)
@@ -527,8 +599,10 @@ GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GL
         any_fatal_error = true;
     if (!load_opengl(err_handler))
         any_fatal_error = true;
+#if SUPPORT_OPENGL_DEBUG_OUTPUT
     if (err_handler)
         gl_enable_debug(*err_handler);
+#endif
     // Read the id of the back framebuffer (Usually this will be 0)
     {
         GLint fb_id = 0;

@@ -289,6 +289,7 @@ int main(int argc, char *argv[])
     }();
     if (any_fatal_err || glfw_context.window() == nullptr)
         return EXIT_FAILURE;
+    const float framebuffer_scale = glfw_context.get_framebuffer_scale();
 
     // Setup Dear ImGui context
     const DearImGuiContext dear_imgui_context(glfw_context.window(), any_fatal_err);
@@ -443,7 +444,7 @@ int main(int argc, char *argv[])
 #endif
 
         // OpenGL frame setup
-        const auto [display_w, display_h] = glfw_context.window_size();
+        const auto [display_w, display_h] = glfw_context.framebuffer_size();
         const bool is_minimized = (display_w <= 0 || display_h <= 0);
         if(!draw_2d_renderer->init_framebuffer(display_w, display_h))
         {
@@ -461,20 +462,20 @@ int main(int argc, char *argv[])
             const bool only_background = !windows.shape_control || !draw_commands_ptr;
 
             // Render
-            const auto viewport_canvas = cast<scalar, float>(windows.viewport->get_viewport_canvas());
+            const auto fb_viewport_canvas = Canvas<float>(cast<scalar, float>(windows.viewport->get_viewport_canvas()), framebuffer_scale);
             if (only_background)
             {
-                draw_2d_renderer->render_viewport_background(viewport_canvas);
+                draw_2d_renderer->render_viewport_background(fb_viewport_canvas);
             }
             else
             {
                 assert(draw_commands_ptr);
                 bool new_cbp_segmentation = false;
-                const DrawCommands<scalar>& transformed_draw_commands = cbp_segmentation.convert_cbps(*draw_commands_ptr, viewport_canvas, geometry_has_changed, new_cbp_segmentation);
+                const DrawCommands<scalar>& transformed_draw_commands = cbp_segmentation.convert_cbps(*draw_commands_ptr, fb_viewport_canvas, geometry_has_changed, new_cbp_segmentation);
                 const bool update_buffers = geometry_has_changed || new_cbp_segmentation;
                 update_opengl_draw_list<scalar>(draw_2d_renderer->draw_list(), transformed_draw_commands, update_buffers, drawing_options);
                 stable_sort_draw_commands(draw_2d_renderer->draw_list());
-                draw_2d_renderer->render(viewport_canvas, flags);
+                draw_2d_renderer->render(fb_viewport_canvas, flags);
             }
         }
 

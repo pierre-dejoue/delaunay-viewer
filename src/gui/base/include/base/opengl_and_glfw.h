@@ -36,7 +36,11 @@ public:
     GLFWWindowContext(int width, int height, const GLFWOptions& options, const stdutils::io::ErrorHandler* err_handler = nullptr);
     ~GLFWWindowContext();
     GLFWwindow* window() { return m_window_ptr; }
-    std::pair<int, int> window_size() const;                                        // i.e. The framebuffer size
+    std::pair<int, int> framebuffer_size() const;
+    std::pair<int, int> window_size() const;
+
+    // Ratio between the framebuffer coordinates and the screen coordinates. Supposedly the same on the X and Y axis
+    float get_framebuffer_scale() const;
 
 private:
     GLFWwindow*     m_window_ptr;
@@ -63,6 +67,7 @@ bool gl_get_uniform_location(GLuint program, const GLchar *name, GLuint* out_loc
 bool gl_get_attrib_location(GLuint program, const GLchar *name, GLuint* out_location, const stdutils::io::ErrorHandler* err_handler = nullptr);
 
 // Enable debug log
+// Not supported on macOS
 void gl_enable_debug(const stdutils::io::ErrorHandler& err_handler);
 
 // Send the GLSL code without the version line

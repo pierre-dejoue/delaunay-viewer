@@ -79,6 +79,17 @@ public:
         : Canvas(screen_bb.min(), screen_bb.extent(), bb, flip_y)
     {}
 
+    Canvas(const Canvas& other, float screen_coordinates_scale)
+        : tl_corner(screen_coordinates_scale * other.tl_corner)
+        , size(screen_coordinates_scale * other.size)
+        , bb_corner(screen_coordinates_scale * other.bb_corner)
+        , flip_y(other.flip_y)
+        , bb(other.bb)
+        , scale(static_cast<F>(screen_coordinates_scale) * other.scale)
+    {
+        assert(screen_coordinates_scale > 0);
+    }
+
     F get_scale() const
     {
         return scale;

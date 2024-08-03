@@ -16,6 +16,12 @@ if(APPLE)
         PUBLIC
         GL_SILENCE_DEPRECATION
     )
+else()
+    # Platforms other than macOS do support OpenGL Debug Output
+    target_compile_definitions(gui_base
+        PRIVATE
+        SUPPORT_OPENGL_DEBUG_OUTPUT=1
+    )
 endif()
 
 target_include_directories(gui_base
