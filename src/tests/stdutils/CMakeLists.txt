@@ -7,6 +7,7 @@ set(UTESTS_SOURCES
     src/test_algorithm.cpp
     src/test_io.cpp
     src/test_locked_buffer.cpp
+    src/test_platform.cpp
     src/test_range.cpp
     src/test_span.cpp
     src/test_stats.cpp

@@ -19,6 +19,17 @@ enum class OS
 constexpr OS os();
 std::ostream& operator<<(std::ostream& out, OS os);
 
+enum class Arch
+{
+    UNKNOWN = 0,
+    x86,
+    x86_64,
+    arm64
+};
+
+constexpr Arch architecture();
+std::ostream& operator<<(std::ostream& out, Arch arch);
+
 enum class Compiler
 {
     UNKNOWN = 0,
@@ -32,24 +43,68 @@ constexpr Compiler compiler();
 std::ostream& operator<<(std::ostream& out, Compiler compiler);
 std::string compiler_version();
 
-enum class Arch
+constexpr bool NO_ENDL = false;
+
+void print_os(std::ostream& out, bool endl = true);
+void print_cpp_standard(std::ostream& out, bool endl = true);
+void print_compiler_info(std::ostream& out, bool endl = true);
+void print_architecture_info(std::ostream& out, bool endl = true);
+void print_compilation_date(std::ostream& out, bool endl = true);
+
+void print_platform_info(std::ostream& out, bool endl = true);
+void print_compiler_all_info(std::ostream& out, bool endl = true);
+
+
+//
+//
+// Implementation
+//
+//
+
+
+constexpr OS os()
 {
-    UNKNOWN = 0,
-    x86,
-    x86_64,
-    arm64
-};
+    // See: https://github.com/cpredef/predef/blob/master/OperatingSystems.md
+    #if   defined(__linux__)
+        return OS::LINUX;
+    #elif defined(__APPLE__)
+        return OS::MACOS;
+    #elif defined(_WIN32)
+        return OS::WINDOWS;
+    #else
+        return OS::UNKNOWN;
+    #endif
+}
 
-constexpr Arch architecture();
-std::ostream& operator<<(std::ostream& out, Arch arch);
+constexpr Arch architecture()
+{
+    // Source: https://abseil.io/docs/cpp/platforms/macros
+    #if   defined(__arm64__) || defined(__aarch64__)
+        return Arch::arm64;
+    #elif defined(__x86_64__) || defined(_M_X64)
+        return Arch::x86_64;
+    #elif defined(__i386__) || defined(_M_IX32)
+        return Arch::x86;
+    #else
+        return Arch::UNKNOWN;
+    #endif
+}
 
-void print_os(std::ostream& out);
-void print_cpp_standard(std::ostream& out);
-void print_compiler_info(std::ostream& out);
-void print_compilation_date(std::ostream& out);
-
-void print_platform_info(std::ostream& out);
-void print_compiler_all_info(std::ostream& out);
+constexpr Compiler compiler()
+{
+    // NB: Test __GNUC__ last, because that macro is sometimes defined by other compilers than the "true" GCC
+    #if   defined(_MSC_VER)
+        return Compiler::MSVC;
+    #elif defined(__clang__)
+        return Compiler::CLANG;
+    #elif defined(__INTEL_COMPILER)
+        return Compiler::INTEL;
+    #elif defined(__GNUC__)
+        return Compiler::GNU_C_CPP;
+    #else
+        return Compiler::UNKNOWN;
+    #endif
+}
 
 } // namespace platform
 } // namespace stdutils

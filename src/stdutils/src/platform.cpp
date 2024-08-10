@@ -8,20 +8,6 @@
 namespace stdutils {
 namespace platform {
 
-constexpr OS os()
-{
-    // See: https://github.com/cpredef/predef/blob/master/OperatingSystems.md
-    #if   defined(__linux__)
-        return OS::LINUX;
-    #elif defined(__APPLE__)
-        return OS::MACOS;
-    #elif defined(_WIN32)
-        return OS::WINDOWS;
-    #else
-        return OS::UNKNOWN;
-    #endif
-}
-
 std::ostream& operator<<(std::ostream& out, OS os)
 {
     switch(os)
@@ -50,20 +36,32 @@ std::ostream& operator<<(std::ostream& out, OS os)
     return out;
 }
 
-constexpr Compiler compiler()
+std::ostream& operator<<(std::ostream& out, Arch arch)
 {
-    // NB: Test __GNUC__ last, because that macro is sometimes defined by other compilers than the "true" GCC
-    #if   defined(_MSC_VER)
-        return Compiler::MSVC;
-    #elif defined(__clang__)
-        return Compiler::CLANG;
-    #elif defined(__INTEL_COMPILER)
-        return Compiler::INTEL;
-    #elif defined(__GNUC__)
-        return Compiler::GNU_C_CPP;
-    #else
-        return Compiler::UNKNOWN;
-    #endif
+    switch (arch)
+    {
+        case Arch::UNKNOWN:
+            out << "Unknown";
+            break;
+
+        case Arch::x86:
+            out << "x86";
+            break;
+
+        case Arch::x86_64:
+            out << "x86_64";
+            break;
+
+        case Arch::arm64:
+            out << "arm64";
+            break;
+
+        default:
+            assert(0);
+            out << "Unknown enum";
+            break;
+    }
+    return out;
 }
 
 std::ostream& operator<<(std::ostream& out, Compiler compiler)
@@ -139,93 +137,55 @@ std::string compiler_version()
     return out.str();
 }
 
-constexpr Arch architecture()
-{
-    // Source: https://abseil.io/docs/cpp/platforms/macros
-    #if   defined(__aarch64__)
-        return Arch::arm64;
-    #elif defined(__x86_64__) || defined(_M_X64)
-        return Arch::x86_64;
-    #elif defined(__i386__) || defined(_M_IX32)
-        return Arch::x86;
-    #else
-        return Arch::UNKNOWN;
-    #endif
-}
-
-std::ostream& operator<<(std::ostream& out, Arch arch)
-{
-    switch (arch)
-    {
-        case Arch::UNKNOWN:
-            out << "Unknown";
-            break;
-
-        case Arch::x86:
-            out << "x86";
-            break;
-
-        case Arch::x86_64:
-            out << "x86_64";
-            break;
-
-        case Arch::arm64:
-            out << "arm64";
-            break;
-
-        default:
-            assert(0);
-            out << "Unknown enum";
-            break;
-    }
-    return out;
-}
-
-void print_os(std::ostream& out)
+void print_os(std::ostream& out, bool endl)
 {
     constexpr auto os_id = os();
-    out << "OS: " << os_id << std::endl;
+    out << "OS: " << os_id;
+    if (endl) { out << '\n'; }
 }
 
-void print_cpp_standard(std::ostream& out)
+void print_cpp_standard(std::ostream& out, bool endl)
 {
-    out << "C++ Standard: " << __cplusplus << std::endl;
+    out << "C++ Standard: " << __cplusplus;
+    if (endl) { out << '\n'; }
 }
 
-void print_compiler_info(std::ostream& out)
+void print_compiler_info(std::ostream& out, bool endl)
 {
     constexpr auto compiler_id = compiler();
     out << "Compiler: " << compiler_id;
     if constexpr (compiler_id != Compiler::UNKNOWN)
         out << " " << compiler_version();
-    out << std::endl;
+    if (endl) { out << '\n'; }
 }
 
-void print_architecture_info(std::ostream& out)
+void print_architecture_info(std::ostream& out, bool endl)
 {
     constexpr auto arch_id = architecture();
-    out<< "Arch: " << arch_id << std::endl;
+    out<< "Arch: " << arch_id;
+    if (endl) { out << '\n'; }
 }
 
-void print_compilation_date(std::ostream& out)
+void print_compilation_date(std::ostream& out, bool endl)
 {
-    out << "Compilation date: " << __DATE__ << " " << __TIME__ << std::endl;
+    out << "Compilation date: " << __DATE__ << " " << __TIME__;
+    if (endl) { out << '\n'; }
 }
 
-void print_platform_info(std::ostream& out)
+void print_platform_info(std::ostream& out, bool endl)
 {
-    print_os(out);
-    print_architecture_info(out);
-    print_compiler_info(out);
+    print_os(out, endl);                if (!endl) { out << "; "; };
+    print_architecture_info(out, endl); if (!endl) { out << "; "; };
+    print_compiler_info(out, endl);
 }
 
-void print_compiler_all_info(std::ostream& out)
+void print_compiler_all_info(std::ostream& out, bool endl)
 {
-    print_os(out);
-    print_architecture_info(out);
-    print_compiler_info(out);
-    print_cpp_standard(out);
-    print_compilation_date(out);
+    print_os(out, endl);                if (!endl) { out << "; "; };
+    print_architecture_info(out, endl); if (!endl) { out << "; "; };
+    print_compiler_info(out, endl);     if (!endl) { out << "; "; };
+    print_cpp_standard(out, endl);      if (!endl) { out << "; "; };
+    print_compilation_date(out, endl);
 }
 
 } // namespace platform
