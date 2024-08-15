@@ -29,6 +29,7 @@
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
 #include <stdutils/platform.h>
+#include <stdutils/time.h>
 #include <svg/svg.h>
 
 // Order matters in this section
@@ -298,6 +299,7 @@ int main(int argc, char *argv[])
 
     // Print out project version and backend information
     std::cout << project_title() << std::endl;
+    std::cout << "Current time: " << stdutils::current_local_date_and_time() << std::endl;
     dear_imgui_context.backend_info(std::cout);
 
     // GUI Style

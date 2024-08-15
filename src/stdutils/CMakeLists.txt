@@ -8,6 +8,7 @@ set(LIB_SOURCES
     src/io.cpp
     src/platform.cpp
     src/string.cpp
+    src/time.cpp
 )
 
 file(GLOB LIB_HEADERS include/stdutils/*.h src/*.h)
