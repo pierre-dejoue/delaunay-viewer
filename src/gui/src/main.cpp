@@ -285,6 +285,7 @@ int main(int argc, char *argv[])
         constexpr int WINDOW_HEIGHT = 720;
         GLFWOptions options;
         options.title = project_title();
+        options.maximize_window = true;
         auto context = create_glfw_window_load_opengl(WINDOW_WIDTH, WINDOW_HEIGHT, options, any_fatal_err, back_framebuffer_id, &err_handler);
         return context;
     }();

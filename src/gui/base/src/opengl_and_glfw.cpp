@@ -16,10 +16,9 @@
 #define SUPPORT_OPENGL_DEBUG_OUTPUT 0
 #endif
 
-namespace {
-
-// Additional trace logs during GLFW initialization
 constexpr bool TRACE_GLFW_WINDOW_PROPERTIES = false;
+
+namespace {
 
 // Target OpenGL 3.3 for this project
 constexpr int TARGET_OPENGL_MAJOR = 3;
@@ -28,7 +27,7 @@ constexpr bool TARGET_OPENGL_CORE_PROFILE = true;       // 3.2+ only. Recommende
 constexpr const char* TARGET_GLSL_VERSION_STR = "#version 330 core";
 
 // Forward Compatibility: Disable all the deprecated, yet still in the core profile, functionalities.
-// This is particularly important on macOS.
+// This is particularly important on macOS that only supports fwd compatible OpenGL contexts
 // See: https://www.khronos.org/opengl/wiki/OpenGL_Context#Forward_compatibility
 //      https://www.glfw.org/faq.html#41---how-do-i-create-an-opengl-30-context
 constexpr bool TARGET_OPENGL_FORWARD_COMPATIBILITY = TARGET_OPENGL_CORE_PROFILE && TARGET_OPENGL_MAJOR >= 3;
@@ -50,6 +49,29 @@ void glfw_error_callback(int error, const char* description)
     std::stringstream out;
     out << "GLFW Error " << error << ": " << description;
     s_glfw_err_handler(stdutils::io::Severity::ERR, out.str());
+}
+
+std::string_view gl3w_error_code_as_string(int gl3w_err_code)
+{
+    assert(gl3w_err_code < 0);
+    switch (gl3w_err_code)
+    {
+        case 0:
+            return "GL3W_OK";
+
+        case -1:
+            return "GL3W_ERROR_INIT";
+
+        case -2:
+            return "GL3W_ERROR_LIBRARY_OPEN";
+
+        case -3:
+            return "GL3W_ERROR_OPENGL_VERSION";
+
+        default:
+            assert(0);
+            return "GL3W_UNKNOWN";
+    }
 }
 
 } // namespace
@@ -88,10 +110,10 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& o
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     if constexpr (TARGET_OPENGL_DEBUG_CONTEXT)
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+    if (options.maximize_window)
+        glfwWindowHint(GLFW_MAXIMIZED, GL_TRUE);
     if (options.framebuffer_msaa_samples > 0)
-    {
         glfwWindowHint(GLFW_SAMPLES, static_cast<int>(options.framebuffer_msaa_samples));
-    }
     assert(title.data());
     m_window_ptr = glfwCreateWindow(width, height, title.data(), nullptr, nullptr);
     if (m_window_ptr == nullptr)
@@ -110,6 +132,15 @@ GLFWWindowContext::~GLFWWindowContext()
     m_window_ptr = nullptr;
     if (m_glfw_init)
         glfwTerminate();
+}
+
+GLFWWindowContext::WindowStatus GLFWWindowContext::window_status() const
+{
+    WindowStatus result;
+    assert(m_window_ptr);
+    result.is_minimized = glfwGetWindowAttrib(m_window_ptr, GLFW_ICONIFIED);
+    result.is_maximized = glfwGetWindowAttrib(m_window_ptr, GLFW_MAXIMIZED);
+    return result;
 }
 
 std::pair<int, int> GLFWWindowContext::framebuffer_size() const
@@ -186,13 +217,15 @@ bool load_opengl(const stdutils::io::ErrorHandler* err_handler)
     if (called_once) { assert(0); return false; }
     called_once = true;
 
+    // Load OpenGL. Should be called once after an OpenGL context has been created.
     const int gl3w_err = gl3wInit();
+
     if (gl3w_err != GL3W_OK)
     {
         if (err_handler)
         {
             std::stringstream out;
-            out << "GL3W failed to initialize OpenGL (error code: " << gl3w_err << ")";
+            out << "GL3W failed to initialize OpenGL (error code: " << gl3w_err << " " << gl3w_error_code_as_string(gl3w_err) << ")";
             (*err_handler)(stdutils::io::Severity::FATAL, out.str());
         }
         return false;
@@ -381,7 +414,7 @@ namespace {
 
         assert(s_opengl_debug_output_err_handler);
         std::stringstream out;
-        out << "Open GL Debug: Sev: " << gl_debug_severity_str(sev)
+        out << "OpenGL Debug: Sev: " << gl_debug_severity_str(sev)
             << ", Source: " << gl_debug_source_str(source)
             << ", Type: " << gl_debug_msg_type_str(type)
             << ", Code: " << id
@@ -600,10 +633,11 @@ GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GL
     if (!load_opengl(err_handler))
         any_fatal_error = true;
 #if SUPPORT_OPENGL_DEBUG_OUTPUT
-    if (err_handler)
+    if (!any_fatal_error && err_handler)
         gl_enable_debug(*err_handler);
 #endif
     // Read the id of the back framebuffer (Usually this will be 0)
+    if (!any_fatal_error)
     {
         GLint fb_id = 0;
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fb_id);
