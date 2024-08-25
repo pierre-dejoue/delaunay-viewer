@@ -121,6 +121,20 @@ struct AppWindows
     } layout;
 };
 
+namespace shortcut {
+
+const ImGui::KeyShortcut& quit()
+{
+#if defined(__APPLE__)
+    static ImGui::KeyShortcut shortcut(ImGuiMod_Ctrl | ImGuiKey_Q, "Cmd+Q");
+#else
+    static ImGui::KeyShortcut shortcut(ImGuiMod_Alt | ImGuiKey_F4, "Alt+F4");
+#endif
+    return shortcut;
+}
+
+} // namespace shortcut
+
 void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTracker<scalar>& dt_tracker, bool& application_should_close, bool& gui_dark_mode)
 {
     std::string filename = "no_file";
@@ -240,7 +254,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
                 ImGui::EndMenu();
             }
             ImGui::Separator();
-            application_should_close = ImGui::MenuItem("Quit", "Alt+F4");
+            application_should_close = ImGui::MenuItem("Quit", shortcut::quit().label);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
