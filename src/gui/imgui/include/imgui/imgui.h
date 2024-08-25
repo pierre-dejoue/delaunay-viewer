@@ -17,8 +17,12 @@
 #include <base/color_data.h>
 #include <base/window_layout.h>
 #include <shapes/vect.h>
+#include <stdutils/io.h>
 
+#include <filesystem>
 #include <ostream>
+
+namespace fs = std::filesystem;
 
 template <typename F>
 Canvas<F> build_canvas(ImVec2 tl_corner, ImVec2 size, shapes::BoundingBox2d<F> bb, bool flip_y = false)
@@ -49,6 +53,7 @@ namespace ImGui {
 
 void HelpMarker(const char* desc);          // Function taken from imgui_demo.cpp
 void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond = 0);
+void BulletTextUnformatted(const char* txt);
 
 } // namespace ImGui
 
@@ -57,7 +62,13 @@ struct GLFWwindow;
 class DearImGuiContext
 {
 public:
-    explicit DearImGuiContext(GLFWwindow* glfw_window, bool& any_fatal_error) noexcept;
+    using FlagCode = unsigned int;
+    struct Flag
+    {
+        static constexpr FlagCode None = 0;
+        static constexpr FlagCode ManualINIFile = 1;
+    };
+    explicit DearImGuiContext(GLFWwindow* glfw_window, bool& any_fatal_error, FlagCode flags = Flag::None) noexcept;
     ~DearImGuiContext();
     DearImGuiContext(const DearImGuiContext&) = delete;
     DearImGuiContext(DearImGuiContext&&) = delete;
@@ -67,4 +78,7 @@ public:
     void new_frame() const;
     void render() const;
     void backend_info(std::ostream& out) const;
+
+    void load_ini_settings_from_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept;
+    void append_ini_settings_to_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept;
 };

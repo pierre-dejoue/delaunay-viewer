@@ -36,7 +36,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
     {
         //const auto& limits = m_settings.read_general_limits();
         //ImGui::Dummy(spacing); First section, so no spacing required
-        ImGui::BulletText("General");
+        ImGui::BulletTextUnformatted("General");
         ImGui::Indent();
         ImGui::Checkbox("Flip Y-axis", &(general_settings->flip_y));
         ImGui::Checkbox("Line smooth", &(general_settings->line_smooth));
@@ -47,7 +47,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
 
     {
         ImGui::Dummy(spacing);
-        ImGui::BulletText("Triangulation algos");
+        ImGui::BulletTextUnformatted("Triangulation algos");
         ImGui::Indent();
         for (auto& algo : m_dt_tracker.list_algos())
         {
@@ -62,7 +62,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
         const auto& limits = m_settings.read_point_limits();
 
         ImGui::Dummy(spacing);
-        ImGui::BulletText("Points");
+        ImGui::BulletTextUnformatted("Points");
         ImGui::Indent();
         ImGui::Checkbox("Show##Point", &(point_settings->show));
         ImGui::SameLine();
@@ -74,7 +74,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
     if (path_settings)
     {
         ImGui::Dummy(spacing);
-        ImGui::BulletText("Lines");
+        ImGui::BulletTextUnformatted("Lines");
         ImGui::Indent();
         ImGui::Checkbox("Show##Path", &(path_settings->show));
         ImGui::Unindent();
@@ -85,7 +85,7 @@ void SettingsWindow::visit(bool& can_be_erased, const WindowLayout& win_pos_sz)
     {
         const auto& limits = m_settings.read_surface_limits();
         ImGui::Dummy(spacing);
-        ImGui::BulletText("Faces");
+        ImGui::BulletTextUnformatted("Faces");
         ImGui::Indent();
         ImGui::Checkbox("Show##Surface", &(surface_settings->show));
         ImGui::SameLine();

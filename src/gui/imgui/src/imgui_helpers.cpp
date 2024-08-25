@@ -9,6 +9,8 @@
 #include <base/color_data.h>
 
 #include <cassert>
+#include <cstdlib>
+#include <fstream>
 
 void set_color(ColorData& color, ImU32 compact_color)
 {
@@ -49,9 +51,14 @@ void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond)
     ImGui::SetNextWindowSize(to_imgui_vec2(window_layout.window_size(to_screen_size(work_size))), cond);
 }
 
+void BulletTextUnformatted(const char* txt)
+{
+    ImGui::BulletText("%s", txt);
+}
+
 } // namespace ImGui
 
-DearImGuiContext::DearImGuiContext(GLFWwindow* glfw_window, bool& any_fatal_error) noexcept
+DearImGuiContext::DearImGuiContext(GLFWwindow* glfw_window, bool& any_fatal_error, FlagCode flags) noexcept
 {
     any_fatal_error = false;
     try
@@ -64,6 +71,12 @@ DearImGuiContext::DearImGuiContext(GLFWwindow* glfw_window, bool& any_fatal_erro
         const bool init_opengl3 = ImGui_ImplOpenGL3_Init(glsl_version());
 
         any_fatal_error = !versions_ok || (ctx == nullptr) || !init_glfw || !init_opengl3;
+
+        // Manual INI save
+        if (flags & Flag::ManualINIFile)
+        {
+            ImGui::GetIO().IniFilename = nullptr;
+        }
     }
     catch(const std::exception&)
     {
@@ -100,4 +113,60 @@ void DearImGuiContext::backend_info(std::ostream& out) const
     out << "GLFW " << GLFW_VERSION_MAJOR << "." << GLFW_VERSION_MINOR << "." << GLFW_VERSION_REVISION << std::endl;
     out << "OpenGL Version " << glGetString(GL_VERSION) << std::endl;
     out << "OpenGL Renderer " << glGetString(GL_RENDERER) << std::endl;
+}
+
+void DearImGuiContext::load_ini_settings_from_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept
+{
+    assert(ImGui::GetIO().IniFilename == nullptr);
+    assert(!ini_file.empty());
+    if (ini_file.empty()) { return; }
+    if (!fs::exists(ini_file)) { return; }
+    try
+    {
+        using istream_iter = std::istreambuf_iterator<char>;
+        const auto ini_file_in_mem = stdutils::io::open_and_parse_bin_file<std::vector<char>, char>(ini_file, [](std::basic_istream<char>& istream, const stdutils::io::ErrorHandler&) {
+            return std::vector<char>(istream_iter(istream), istream_iter());
+        }, err_handler);
+        if (ini_file_in_mem.empty()) { return; }
+        ImGui::LoadIniSettingsFromMemory(ini_file_in_mem.data(), ini_file_in_mem.size());
+    }
+    catch(const std::exception& e)
+    {
+        std::stringstream out;
+        out << "Error while loading Dear ImGui INI settings from file [" << ini_file << "]: " << e.what();
+        if (err_handler) { err_handler(stdutils::io::Severity::EXCPT, out.str()); }
+    }
+}
+
+void DearImGuiContext::append_ini_settings_to_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept
+{
+    assert(ImGui::GetIO().IniFilename == nullptr);
+    assert(!ini_file.empty());
+    if (ini_file.empty()) { return; }
+    try
+    {
+        std::size_t ini_data_size = 0;
+        const char* ini_data = ImGui::SaveIniSettingsToMemory(&ini_data_size);
+        assert(ini_data);
+        if (!ini_data) { return; }
+        std::ios_base::openmode mode = std::ios_base::app;
+        std::basic_ofstream<char> outputstream(ini_file, mode);
+        if (outputstream.is_open())
+        {
+            outputstream << "\n# Dear ImGui\n";
+            outputstream.write(ini_data, ini_data_size);
+        }
+        else
+        {
+            std::stringstream out;
+            out << "Could not save Dear ImGui INI settings to file [" << ini_file << "]";
+            if (err_handler) { err_handler(stdutils::io::Severity::ERR, out.str()); }
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::stringstream out;
+        out << "Error while saving Dear ImGui INI settings to file [" << ini_file << "]: " << e.what();
+        if (err_handler) { err_handler(stdutils::io::Severity::EXCPT, out.str()); }
+    }
 }
