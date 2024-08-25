@@ -20,12 +20,19 @@
 #undef max
 #endif
 
+#include <cstdlib>
+#include <cstdint>
+#include <ostream>
 #include <string_view>
 #include <utility>
+
+// From Dear ImGui: imgui_impl_glfw.cpp
+#define GLFW_VERSION_COMBINED (GLFW_VERSION_MAJOR * 1000 + GLFW_VERSION_MINOR * 100 + GLFW_VERSION_REVISION)
 
 struct GLFWOptions
 {
     std::string_view title{};
+    bool enable_vsync{true};
     bool maximize_window{false};
     unsigned int framebuffer_msaa_samples{0};         // 0 to disable multisampling
 };
@@ -50,6 +57,8 @@ public:
     // Ratio between the framebuffer coordinates and the screen coordinates. Supposedly the same on the X and Y axis
     float get_framebuffer_scale() const;
 
+    static void glfw_version_info(std::ostream& out);
+
 private:
     GLFWwindow*     m_window_ptr;
     bool            m_glfw_init;
@@ -57,6 +66,9 @@ private:
 
 // Load OpenGL functions. Call only once.
 bool load_opengl(const stdutils::io::ErrorHandler* err_handler = nullptr);
+
+// OpenGL version info. Call only after an OpenGL context is setup!
+void opengl_version_info(std::ostream& out);
 
 // #version line to use in GLSL shaders
 const char* glsl_version();

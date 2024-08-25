@@ -74,6 +74,32 @@ std::string_view gl3w_error_code_as_string(int gl3w_err_code)
     }
 }
 
+#if (GLFW_VERSION_COMBINED >= 3400)
+std::string_view glfw_platform_as_string(int glfw_platform)
+{
+    switch (glfw_platform)
+    {
+        case GLFW_PLATFORM_WIN32:
+            return "WIN32";
+
+        case GLFW_PLATFORM_COCOA:
+            return "COCOA";
+
+        case GLFW_PLATFORM_WAYLAND:
+            return "WAYLAND";
+
+        case GLFW_PLATFORM_X11:
+            return "X11";
+
+        case GLFW_PLATFORM_NULL:
+            return "NULL";
+
+        default:
+            return "UNKNOWN";
+    }
+}
+#endif
+
 } // namespace
 
 GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& options, const stdutils::io::ErrorHandler* err_handler)
@@ -122,7 +148,6 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& o
         return;
     }
     glfwMakeContextCurrent(m_window_ptr);
-    glfwSwapInterval(1);
 }
 
 GLFWWindowContext::~GLFWWindowContext()
@@ -211,6 +236,17 @@ float GLFWWindowContext::get_framebuffer_scale() const
     return scale;
 }
 
+void GLFWWindowContext::glfw_version_info(std::ostream& out)
+{
+    int glfw_major = 0, glfw_minor = 0, glfw_revision = 0;
+    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_revision);
+    out << "GLFW " << glfw_major << "." << glfw_minor << "." << glfw_revision;
+#if (GLFW_VERSION_COMBINED >= 3400)
+    out << " (" << glfw_platform_as_string(glfwGetPlatform()) << ")";
+#endif
+    out << '\n';
+}
+
 bool load_opengl(const stdutils::io::ErrorHandler* err_handler)
 {
     static bool called_once = false;
@@ -241,6 +277,17 @@ bool load_opengl(const stdutils::io::ErrorHandler* err_handler)
         return false;
     }
     return true;
+}
+
+void opengl_version_info(std::ostream& out)
+{
+    const auto* open_gl_version_str = glGetString(GL_VERSION);      // Will return NULL if there is no current OpenGL context!
+    if (open_gl_version_str)
+        out << "OpenGL Version: " << open_gl_version_str << '\n';
+    const auto* open_gl_vendor_str = glGetString(GL_VENDOR);
+    const auto* open_gl_renderer_str = glGetString(GL_RENDERER);
+    if (open_gl_vendor_str && open_gl_renderer_str)
+        out << "OpenGL Vendor: " << open_gl_vendor_str << "; Renderer: " << open_gl_renderer_str << '\n';
 }
 
 const char* glsl_version()
@@ -636,6 +683,11 @@ GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GL
     if (!any_fatal_error && err_handler)
         gl_enable_debug(*err_handler);
 #endif
+
+    // Vsync
+    if (!any_fatal_error && options.enable_vsync)
+        glfwSwapInterval(1);
+
     // Read the id of the back framebuffer (Usually this will be 0)
     if (!any_fatal_error)
     {

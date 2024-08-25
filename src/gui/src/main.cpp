@@ -316,6 +316,7 @@ int main(int argc, char *argv[])
     std::cout << project_title() << std::endl;
     std::cout << "Current time: " << stdutils::current_local_date_and_time() << std::endl;
     dear_imgui_context.backend_info(std::cout);
+    std::cout.flush();
 
     // GUI Style
     bool gui_dark_mode = false;
@@ -371,8 +372,11 @@ int main(int argc, char *argv[])
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
-
-        //int iconified = glfwGetWindowAttrib(glfw_context.window(), GLFW_ICONIFIED);
+        if (glfw_context.window_status().is_minimized)
+        {
+            dear_imgui_context.sleep(10);
+            continue;
+        }
 
         // Start the Dear ImGui frame
         dear_imgui_context.new_frame();
@@ -462,7 +466,7 @@ int main(int argc, char *argv[])
 
         // OpenGL frame setup
         const auto [display_w, display_h] = glfw_context.framebuffer_size();
-        const bool is_minimized = (display_w <= 0 || display_h <= 0);
+        assert(display_w > 0 && display_h > 0);     // Minimized window has been identified earlier
         if(!draw_2d_renderer->init_framebuffer(display_w, display_h))
         {
             err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the framebuffer");
@@ -471,7 +475,7 @@ int main(int argc, char *argv[])
         draw_2d_renderer->clear_framebuffer(get_window_background_color(gui_dark_mode));
 
         // Viewport rendering
-        if (windows.viewport && !is_minimized)
+        if (windows.viewport)
         {
             // Rendering flags
             renderer::Flag::type flags = renderer::Flag::ViewportBackground;;
@@ -501,7 +505,7 @@ int main(int argc, char *argv[])
 
         // End frame
         glfwSwapBuffers(glfw_context.window());
-    } // while (!glfwWindowShouldClose(glfw_context.window()))
+    }
 
     return EXIT_SUCCESS;
 }

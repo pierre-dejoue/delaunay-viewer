@@ -89,6 +89,7 @@ public:
     void new_frame() const;
     void render() const;
     void backend_info(std::ostream& out) const;
+    void sleep(int ms) const;
 
     void load_ini_settings_from_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept;
     void append_ini_settings_to_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept;

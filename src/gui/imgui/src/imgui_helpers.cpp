@@ -106,13 +106,22 @@ void DearImGuiContext::render() const
 
 void DearImGuiContext::backend_info(std::ostream& out) const
 {
+    // Imgui
     const ImGuiIO& io = ImGui::GetIO();
     out << "Dear ImGui " << IMGUI_VERSION
         << " (Backend platform: " << (io.BackendPlatformName ? io.BackendPlatformName : "NULL")
-        << ", renderer: " << (io.BackendRendererName ? io.BackendRendererName : "NULL") << ")" << std::endl;
-    out << "GLFW " << GLFW_VERSION_MAJOR << "." << GLFW_VERSION_MINOR << "." << GLFW_VERSION_REVISION << std::endl;
-    out << "OpenGL Version " << glGetString(GL_VERSION) << std::endl;
-    out << "OpenGL Renderer " << glGetString(GL_RENDERER) << std::endl;
+        << ", renderer: " << (io.BackendRendererName ? io.BackendRendererName : "NULL") << ")" << '\n';
+
+    // GLFW
+    GLFWWindowContext::glfw_version_info(out);
+
+    // OpenGL
+    opengl_version_info(out);
+}
+
+void DearImGuiContext::sleep(int ms) const
+{
+    ImGui_ImplGlfw_Sleep(ms);
 }
 
 void DearImGuiContext::load_ini_settings_from_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept
