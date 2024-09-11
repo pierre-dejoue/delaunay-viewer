@@ -11,12 +11,16 @@
 #include <iterator>
 #include <memory>
 #include <numeric>
+#include <ostream>
 #include <sstream>
 #include <utility>
 #include <vector>
 
 #ifndef DT_POLY2TRI_ORIGINAL_API
 #define DT_POLY2TRI_ORIGINAL_API 0
+#endif
+#ifndef DT_POLY2TRI_TRACE_CDT_INFO
+#define DT_POLY2TRI_TRACE_CDT_INFO 1
 #endif
 
 namespace delaunay {
@@ -86,6 +90,24 @@ namespace p2t {
 
 } // namespace p2t
 } // namespace details
+
+#if (DT_POLY2TRI_TRACE_CDT_INFO && !DT_POLY2TRI_ORIGINAL_API)
+namespace {
+    std::ostream& operator<<(std::ostream& out, const ::p2t::CDT::Info& info)
+    {
+        out << "  Number of input points = "                << info.nb_input_points << '\n';
+        out << "  Number of input edges = "                 << info.nb_input_edges << '\n';
+        out << "  Number of output triangles = "            << info.nb_output_triangles << '\n';
+        out << "  Number of triangles, pre-finalization = " << info.nb_triangles_pre_finalization << '\n';
+        out << "  Number of triangle flips = "              << info.nb_triangle_flips << '\n';
+        out << "  Max Legalize depth = "                    << info.max_legalize_depth << '\n';
+        out << "  Input     memory footprint = "            << (static_cast<double>(info.input_memory_footprint) / 1024.0)              << " kB" << '\n';
+        out << "  Triangles memory footprint = "            << (static_cast<double>(info.triangles_memory_footprint_in_bytes) / 1024.0) << " kB" << '\n';
+        out << "  Nodes     memory footprint = "            << (static_cast<double>(info.nodes_memory_footprint_in_bytes) / 1024.0)     << " kB";
+        return out;
+    }
+}
+#endif
 
 template <typename F, typename I>
 Poly2triImpl<F, I>::Poly2triImpl(const stdutils::io::ErrorHandler* err_handler)
@@ -278,6 +300,16 @@ void Poly2triImpl<F, I>::triangulate_impl(TriangulationPolicy policy, shapes::Tr
         // Triangulate
         cdt.Triangulate(p2t::Policy::ConvexHull);
     }
+
+#if DT_POLY2TRI_TRACE_CDT_INFO
+    {
+        std::stringstream out;
+        out << "poly2tri triangulation info:\n";
+        out << "  Type of triangulation = " << policy << '\n';
+        out << cdt.LastTriangulationInfo();
+        if (m_err_handler) { m_err_handler(stdutils::io::Severity::TRACE, out.str()); }
+    }
+#endif
 
     const auto& p2t_triangles = cdt.GetTriangles();
 #endif

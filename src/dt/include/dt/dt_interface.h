@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <ostream>
 
 namespace delaunay {
 
@@ -17,6 +18,8 @@ enum class TriangulationPolicy
     PointCloud,
     CDT,
 };
+
+std::ostream& operator<<(std::ostream& out, TriangulationPolicy policy);
 
 template <typename F, typename I>
 class Interface
