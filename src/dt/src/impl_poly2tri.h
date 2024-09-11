@@ -15,7 +15,9 @@
 #include <utility>
 #include <vector>
 
+#ifndef DT_POLY2TRI_ORIGINAL_API
 #define DT_POLY2TRI_ORIGINAL_API 0
+#endif
 
 namespace delaunay {
 
