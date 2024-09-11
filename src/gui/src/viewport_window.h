@@ -30,7 +30,12 @@ public:
     using GeometryBB = shapes::BoundingBox2d<scalar>;
     using ScreenBB = shapes::BoundingBox2d<float>;
     using ViewportCanvas = Canvas<scalar>;
-    using SteinerCallback = std::function<void(const shapes::Point2d<scalar>& steiner_point)>;
+    using WorldCoordinatesCallback = std::function<void(const shapes::Point2d<scalar>& steiner_point)>;
+    struct MouseClickTool
+    {
+        bool checked{false};
+        WorldCoordinatesCallback callback{};
+    };
 
     ViewportWindow();
     ViewportWindow(const ViewportWindow&) = delete;
@@ -42,7 +47,7 @@ public:
 
     void set_geometry_bounding_box(const GeometryBB& bounding_box);
 
-    void set_steiner_callback(const SteinerCallback& callback);
+    void set_steiner_callback(const WorldCoordinatesCallback& callback);
 
     const Key& get_latest_selected_tab() const;
 
@@ -60,6 +65,7 @@ private:
         bool is_ongoing = false;
         ScreenPos corner_0;
         ScreenPos corner_1;
+        bool is_positive_box() const { return corner_1.x > corner_0.x && corner_1.y > corner_0.y; }
     };
     void reset_zoom();
     void zoom_in(const shapes::BoundingBox2d<scalar>& bb);
@@ -74,6 +80,5 @@ private:
     ZoomSelectionBox m_zoom_selection_box;
     Key m_latest_selected_tab;
     ColorData m_background_color;
-    bool m_steiner_checked;
-    SteinerCallback m_steiner_callback;
+    MouseClickTool m_steiner_tool;
 };

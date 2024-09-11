@@ -22,6 +22,12 @@ void draw_canvas_foreground(ImDrawList* draw_list, ImVec2 tl_corner, ImVec2 br_c
     draw_list->AddRect(tl_corner, br_corner, CanvasBorderColor_Default);
 }
 
+enum class LeftMouseButtonUse
+{
+    ZoomBox,
+    AddSteinerPoint
+};
+
 }
 
 ViewportWindow::TabList ViewportWindow::s_default_tabs = { "<empty>" };
@@ -34,8 +40,7 @@ ViewportWindow::ViewportWindow()
     , m_zoom_selection_box()
     , m_latest_selected_tab()
     , m_background_color(to_float_color(CanvasBackgroundColor_Default))
-    , m_steiner_checked(false)
-    , m_steiner_callback()
+    , m_steiner_tool{}
 {
     reset();
 }
@@ -47,7 +52,7 @@ void ViewportWindow::reset()
     reset_zoom();
 
     // Misc
-    m_steiner_checked = false;
+    m_steiner_tool.checked = false;
 }
 
 void ViewportWindow::set_geometry_bounding_box(const GeometryBB& bounding_box)
@@ -56,10 +61,19 @@ void ViewportWindow::set_geometry_bounding_box(const GeometryBB& bounding_box)
     reset_zoom();
 }
 
-void ViewportWindow::set_steiner_callback(const ViewportWindow::SteinerCallback& callback)
+namespace details {
+
+void set_generic_callback(ViewportWindow::MouseClickTool& tool, const ViewportWindow::WorldCoordinatesCallback& callback)
 {
-    m_steiner_callback = callback;
-    if (!static_cast<bool>(m_steiner_callback)) { m_steiner_checked = false; }
+    tool.callback = callback;
+    if (!static_cast<bool>(tool.callback)) {tool.checked = false; }
+}
+
+} // namespace details
+
+void ViewportWindow::set_steiner_callback(const ViewportWindow::WorldCoordinatesCallback& callback)
+{
+    details::set_generic_callback(m_steiner_tool, callback);
 }
 
 void ViewportWindow::reset_zoom()
@@ -101,13 +115,9 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
         return;
     }
 
-    // Pick background color
-    ImGui::ColorEdit3("Background color", m_background_color.data(), ImGuiColorEditFlags_NoInputs);
-
-    ImGui::SameLine(0, 30);
     if (is_valid(m_prev_mouse_in_canvas.canvas))
     {
-        if (ImGui::BeginTable("canvas_table", 3))
+        if (ImGui::BeginTable("canvas_table", 4))
         {
 #if 0
             {
@@ -134,6 +144,9 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
             {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
+                // Pick background color
+                ImGui::ColorEdit3("Background color", m_background_color.data(), ImGuiColorEditFlags_NoInputs);
+                ImGui::TableNextColumn();
                 ImGui::Text("Mouse pointer");
                 if (m_prev_mouse_in_canvas.is_hovered)
                 {
@@ -145,6 +158,23 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                     ImGui::Text("%0.3g", p.y);
                 }
             }
+            {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                // Empty tile
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted("Selection box");
+                if (m_zoom_selection_box.is_ongoing && m_zoom_selection_box.is_positive_box())
+                {
+                    assert(is_valid(m_prev_mouse_in_canvas.canvas));
+                    const auto corner_0 = m_prev_mouse_in_canvas.canvas.to_world(m_zoom_selection_box.corner_0);
+                    const auto corner_1 = m_prev_mouse_in_canvas.canvas.to_world(m_zoom_selection_box.corner_1);
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%0.3g", std::abs(corner_1.x - corner_0.x));
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%0.3g", std::abs(corner_1.y - corner_0.y));
+                }
+            }
             ImGui::EndTable();
         }
     }
@@ -154,14 +184,23 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
         reset_zoom();
     }
 
-    if (m_steiner_callback)
+    if (m_steiner_tool.callback)
     {
         ImGui::SameLine(0, 30);
-        ImGui::Checkbox("Add Steiner", &m_steiner_checked);
+        ImGui::Checkbox("Add Steiner", &m_steiner_tool.checked);
         ImGui::SameLine(0);
-        ImGui::HelpMarker("Right click to add Steiner points");
+        ImGui::HelpMarker("Left click to add Steiner points");
     }
-    assert(static_cast<bool>(m_steiner_callback) || !m_steiner_checked);
+    assert(static_cast<bool>(m_steiner_tool.callback) || !m_steiner_tool.checked);
+
+    // Left mouse button use during this frame
+    const auto left_mouse_button_use = [this]() {
+        if (!m_zoom_selection_box.is_ongoing)
+        {
+            if (m_steiner_tool.checked) { return LeftMouseButtonUse::AddSteinerPoint; }
+        }
+        return LeftMouseButtonUse::ZoomBox;
+    }();
 
     if (ImGui::BeginTabBar("##TabBar"))
     {
@@ -193,12 +232,39 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                 mouse_in_canvas.is_held = ImGui::IsItemActive();
                 mouse_in_canvas.mouse_pos = to_screen_pos(io.MousePos);
 
-                // Zoom selection box
-                if (mouse_in_canvas.is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_zoom_selection_box.is_ongoing)
+                // Action of the left mouse button
+                if (mouse_in_canvas.is_hovered)
                 {
-                    m_zoom_selection_box.is_ongoing = true;
-                    m_zoom_selection_box.corner_0 = m_zoom_selection_box.corner_1 = mouse_in_canvas.mouse_pos;
+                    switch (left_mouse_button_use)
+                    {
+                        case LeftMouseButtonUse::ZoomBox:
+                        {
+                            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !m_zoom_selection_box.is_ongoing)
+                            {
+                                m_zoom_selection_box.is_ongoing = true;
+                                m_zoom_selection_box.corner_0 = m_zoom_selection_box.corner_1 = mouse_in_canvas.mouse_pos;
+                            }
+                            break;
+                        }
+
+                        case LeftMouseButtonUse::AddSteinerPoint:
+                        {
+                            // TODO The crosshair cursor would be better!
+                            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                            {
+                                m_steiner_tool.callback(canvas.to_world(to_screen_pos(io.MousePos)));
+                            }
+                            break;
+                        }
+
+                        default:
+                            assert(0);
+                            break;
+                    }
                 }
+
+                // Zoom selection box cont.
                 if (m_zoom_selection_box.is_ongoing)
                 {
                     m_zoom_selection_box.corner_1 = mouse_in_canvas.mouse_pos;
@@ -206,25 +272,22 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                     {
                         m_zoom_selection_box.is_ongoing = false;
                         m_zoom_selection_box.corner_1 = mouse_in_canvas.mouse_pos;
-                        const auto& corner_0 = m_zoom_selection_box.corner_0;
-                        const auto& corner_1 = m_zoom_selection_box.corner_1;
-                        const ScreenPos z_tl_corner(std::min(corner_0.x, corner_1.x), std::min(corner_0.y, corner_1.y));
-                        const ScreenPos z_br_corner(std::max(corner_0.x, corner_1.x), std::max(corner_0.y, corner_1.y));
-                        if (z_br_corner.x - z_tl_corner.x > 3.f && z_br_corner.y - z_tl_corner.y > 3.f)
-                            zoom_in(shapes::BoundingBox2d<scalar>().add(canvas.to_world(z_tl_corner)).add(canvas.to_world(z_br_corner)));
+                        if (m_zoom_selection_box.is_positive_box())
+                        {
+                            const auto& z_tl_corner = m_zoom_selection_box.corner_0;
+                            const auto& z_br_corner = m_zoom_selection_box.corner_1;
+                            if (z_br_corner.x - z_tl_corner.x > 3.f && z_br_corner.y - z_tl_corner.y > 3.f)
+                            {
+                                zoom_in(shapes::BoundingBox2d<scalar>().add(canvas.to_world(z_tl_corner)).add(canvas.to_world(z_br_corner)));
+                            }
+                        }
                     }
                 }
 
-                // Pan
-                if (!m_steiner_checked && mouse_in_canvas.is_held && !m_zoom_selection_box.is_ongoing && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
+                // Action of the right mouse button: Pan
+                if (mouse_in_canvas.is_held && !m_zoom_selection_box.is_ongoing && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
                 {
                     pan(canvas.to_world_vector(to_screen_pos(io.MouseDelta)));
-                }
-
-                // Add Steiner point
-                if (m_steiner_checked && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-                {
-                    m_steiner_callback(canvas.to_world(to_screen_pos(io.MousePos)));
                 }
 
                 // Clip rectangle
@@ -233,7 +296,7 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                 // TODO : highlight bounding box
 
                 // Zoom rectangle
-                if (m_zoom_selection_box.is_ongoing)
+                if (m_zoom_selection_box.is_ongoing && m_zoom_selection_box.is_positive_box())
                 {
                     constexpr float rounding = 0.f;
                     constexpr float thickness = 0.5f;
