@@ -706,6 +706,7 @@ GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GL
 #ifdef _WIN32
 // On Windows, here is a trick to select the main GPU for the application (instead of the integrated GPU)
 // See Technical Note from NVidia: "Enabling High Performance Graphics Rendering on Optimus Systems"
+// Alternatively we could rely on GLFW to do that for us with the GLFW_USE_HYBRID_HPG option (providing that lib is statically linked)
 extern "C" {
     __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
     __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;

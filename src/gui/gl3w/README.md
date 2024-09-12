@@ -6,6 +6,8 @@ GL3W
 
 Gl3w is [UNLICENSED](https://github.com/skaslev/gl3w/blob/master/UNLICENSE). Alternatives to Gl3w are glad, glew (with an 'e'), to name a few.
 
+I made very minor changes to the generation script, as explained below.
+
 ## Code Generation
 
 The files in this folder were generated with the following command line:
@@ -38,5 +40,5 @@ web = urllib2.urlopen(urllib2.Request(url, headers={'User-Agent': 'Mozilla/5.0'}
 
 ## Other Changes
 
-- Add a generation date in files `gl3w.h` and `gl3w.c`: `/* Generated: 2023-08-15 */`
+- Add a generation date in files `gl3w.h` and `gl3w.c`: e.g. `/* Generated: 2023-08-15 */`
 - Replace tabs by 4 spaces

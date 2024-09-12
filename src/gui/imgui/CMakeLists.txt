@@ -1,5 +1,4 @@
 # Dependencies
-find_package(OpenGL REQUIRED)
 include(glfw)
 include(imgui)
 
@@ -46,8 +45,9 @@ target_compile_definitions(imgui
 target_link_libraries(imgui
     PUBLIC
     gui_base
+    stdutils
+    PRIVATE
     glfw
-    OpenGL::GL
 )
 
 set_property(TARGET imgui PROPERTY FOLDER "third_parties")

@@ -16,7 +16,6 @@
 #include <base/canvas.h>
 #include <base/color_data.h>
 #include <base/window_layout.h>
-#include <shapes/vect.h>
 #include <stdutils/io.h>
 
 #include <filesystem>
@@ -25,7 +24,7 @@
 namespace fs = std::filesystem;
 
 template <typename F>
-Canvas<F> build_canvas(ImVec2 tl_corner, ImVec2 size, shapes::BoundingBox2d<F> bb, bool flip_y = false)
+Canvas<F> build_canvas(ImVec2 tl_corner, ImVec2 size, WorldSpaceBB<F> bb, bool flip_y = false)
 {
     return Canvas<F>(ScreenPos(tl_corner.x, tl_corner.y), ScreenPos(size.x, size.y), bb, flip_y);
 }

@@ -55,11 +55,12 @@ set_target_warnings(delaunay_viewer ON)
 
 target_link_libraries(delaunay_viewer
     PRIVATE
-    dt
-    gl3w
+    gui_base
     imgui
     pfd
     argagg-lib
+    dt
+    shapes
     stdutils
     lin
     svg
