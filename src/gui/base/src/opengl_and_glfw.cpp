@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 
+// Caution: GL_DEBUG_OUTPUT is not supported at all on macOS
 #ifndef SUPPORT_OPENGL_DEBUG_OUTPUT
 #define SUPPORT_OPENGL_DEBUG_OUTPUT 0
 #endif
@@ -20,23 +21,27 @@ constexpr bool TRACE_GLFW_WINDOW_PROPERTIES = false;
 
 namespace {
 
-// Target OpenGL 3.3 for this project
+// Target OpenGL 3.3 for this project.
+// macOS: OpenGL 3.3 is supported starting with 10.9 Mavericks
 constexpr int TARGET_OPENGL_MAJOR = 3;
 constexpr int TARGET_OPENGL_MINOR = 3;
 constexpr bool TARGET_OPENGL_CORE_PROFILE = true;       // 3.2+ only. Recommended.
 constexpr const char* TARGET_GLSL_VERSION_STR = "#version 330 core";
 
+// OpengGL combined version number. It happens to match the GLSL version number ONLY IF >= 330.
+constexpr int TARGET_OPENGL_VERSION_COMBINED = TARGET_OPENGL_MAJOR * 100 + TARGET_OPENGL_MINOR * 10 + 0;
+
 // Forward Compatibility: Disable all the deprecated, yet still in the core profile, functionalities.
 // This is particularly important on macOS that only supports fwd compatible OpenGL contexts
 // See: https://www.khronos.org/opengl/wiki/OpenGL_Context#Forward_compatibility
 //      https://www.glfw.org/faq.html#41---how-do-i-create-an-opengl-30-context
-constexpr bool TARGET_OPENGL_FORWARD_COMPATIBILITY = TARGET_OPENGL_CORE_PROFILE && TARGET_OPENGL_MAJOR >= 3;
+constexpr bool TARGET_OPENGL_FORWARD_COMPATIBILITY = TARGET_OPENGL_CORE_PROFILE && (TARGET_OPENGL_VERSION_COMBINED >= 300);
 
 // Debug CONTEXT, for debug output. From the OpenGL doc:
 // > Unless debug output is enabled, no messages will be generated, retrieved, or logged. It is enabled by using glEnable with the GL_DEBUG_OUTPUT enumerator.
 // > In Debug Contexts, debug output starts enabled. In non-debug contexts, the OpenGL implementation may not generate messages even if debug output is enabled.
 #ifndef NDEBUG
-constexpr bool TARGET_OPENGL_DEBUG_CONTEXT = true;
+constexpr bool TARGET_OPENGL_DEBUG_CONTEXT = SUPPORT_OPENGL_DEBUG_OUTPUT;
 #else
 constexpr bool TARGET_OPENGL_DEBUG_CONTEXT = false;
 #endif
@@ -443,7 +448,8 @@ bool gl_get_attrib_location(GLuint program, const GLchar *name, GLuint* out_loca
 
 namespace {
 
-    // OpenGL debug output callaback;
+    // OpenGL debug output callaback
+    // Ref: https://www.khronos.org/opengl/wiki/Debug_Output
     stdutils::io::ErrorHandler s_opengl_debug_output_err_handler;
     void gl_debug_output_callback(GLenum source, GLenum type, GLuint id, GLenum sev, GLsizei length,
                   const GLchar *msg, const void *user_param)
@@ -677,10 +683,11 @@ GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GL
         any_fatal_error = true;
     if (!load_opengl(err_handler))
         any_fatal_error = true;
-#if SUPPORT_OPENGL_DEBUG_OUTPUT
-    if (!any_fatal_error && err_handler)
-        gl_enable_debug(*err_handler);
-#endif
+    if constexpr (TARGET_OPENGL_DEBUG_CONTEXT)
+    {
+        if (!any_fatal_error && err_handler)
+            gl_enable_debug(*err_handler);
+    }
 
     // Vsync
     if (!any_fatal_error && options.enable_vsync)
