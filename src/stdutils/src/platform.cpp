@@ -1,9 +1,19 @@
 // Copyright (c) 2023 Pierre DEJOUE
 // This code is distributed under the terms of the MIT License
+
+// Prevent a warning on std::getenv with MSVC
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdutils/platform.h>
 
+#include <array>
 #include <cassert>
+#include <cstdlib>
 #include <sstream>
+
+#if defined(__APPLE__)
+#include "platform_macos.h"
+#endif
 
 namespace stdutils {
 namespace platform {
@@ -186,6 +196,37 @@ void print_compiler_all_info(std::ostream& out, bool endl)
     print_compiler_info(out, endl);     if (!endl) { out << "; "; };
     print_cpp_standard(out, endl);      if (!endl) { out << "; "; };
     print_compilation_date(out, endl);
+}
+
+namespace fs = std::filesystem;
+
+fs::path get_local_app_data_path() noexcept
+{
+    try
+    {
+#if   defined(__linux__)
+        // XDG Base Directory Specification: https://specifications.freedesktop.org/basedir-spec/latest/
+        const char* env_path = std::getenv("HOME");
+        return env_path != nullptr ? fs::path(env_path) / fs::path(".local/share") : fs::path();
+
+#elif defined(__APPLE__)
+        std::array<char, 1024> buffer;
+        const bool success = __macos__get_local_app_data_path(buffer.data(), 1023);
+        return success ? fs::path(buffer.data()) : fs::path();
+
+#elif defined(_WIN32)
+        const char* env_path = std::getenv("LOCALAPPDATA");
+        return env_path != nullptr ? fs::path(env_path) : fs::path();
+
+#else
+        return fs::path();
+
+#endif
+    }
+    catch (...)
+    {
+        return fs::path();
+    }
 }
 
 } // namespace platform

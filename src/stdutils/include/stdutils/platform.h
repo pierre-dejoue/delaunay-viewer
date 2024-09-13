@@ -2,6 +2,7 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
+#include <filesystem>
 #include <ostream>
 #include <string>
 
@@ -53,6 +54,15 @@ void print_compilation_date(std::ostream& out, bool endl = true);
 
 void print_platform_info(std::ostream& out, bool endl = true);
 void print_compiler_all_info(std::ostream& out, bool endl = true);
+
+/**
+ * Return the path to a writable folder on the system to store application data.
+ *
+ * This is %LOCALAPPDATA% on Windows, and an equivalent path on the other platforms.
+ *
+ * Return an empty path in case of failure.
+ */
+std::filesystem::path get_local_app_data_path() noexcept;
 
 
 //

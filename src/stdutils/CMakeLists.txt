@@ -11,6 +11,10 @@ set(LIB_SOURCES
     src/time.cpp
 )
 
+if(APPLE)
+    list(APPEND LIB_SOURCES src/platform_macos.m)
+endif()
+
 file(GLOB LIB_HEADERS include/stdutils/*.h src/*.h)
 
 add_library(stdutils STATIC ${LIB_SOURCES} ${LIB_HEADERS})
@@ -24,6 +28,13 @@ target_include_directories(stdutils
 )
 
 set_target_warnings(stdutils ON)
+
+if(APPLE)
+    target_link_libraries(stdutils
+        PRIVATE
+        "-framework Cocoa"
+    )
+endif()
 
 if(MSVC)
     # Correct definition of macro __cplusplus on Visual Studio
