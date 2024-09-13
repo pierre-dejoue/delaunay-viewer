@@ -238,9 +238,7 @@ float GLFWWindowContext::get_framebuffer_scale() const
 
 void GLFWWindowContext::glfw_version_info(std::ostream& out)
 {
-    int glfw_major = 0, glfw_minor = 0, glfw_revision = 0;
-    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_revision);
-    out << "GLFW " << glfw_major << "." << glfw_minor << "." << glfw_revision;
+    out << "GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION;
 #if (GLFW_VERSION_COMBINED >= 3400)
     out << " (" << glfw_platform_as_string(glfwGetPlatform()) << ")";
 #endif
