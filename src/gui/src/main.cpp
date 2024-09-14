@@ -20,8 +20,11 @@
 #include "viewport_window.h"
 
 #include <base/canvas.h>
+#include <base/pfd_wrap.h>
+#include <base/opengl_and_glfw.h>
 #include <base/window_layout.h>
 #include <dt/dt_impl.h>
+#include <imgui/imgui.h>
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
 #include <shapes/io.h>
@@ -31,11 +34,6 @@
 #include <stdutils/platform.h>
 #include <stdutils/time.h>
 #include <svg/svg.h>
-
-// Order matters in this section
-#include <imgui/imgui.h>
-#include <pfd_wrap.h>
-#include <base/opengl_and_glfw.h>
 
 #include <algorithm>
 #include <array>

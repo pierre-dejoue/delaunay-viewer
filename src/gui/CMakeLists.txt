@@ -4,7 +4,6 @@
 
 # Dependencies
 include(argagg)
-include(pfd)
 add_subdirectory(gl3w)
 add_subdirectory(base)
 add_subdirectory(imgui)
@@ -15,7 +14,6 @@ set(GUI_SOURCES
     src/drawing_settings.cpp
     src/imgui_draw_list.cpp
     src/main.cpp
-    src/pfd_wrap.cpp
     src/project.cpp
     src/renderer.cpp
     src/renderer_helpers.cpp
@@ -57,7 +55,6 @@ target_link_libraries(delaunay_viewer
     PRIVATE
     gui_base
     imgui
-    pfd
     argagg-lib
     dt
     shapes

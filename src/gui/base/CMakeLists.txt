@@ -2,8 +2,12 @@
 # Base for graphical applications
 #
 
+# Dependencies
+include(pfd)
+
 set(GUI_BASE_SOURCES
     src/opengl_and_glfw.cpp
+    src/pfd_wrap.cpp
 )
 
 file(GLOB GUI_BASE_HEADERS include/base/*.h)
@@ -35,6 +39,7 @@ set_target_warnings(gui_base ON)
 
 target_link_libraries(gui_base
     PUBLIC
+    pfd
     gl3w
     glfw
     stdutils
