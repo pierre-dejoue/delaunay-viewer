@@ -17,20 +17,20 @@ std::ostream& operator<<(std::ostream& out, OS os)
             break;
 
         case OS::LINUX:
-            out << "linux";
+            out << "Linux";
             break;
 
         case OS::MACOS:
-            out << "macos";
+            out << "macOS";
             break;
 
         case OS::WINDOWS:
-            out << "windows";
+            out << "Windows";
             break;
 
         default:
             assert(0);
-            out << "Unknown enum";
+            out << "Unknown_enum";
             break;
     }
     return out;
@@ -58,7 +58,7 @@ std::ostream& operator<<(std::ostream& out, Arch arch)
 
         default:
             assert(0);
-            out << "Unknown enum";
+            out << "Unknown_enum";
             break;
     }
     return out;
@@ -90,7 +90,7 @@ std::ostream& operator<<(std::ostream& out, Compiler compiler)
 
         default:
             assert(0);
-            out << "Unknown enum";
+            out << "Unknown_enum";
             break;
     }
     return out;
@@ -131,7 +131,7 @@ std::string compiler_version()
 
         default:
             assert(0);
-            out << "Unknown enum";
+            out << "Unknown_enum";
             break;
     }
     return out.str();
