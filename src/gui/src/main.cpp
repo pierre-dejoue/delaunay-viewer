@@ -61,7 +61,7 @@ namespace details {
     std::string s_project_title()
     {
         std::stringstream title;
-        title << project::get_short_desc() << ' ' << project::get_version_string();
+        title << project::get_name() << ' ' << project::get_version_string();
         return title.str();
     }
 

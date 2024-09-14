@@ -6,12 +6,12 @@ namespace project {
 
 std::string_view get_identifier()
 {
-    return THIS_PROJECT_NAME;
+    return THIS_PROJECT_ID;
 }
 
-std::string_view get_short_desc()
+std::string_view get_name()
 {
-    return THIS_PROJECT_DESCRIPTION;
+    return THIS_PROJECT_NAME;
 }
 
 std::string_view get_version_string()
