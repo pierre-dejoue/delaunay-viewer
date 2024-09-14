@@ -50,17 +50,6 @@ ColorData to_float_color(ImU32 compact_color);
 
 namespace ImGui {
 
-struct KeyShortcut
-{
-    KeyShortcut(ImGuiKeyChord kc, const char* lbl = nullptr)
-        : key_chord(kc)
-        , label(lbl)
-    { }
-
-    ImGuiKeyChord key_chord;
-    const char* label;
-};
-
 void HelpMarker(const char* desc);          // Function taken from imgui_demo.cpp
 void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond = 0);
 void BulletTextUnformatted(const char* txt);

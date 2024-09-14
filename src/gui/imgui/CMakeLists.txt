@@ -10,6 +10,7 @@ set(IMGUI_SRC
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
     src/imgui_helpers.cpp
+    src/key_shortcut.cpp
 )
 
 if(DELAUNAY_VIEWER_IMGUI_DEMO)
@@ -17,8 +18,9 @@ if(DELAUNAY_VIEWER_IMGUI_DEMO)
 endif()
 
 set(IMGUI_HDR
+    include/config/imgui_config.h
     include/imgui/imgui.h
-    src/imgui_config.h
+    include/imgui/key_shortcut.h
     ${imgui_SOURCE_DIR}/imconfig.h
     ${imgui_SOURCE_DIR}/imgui.h
     ${imgui_SOURCE_DIR}/imgui_internal.h
@@ -32,6 +34,7 @@ add_library(imgui ${IMGUI_SRC} ${IMGUI_HDR})
 target_include_directories(imgui
     PUBLIC
     include/
+    include/config/
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     src/

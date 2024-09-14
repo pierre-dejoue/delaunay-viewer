@@ -25,6 +25,7 @@
 #include <base/window_layout.h>
 #include <dt/dt_impl.h>
 #include <imgui/imgui.h>
+#include <imgui/key_shortcut.h>
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
 #include <shapes/io.h>
@@ -118,20 +119,6 @@ struct AppWindows
         WindowLayout shape_control;
     } layout;
 };
-
-namespace shortcut {
-
-const ImGui::KeyShortcut& quit()
-{
-#if defined(__APPLE__)
-    static ImGui::KeyShortcut shortcut(ImGuiMod_Ctrl | ImGuiKey_Q, "Cmd+Q");
-#else
-    static ImGui::KeyShortcut shortcut(ImGuiMod_Alt | ImGuiKey_F4, "Alt+F4");
-#endif
-    return shortcut;
-}
-
-} // namespace shortcut
 
 void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTracker<scalar>& dt_tracker, bool& application_should_close, bool& gui_dark_mode)
 {
@@ -252,7 +239,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
                 ImGui::EndMenu();
             }
             ImGui::Separator();
-            application_should_close = ImGui::MenuItem("Quit", shortcut::quit().label);
+            application_should_close = ImGui::MenuItem("Quit", ImGui::key_shortcut::quit().label);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
