@@ -9,6 +9,7 @@
 #include <cassert>
 #include <type_traits>
 
+using ScreenVect = shapes::Vect2d<float>;
 using ScreenPos = shapes::Vect2d<float>;
 using ScreenSize = shapes::Vect2d<float>;
 using ScreenBB = shapes::BoundingBox2d<float>;

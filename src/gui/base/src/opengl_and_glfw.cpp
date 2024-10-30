@@ -105,6 +105,55 @@ std::string_view glfw_platform_as_string(int glfw_platform)
 }
 #endif
 
+struct ScrollEventSingleton
+{
+    ScrollEventSingleton()
+        : m_window_ptr(nullptr)
+        , m_scroll_event_callback()
+        , m_chain_callback(nullptr)
+    { }
+
+    GLFWwindow*         m_window_ptr;
+    ScrollEventCallback m_scroll_event_callback;
+    GLFWscrollfun       m_chain_callback;
+} g_scroll_event_singleton;
+
+// Function with type GLFWscrollfun
+void glfw_scroll_event_callback(GLFWwindow* window_ptr, double xoffset, double yoffset)
+{
+    if (g_scroll_event_singleton.m_window_ptr == window_ptr && g_scroll_event_singleton.m_scroll_event_callback)
+    {
+#if defined(__APPLE__)
+        // GLFW's platform-specific code for macOS divides the offsets by 10 in the case of precise scrolling (for example in the case of a touchpad)
+        // An excerpt of the code below for context:
+        //
+        // (NSEvent *)event
+        //
+        // double deltaX = [event scrollingDeltaX];
+        // double deltaY = [event scrollingDeltaY];
+        //
+        // if ([event hasPreciseScrollingDeltas])
+        // {
+        //     deltaX *= 0.1;
+        //     deltaY *= 0.1;
+        // }
+        //
+        constexpr double offset_factor = 10.0;
+#else
+        constexpr double offset_factor = 1.0;
+#endif
+        g_scroll_event_singleton.m_scroll_event_callback(
+            ScreenVect(
+                static_cast<float>(offset_factor * xoffset),
+                static_cast<float>(offset_factor * yoffset))
+        );
+    }
+    if (g_scroll_event_singleton.m_chain_callback)
+    {
+        g_scroll_event_singleton.m_chain_callback(window_ptr, xoffset, yoffset);
+    }
+}
+
 } // namespace
 
 GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& options, const stdutils::io::ErrorHandler* err_handler)
@@ -239,6 +288,13 @@ float GLFWWindowContext::get_framebuffer_scale() const
 
     assert(scale > 0.f);
     return scale;
+}
+
+void GLFWWindowContext::set_scroll_event_callback(ScrollEventCallback callback)
+{
+    g_scroll_event_singleton.m_window_ptr = m_window_ptr;
+    g_scroll_event_singleton.m_scroll_event_callback = callback;
+    g_scroll_event_singleton.m_chain_callback = glfwSetScrollCallback(m_window_ptr, glfw_scroll_event_callback);
 }
 
 void GLFWWindowContext::glfw_version_info(std::ostream& out)

@@ -6,6 +6,7 @@
 // Include this file to get access to the OpenGL API and the GLFW API, as well as some utilities.
 //
 
+#include <base/canvas.h>
 #include <lin/mat.h>
 #include <shapes/bounding_box.h>
 #include <stdutils/io.h>
@@ -22,6 +23,7 @@
 
 #include <cstdlib>
 #include <cstdint>
+#include <functional>
 #include <ostream>
 #include <string_view>
 #include <utility>
@@ -36,6 +38,8 @@ struct GLFWOptions
     bool maximize_window{false};
     unsigned int framebuffer_msaa_samples{0};         // 0 to disable multisampling
 };
+
+using ScrollEventCallback = std::function<void(ScreenVect)>;
 
 // Wrapper class for GLFW initialization and window
 class GLFWWindowContext
@@ -56,6 +60,9 @@ public:
 
     // Ratio between the framebuffer coordinates and the screen coordinates. Supposedly the same on the X and Y axis
     float get_framebuffer_scale() const;
+
+    // Set a callback for the scroll event coming from the mouse wheel or a touchpad
+    void set_scroll_event_callback(ScrollEventCallback callback);
 
     static void glfw_version_info(std::ostream& out);
 

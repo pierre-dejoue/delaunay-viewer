@@ -28,7 +28,6 @@ public:
     using Key = std::string;
     using TabList = std::vector<Key>;
     using GeometryBB = shapes::BoundingBox2d<scalar>;
-    using ScreenBB = shapes::BoundingBox2d<float>;
     using ViewportCanvas = Canvas<scalar>;
     using WorldCoordinatesCallback = std::function<void(const shapes::Point2d<scalar>& steiner_point)>;
     struct MouseClickTool
@@ -36,6 +35,7 @@ public:
         bool checked{false};
         WorldCoordinatesCallback callback{};
     };
+    using ScrollEvent = ScreenVect;
 
     ViewportWindow();
     ViewportWindow(const ViewportWindow&) = delete;
@@ -59,6 +59,8 @@ public:
 
     const ColorData& get_background_color() const;
 
+    void signal_scroll_event(ScrollEvent scroll_event);
+
 private:
     struct ZoomSelectionBox
     {
@@ -81,4 +83,5 @@ private:
     Key m_latest_selected_tab;
     ColorData m_background_color;
     MouseClickTool m_steiner_tool;
+    ScrollEvent m_scroll_event;
 };

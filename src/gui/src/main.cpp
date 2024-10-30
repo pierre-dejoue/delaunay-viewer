@@ -334,6 +334,14 @@ int main(int argc, char *argv[])
         else { err_handler(stdutils::io::Severity::WARN, "Could not add steiner point: No control window"); }
     });
 
+    // On macOS, use the touchpad to pan the viewport image
+#if defined(__APPLE__)
+    // Scroll event callback
+    glfw_context.set_scroll_event_callback([&windows](ScreenVect dir) {
+        windows.viewport->signal_scroll_event(dir);
+    });
+#endif
+
     // Renderer
     renderer::Draw2D::Settings renderer_settings;
     renderer_settings.back_framebuffer_id = back_framebuffer_id;

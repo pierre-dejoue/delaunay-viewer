@@ -76,6 +76,11 @@ void ViewportWindow::set_steiner_callback(const ViewportWindow::WorldCoordinates
     details::set_generic_callback(m_steiner_tool, callback);
 }
 
+void ViewportWindow::signal_scroll_event(ScrollEvent scroll_event)
+{
+    m_scroll_event = scroll_event;
+}
+
 void ViewportWindow::reset_zoom()
 {
     m_canvas_bounding_box = shapes::scale_around_center(m_geometry_bounding_box, DEFAULT_ZOOM);
@@ -290,6 +295,17 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                     pan(canvas.to_world_vector(to_screen_pos(io.MouseDelta)));
                 }
 
+// On macOS, also use the touchpad to pan the viewport image
+#if defined(__APPLE__)
+                // Action in case of a scroll event: also Pan
+                ScrollEvent frame_scroll_event;
+                std::swap(frame_scroll_event, m_scroll_event);
+                if (mouse_in_canvas.is_hovered && !m_zoom_selection_box.is_ongoing && !shapes::isnull(frame_scroll_event))
+                {
+                    pan(canvas.to_world_vector(frame_scroll_event));
+                }
+#endif
+
                 // Clip rectangle
                 draw_list->PushClipRect(tl_corner, br_corner, true);
 
@@ -334,7 +350,7 @@ ViewportWindow::GeometryBB ViewportWindow::get_canvas_bounding_box() const
     return m_prev_mouse_in_canvas.canvas.geometry_bounding_box();
 }
 
-ViewportWindow::ScreenBB ViewportWindow::get_viewport_bounding_box() const
+ScreenBB ViewportWindow::get_viewport_bounding_box() const
 {
     return ScreenBB().add(m_prev_mouse_in_canvas.canvas.get_tl_corner()).add(m_prev_mouse_in_canvas.canvas.get_br_corner());
 }
