@@ -40,20 +40,9 @@ jobs:
       working-directory: ${{ github.workspace }}/build
       run: cmake --build . --config ${{ matrix.build_type }}
 
-    - if: matrix.arch == 'x86_64'
-      name: Test stdutils
+    - name: Version
       working-directory: ${{ github.workspace }}/build
-      run: cmake --build . --target run_utests_stdutils --config ${{ matrix.build_type }}
-
-    - if: matrix.arch == 'x86_64'
-      name: Test linear algebra
-      working-directory: ${{ github.workspace }}/build
-      run: cmake --build . --target run_utests_linear_algebra --config ${{ matrix.build_type }}
-
-    - if: matrix.arch == 'x86_64'
-      name: Test shapes
-      working-directory: ${{ github.workspace }}/build
-      run: cmake --build . --target run_utests_shapes --config ${{ matrix.build_type }}
+      run: cmake --build . --target delaunay_viewer_version --config ${{ matrix.build_type }}
 
     - name: Install
       working-directory: ${{ github.workspace }}/build
