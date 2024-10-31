@@ -94,8 +94,8 @@ void gl_enable_debug(const stdutils::io::ErrorHandler& err_handler);
 GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader, const stdutils::io::ErrorHandler* err_handler = nullptr);
 
 // Projection matrix
-lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox3d<float>& bb, bool flip_y = false);
-lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox2d<float>& bb, bool flip_y = false, float n = 1.f, float f = -1.f);
+lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox3d<float>& screen_3d_bb, bool flip_y = false);
+lin::mat4f gl_orth_proj_mat(const shapes::BoundingBox2d<float>& screen_bb, bool flip_y = false, float n = 1.f, float f = -1.f);
 
 // Factory for the GLFW context that also load OpenGL and enable debugging
 GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GLFWOptions& options, bool& any_fatal_error, unsigned int& back_framebuffer_id, const stdutils::io::ErrorHandler* err_handler = nullptr);
