@@ -7,15 +7,15 @@ message(STATUS "Third-party: simple-svg")
 # This library depends on third-party "bx". Please include(bx) first.
 
 include(FetchContent)
-FetchContent_Declare(
+FetchContent_Populate(
     simple-svg
+    QUIET
     #GIT_REPOSITORY https://github.com/jdryg/simple-svg.git
     #GIT_TAG 279c682320a882661f05e30e6e6e949a61a31293        # Nov 30, 2021
     # Fork:
     GIT_REPOSITORY https://github.com/pierre-dejoue/simple-svg.git
     GIT_TAG 4efa15e533d52f4aefc9fd2865cc2f1994326622
 )
-FetchContent_Populate(simple-svg)
 
 set(SIMPLE_SVG_SOURCES
     ${simple-svg_SOURCE_DIR}/src/ssvg.cpp

@@ -10,12 +10,12 @@ message(STATUS "Third-party: Triangle")
 #   https://cs.cmu.edu/~quake/triangle.html
 #
 include(FetchContent)
-FetchContent_Declare(
+FetchContent_Populate(
     triangle
+    QUIET
     GIT_REPOSITORY https://github.com/libigl/triangle.git
     GIT_TAG 6bbd92c7ddd6c803c403e005e1132eadb38fbe68
 )
-FetchContent_Populate(triangle)
 
 add_library(Triangle STATIC ${triangle_SOURCE_DIR}/triangle.cpp)
 target_include_directories(Triangle PUBLIC ${triangle_SOURCE_DIR}/)

@@ -5,12 +5,12 @@ endif()
 message(STATUS "Third-party: bx")
 
 include(FetchContent)
-FetchContent_Declare(
+FetchContent_Populate(
     bx
+    QUIET
     GIT_REPOSITORY https://github.com/bkaradzic/bx.git
     GIT_TAG 09fa25f3aeb5fe8688f9acc0f326c706f0c44515        # Jul 15, 2023
 )
-FetchContent_Populate(bx)
 
 # Limit the scope of bx to what is strictly necessary for simple-svg
 set(BX_SOURCES

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 # - On XCODE 14, 15 and 16 the range of supported deployment targets begins with macOS 10.13 High Sierra
 #   Reference: https://developer.apple.com/support/xcode/
