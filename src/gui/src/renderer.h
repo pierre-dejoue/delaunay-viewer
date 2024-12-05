@@ -116,7 +116,7 @@ public:
     // The current draw list
     DrawList& draw_list();
 
-    // Render
+    // Render (one call per frame)
     void render(const Canvas<float>& viewport_canvas, Flag::type flags = Flag::None);
 
     // Render only the viewport background

@@ -13,7 +13,6 @@ DrawingOptions drawing_options_from_settings(const Settings& settings)
     options.point_options.show      = point_settings.show;
     options.point_options.size      = point_settings.size;
     options.path_options.show       = path_settings.show;
-    options.path_options.width      = path_settings.width;
     options.surface_options.alpha   = surface_settings.alpha;
     options.surface_options.show    = surface_settings.show;
 

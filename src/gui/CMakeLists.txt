@@ -12,7 +12,6 @@ configure_file(src/project_defines.h.in project_defines.h @ONLY)
 
 set(GUI_SOURCES
     src/drawing_settings.cpp
-    src/imgui_draw_list.cpp
     src/main.cpp
     src/project.cpp
     src/renderer.cpp

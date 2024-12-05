@@ -14,7 +14,6 @@ struct DrawingOptions
     struct Path
     {
         bool show;
-        float width;
     };
     struct Surface
     {
@@ -22,9 +21,12 @@ struct DrawingOptions
         float alpha;
     };
 
+    // Global
     Point point_options{};
     Path path_options{};
     Surface surface_options{};
+
+    // From the DrawCommand
     PrimitiveProperties vertices{};
     PrimitiveProperties edges{};
     PrimitiveProperties faces{};
