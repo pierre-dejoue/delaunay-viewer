@@ -12,7 +12,7 @@ set(GUI_BASE_SOURCES
 
 file(GLOB GUI_BASE_HEADERS include/base/*.h)
 
-add_library(gui_base ${GUI_BASE_SOURCES} ${GUI_BASE_HEADERS})
+add_library(gui_base STATIC ${GUI_BASE_SOURCES} ${GUI_BASE_HEADERS})
 
 if(APPLE)
     # OpenGL API is deprecated since macOS 10.14

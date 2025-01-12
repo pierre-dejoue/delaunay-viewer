@@ -29,7 +29,7 @@ set(IMGUI_HDR
 
 )
 
-add_library(imgui ${IMGUI_SRC} ${IMGUI_HDR})
+add_library(imgui STATIC ${IMGUI_SRC} ${IMGUI_HDR})
 
 target_include_directories(imgui
     PUBLIC

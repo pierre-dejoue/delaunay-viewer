@@ -12,10 +12,7 @@ FetchContent_Populate(
     GIT_TAG 7f852d88a480020d7f91957cbcefe514fc95000c
 )
 
-add_library(pfd
-    INTERFACE
-    ${pfd_SOURCE_DIR}/portable-file-dialogs.h
-)
+add_library(pfd INTERFACE ${pfd_SOURCE_DIR}/portable-file-dialogs.h)
 
 target_include_directories(pfd
     INTERFACE

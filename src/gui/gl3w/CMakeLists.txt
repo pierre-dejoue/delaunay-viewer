@@ -8,7 +8,7 @@ set(GL3W_HDR
     include/KHR/khrplatform.h
 )
 
-add_library(gl3w ${GL3W_SRC} ${GL3W_HDR})
+add_library(gl3w STATIC ${GL3W_SRC} ${GL3W_HDR})
 
 target_include_directories(gl3w
     PUBLIC
