@@ -13,6 +13,7 @@ configure_file(src/project_defines.h.in project_defines.h @ONLY)
 
 set(GUI_SOURCES
     src/drawing_settings.cpp
+    src/gui_style.cpp
     src/main.cpp
     src/project.cpp
     src/renderer.cpp
@@ -20,7 +21,6 @@ set(GUI_SOURCES
     src/settings.cpp
     src/settings_window.cpp
     src/shape_control_window.cpp
-    src/style.cpp
     src/viewport_window.cpp
 )
 

@@ -10,13 +10,13 @@
 #include "argagg_wrap.h"
 #include "drawing_settings.h"
 #include "dt_tracker.h"
+#include "gui_style.h"
 #include "project.h"
 #include "renderer.h"
 #include "renderer_helpers.h"
 #include "settings.h"
 #include "settings_window.h"
 #include "shape_control_window.h"
-#include "style.h"
 #include "viewport_window.h"
 
 #include <base/pfd_wrap.h>
@@ -465,7 +465,7 @@ int main(int argc, char *argv[])
             err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the framebuffer");
             return EXIT_FAILURE;
         }
-        draw_2d_renderer->clear_framebuffer(get_window_background_color(gui_dark_mode));
+        draw_2d_renderer->clear_framebuffer(gui_style::get_window_background_color(gui_dark_mode));
 
         // Viewport rendering
         if (windows.viewport)

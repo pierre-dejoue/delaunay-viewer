@@ -1,6 +1,6 @@
 // Copyright (c) 2023 Pierre DEJOUE
 // This code is distributed under the terms of the MIT License
-#include "style.h"
+#include "gui_style.h"
 
 #include <imgui/imgui.h>
 
@@ -10,6 +10,16 @@ namespace {
     constexpr ImColor WindowMainBackgroundColor_Classic(35, 92, 121, 255);
     constexpr ImColor WindowMainBackgroundColor_Dark(10, 25, 50, 255);
 }
+
+namespace gui_style {
+
+ColorData get_window_background_color(bool dark_mode)
+{
+    const auto c = static_cast<ImVec4>(dark_mode ? WindowMainBackgroundColor_Dark : WindowMainBackgroundColor_Classic);
+    return ColorData{ c.x, c.y, c.z, c.w };
+}
+
+} // namespace gui_style
 
 void imgui_set_style(bool dark_mode)
 {
@@ -23,10 +33,4 @@ void imgui_set_style(bool dark_mode)
         ImGui::StyleColorsClassic();
         ImGui::GetStyle().Colors[ImGuiCol_WindowBg] = WindowBackgroundColor_Classic;
     }
-}
-
-std::array<float, 4> get_window_background_color(bool dark_mode)
-{
-    const auto c = static_cast<ImVec4>(dark_mode ? WindowMainBackgroundColor_Dark : WindowMainBackgroundColor_Classic);
-    return std::array<float, 4>{ c.x, c.y, c.z, c.w };
 }
