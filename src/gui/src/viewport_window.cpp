@@ -43,6 +43,7 @@ ViewportWindow::ViewportWindow()
     , m_latest_selected_tab()
     , m_background_color(to_float_color(CanvasBackgroundColor_Default))
     , m_steiner_tool{}
+    , m_zoom_event{1}
 {
     reset();
 }
@@ -51,7 +52,7 @@ void ViewportWindow::reset()
 {
     // Reset geometry properties
     m_geometry_bounding_box.add(scalar{0}, scalar{0}).add(scalar{1}, scalar{1});
-    reset_zoom();
+    reset_view_scale();
 
     // Misc
     m_steiner_tool.checked = false;
@@ -60,7 +61,7 @@ void ViewportWindow::reset()
 void ViewportWindow::set_geometry_bounding_box(const GeometryBB& bounding_box)
 {
     m_geometry_bounding_box = bounding_box;
-    reset_zoom();
+    reset_view_scale();
 }
 
 namespace details {
@@ -83,9 +84,25 @@ void ViewportWindow::signal_scroll_event(ScrollEvent scroll_event)
     m_scroll_event = scroll_event;
 }
 
-void ViewportWindow::reset_zoom()
+void ViewportWindow::signal_zoom_event(ViewportWindow::ZoomEvent zoom_event)
+{
+    m_zoom_event = zoom_event;
+}
+
+ViewportWindow::scalar ViewportWindow::get_view_scale() const
+{
+    const scalar ref_height = m_geometry_bounding_box.height();
+    return m_canvas_bounding_box.height() / (ref_height > 0 ? ref_height : scalar{1});
+}
+
+void ViewportWindow::reset_view_scale()
 {
     m_canvas_bounding_box = shapes::scale_around_center(m_geometry_bounding_box, DEFAULT_ZOOM);
+}
+
+void ViewportWindow::change_view_scale_around_point(scalar scale_factor, const GeometryPoint& point)
+{
+    m_canvas_bounding_box = shapes::scale_around_point(m_canvas_bounding_box, scale_factor, point);
 }
 
 void ViewportWindow::zoom_in(const shapes::BoundingBox2d<scalar>& bb)
@@ -188,7 +205,7 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
 
     if(ImGui::Button("Reset Zoom"))
     {
-        reset_zoom();
+        reset_view_scale();
     }
 
     if (m_steiner_tool.callback)
@@ -297,6 +314,7 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                     pan(canvas.to_world_vector(to_screen_pos(io.MouseDelta)));
                 }
 
+
 // On macOS, also use the touchpad to pan the viewport image
 #if defined(__APPLE__)
                 // Action in case of a scroll event: also Pan
@@ -307,6 +325,15 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                     pan(canvas.to_world_vector(frame_scroll_event));
                 }
 #endif
+
+                // Action in case of a zoom event
+                ZoomEvent frame_zoom_event{1};
+                std::swap(frame_zoom_event, m_zoom_event);
+                if (mouse_in_canvas.is_hovered && !m_zoom_selection_box.is_ongoing && frame_zoom_event > 0)
+                {
+                    const GeometryPoint focal_point = canvas.to_world(mouse_in_canvas.mouse_pos);
+                    change_view_scale_around_point(scalar{1} / frame_zoom_event, focal_point);
+                }
 
                 // Clip rectangle
                 draw_list->PushClipRect(tl_corner, br_corner, true);

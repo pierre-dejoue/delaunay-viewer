@@ -30,6 +30,7 @@ public:
     using Key = std::string;
     using TabList = std::vector<Key>;
     using GeometryBB = shapes::BoundingBox2d<scalar>;
+    using GeometryPoint = shapes::Point2d<scalar>;
     using ViewportCanvas = Canvas<scalar>;
     using WorldCoordinatesCallback = std::function<void(const shapes::Point2d<scalar>& steiner_point)>;
     struct MouseClickTool
@@ -38,6 +39,7 @@ public:
         WorldCoordinatesCallback callback{};
     };
     using ScrollEvent = ScreenVect;
+    using ZoomEvent = scalar;
 
     ViewportWindow();
     ViewportWindow(const ViewportWindow&) = delete;
@@ -61,7 +63,9 @@ public:
 
     const ColorData& get_background_color() const;
 
+    // Signal scroll/zoom events, for example from the touchpad
     void signal_scroll_event(ScrollEvent scroll_event);
+    void signal_zoom_event(ZoomEvent zoom_event);
 
 private:
     struct ZoomSelectionBox
@@ -71,7 +75,9 @@ private:
         ScreenPos corner_1;
         bool is_positive_box() const { return corner_1.x > corner_0.x && corner_1.y > corner_0.y; }
     };
-    void reset_zoom();
+    scalar get_view_scale() const;
+    void reset_view_scale();
+    void change_view_scale_around_point(scalar scale_factor, const GeometryPoint& point);
     void zoom_in(const shapes::BoundingBox2d<scalar>& bb);
     void pan(const shapes::Vect2d<scalar>& dir);
 
@@ -86,4 +92,5 @@ private:
     ColorData m_background_color;
     MouseClickTool m_steiner_tool;
     ScrollEvent m_scroll_event;
+    ZoomEvent m_zoom_event;
 };

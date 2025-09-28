@@ -5,6 +5,7 @@
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
 
+#include <cstdint>
 #include <cstdlib>
 #include <sstream>
 #include <string>

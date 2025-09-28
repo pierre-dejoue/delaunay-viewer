@@ -18,14 +18,15 @@ struct Range
     using scalar = T;
     Range() : min(std::numeric_limits<T>::max()), max(std::numeric_limits<T>::lowest()) {}
     Range(T min, T max) : min(min), max(max) { assert(min <= max); }
-    bool is_populated() const { return min <= max; }
+    bool is_populated() const noexcept { return min <= max; }
     Range<T>& add(T v);
     Range<T>& add_border(T v);
     Range<T>& merge(const Range<T>& o);
-    T length() const { return min <= max ? max - min : T(0); }
-    T extent() const { return length(); }
-    bool operator==(const Range<T>& o) const { return min == o.min && max == o.max; }
-    bool intersect(const Range<T>& o) const { return max >= o.min && o.max >= min; }
+    T length() const noexcept { return min <= max ? max - min : T{0}; }
+    T extent() const noexcept { return length(); }
+    T center() const noexcept { return (min + max) / T{2}; }
+    bool operator==(const Range<T>& o) const noexcept { return min == o.min && max == o.max; }
+    bool intersect(const Range<T>& o) const noexcept { return max >= o.min && o.max >= min; }
     T min;
     T max;
 };
@@ -33,6 +34,12 @@ struct Range
 // Conversion
 template <typename T0, typename T1>
 Range<T1> cast(const Range<T0>& range);
+
+// Scale a range around a point (not necessarily inside the range)
+template <typename F>
+void scale_around_point_in_place(Range<F>& range, F scale, F point);
+template <typename F>
+Range<F> scale_around_point(const Range<F>& range, F scale, F point);
 
 // Scale a range around its center
 template <typename F>
@@ -92,20 +99,33 @@ Range<T1> cast(const Range<T0>& range)
 }
 
 template <typename F>
-void scale_around_center_in_place(Range<F>& range, F scale)
+void scale_around_point_in_place(Range<F>& range, F scale, F point)
 {
     static_assert(std::is_floating_point_v<F>);
     assert(range.is_populated());
-    const F center = (range.min + range.max) / F{2};
-    range.min = center + (range.min - center) * scale;
-    range.max = center + (range.max - center) * scale;
+    range.min = point + (range.min - point) * scale;
+    range.max = point + (range.max - point) * scale;
+}
+
+template <typename F>
+Range<F> scale_around_point(const Range<F>& range, F scale, F point)
+{
+    Range<F> result = range;
+    scale_around_point_in_place(result, scale, point);
+    return result;
+}
+
+template <typename F>
+void scale_around_center_in_place(Range<F>& range, F scale)
+{
+    scale_around_point_in_place(range, scale, range.center());
 }
 
 template <typename F>
 Range<F> scale_around_center(const Range<F>& range, F scale)
 {
     Range<F> result = range;
-    scale_around_center_in_place(result, scale);
+    scale_around_point_in_place(result, scale, range.center());
     return result;
 }
 

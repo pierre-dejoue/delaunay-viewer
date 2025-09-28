@@ -333,13 +333,28 @@ int main(int argc, char *argv[])
         else { err_handler(stdutils::io::Severity::WARN, "Could not add steiner point: No control window"); }
     });
 
-    // On macOS, use the touchpad to pan the viewport image
+// On macOS, use the touchpad to pan and zoom the viewport image
+// On Windows and Linux, use the mouse wheel to zoom the viewport image
 #if defined(__APPLE__)
     // Scroll event callback
     glfw_context.set_scroll_event_callback([&windows](ScreenVect dir) {
         windows.viewport->signal_scroll_event(dir);
     });
+    if constexpr (GLFWWindowContext::supports_trackpad_zoom_events())
+    {
+        // Zoom event callback
+        glfw_context.set_zoom_event_callback([&windows](float scale) {
+            windows.viewport->signal_zoom_event(static_cast<scalar>(scale));
+        });
+    }
+#else
+    // Scroll event callback
+    glfw_context.set_scroll_event_callback([&windows](ScreenVect dir) {
+        const auto zoom_scale = (dir.y > 0 ? 1.1 : (dir.y < 0 ? 0.9 : 1.0));
+        windows.viewport->signal_zoom_event(static_cast<scalar>(zoom_scale));
+    });
 #endif
+
 
     // Renderer
     renderer::Draw2D::Settings renderer_settings;

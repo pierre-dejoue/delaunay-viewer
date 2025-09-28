@@ -24,6 +24,16 @@ void ensure_min_extent(BoundingBox2d<F>& bb);
 template <typename F>
 void ensure_min_extent(BoundingBox3d<F>& bb);
 
+// Scale a bounding box around a point (not cessarily inside the bounding box)
+template <typename F>
+void scale_around_point_in_place(BoundingBox2d<F>& bb, F scale, const Point2d<F>& point);
+template <typename F>
+void scale_around_point_in_place(BoundingBox3d<F>& bb, F scale, const Point2d<F>& point);
+template <typename F>
+BoundingBox2d<F> scale_around_point(const BoundingBox2d<F>& bb, F scale, const Point3d<F>& point);
+template <typename F>
+BoundingBox3d<F> scale_around_point(const BoundingBox3d<F>& bb, F scale, const Point3d<F>& point);
+
 // Scale a bounding box around its center
 template <typename F>
 void scale_around_center_in_place(BoundingBox2d<F>& bb, F scale);
@@ -95,6 +105,40 @@ void ensure_min_extent(BoundingBox3d<F>& bb)
     ensure_min_extent(bb.rx);
     ensure_min_extent(bb.ry);
     ensure_min_extent(bb.rz);
+}
+
+template <typename F>
+void scale_around_point_in_place(BoundingBox2d<F>& bb, F scale, const Point2d<F>& point)
+{
+    scale_around_point_in_place(bb.rx, scale, point.x);
+    scale_around_point_in_place(bb.ry, scale, point.y);
+}
+
+template <typename F>
+void scale_around_point_in_place(BoundingBox3d<F>& bb, F scale, const Point3d<F>& point)
+{
+    scale_around_point_in_place(bb.rx, scale, point.x);
+    scale_around_point_in_place(bb.ry, scale, point.y);
+    scale_around_point_in_place(bb.rz, scale, point.z);
+}
+
+template <typename F>
+BoundingBox2d<F> scale_around_point(const BoundingBox2d<F>& bb, F scale, const Point2d<F>& point)
+{
+    BoundingBox2d<F> result = bb;
+    scale_around_point_in_place(result.rx, scale, point.x);
+    scale_around_point_in_place(result.ry, scale, point.y);
+    return result;
+}
+
+template <typename F>
+BoundingBox3d<F> scale_around_point(const BoundingBox3d<F>& bb, F scale, const Point3d<F>& point)
+{
+    BoundingBox3d<F> result = bb;
+    scale_around_point_in_place(result.rx, scale, point.x);
+    scale_around_point_in_place(result.ry, scale, point.y);
+    scale_around_point_in_place(result.rz, scale, point.z);
+    return result;
 }
 
 template <typename F>
