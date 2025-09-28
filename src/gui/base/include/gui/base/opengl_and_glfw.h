@@ -21,8 +21,10 @@
 #undef max
 #endif
 
+#include <cassert>
 #include <cstdlib>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <ostream>
 #include <string_view>
@@ -33,13 +35,15 @@
 
 struct GLFWOptions
 {
-    std::string_view title{};
+    std::string_view default_title{};
     bool enable_vsync{true};
     bool maximize_window{false};
     unsigned int framebuffer_msaa_samples{0};         // 0 to disable multisampling
 };
 
 using ScrollEventCallback = std::function<void(ScreenVect)>;
+using ZoomEventCallback = std::function<void(float)>;
+using DroppedFileCallback = std::function<void(std::filesystem::path&&)>;
 
 // Wrapper class for GLFW initialization and window
 class GLFWWindowContext
@@ -58,18 +62,47 @@ public:
     std::pair<int, int> framebuffer_size() const;
     std::pair<int, int> window_size() const;
 
-    // Ratio between the framebuffer coordinates and the screen coordinates. Supposedly the same on the X and Y axis
-    float get_framebuffer_scale() const;
+    // Window title. Reset will restore the default title set at the construction of the context.
+    void set_window_title(const char* title);
+    void reset_window_title();
+
+    // Ratio between the framebuffer coordinates and the screen coordinates. Supposedly the same on the X and Y axis. Return true if the value changed.
+    bool get_framebuffer_scale(float& scale) const;
+
+    // DPI awareness
+    bool get_window_content_scale(float& scale) const;
 
     // Set a callback for the scroll event coming from the mouse wheel or a touchpad
     void set_scroll_event_callback(ScrollEventCallback callback);
+    void reset_scroll_event_callback();
+
+#if defined(GLFW_API_HAS_TRACKPAD_ZOOM)
+    static constexpr bool supports_trackpad_zoom_events() noexcept { return true; }
+
+    // Set a callback for the zoom event coming from the touchpad
+    void set_zoom_event_callback(ZoomEventCallback callback);
+#else
+    static constexpr bool supports_trackpad_zoom_events() noexcept { return false; }
+    void set_zoom_event_callback(ZoomEventCallback) { assert(0); }
+#endif
+
+    // Set a callback for files being dragged and dropped onto the window.
+    // If several files are dropped on the window, only the first one is sent to the callback.
+    void set_dropped_file_callback(DroppedFileCallback callback);
+    void reset_dropped_file_callback();
 
     static void glfw_version_info(std::ostream& out);
 
 private:
     GLFWwindow*     m_window_ptr;
+    std::string     m_default_title;
     bool            m_glfw_init;
 };
+
+// GLFW video mode utilities
+bool operator==(const GLFWvidmode& lhs, const GLFWvidmode& rhs);
+inline bool operator!=(const GLFWvidmode& lhs, const GLFWvidmode& rhs) { return !(lhs == rhs); }
+std::ostream& operator<<(std::ostream& out, const GLFWvidmode& vid);
 
 // Load OpenGL functions. Call only once.
 bool load_opengl(const stdutils::io::ErrorHandler* err_handler = nullptr);

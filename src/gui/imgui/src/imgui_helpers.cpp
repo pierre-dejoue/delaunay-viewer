@@ -5,8 +5,8 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
-#include <base/opengl_and_glfw.h>
 #include <gui/abstract/color_data.h>
+#include <gui/base/opengl_and_glfw.h>
 
 #include <cassert>
 #include <cstdlib>

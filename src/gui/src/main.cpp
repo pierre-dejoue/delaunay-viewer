@@ -19,11 +19,11 @@
 #include "shape_control_window.h"
 #include "viewport_window.h"
 
-#include <base/pfd_wrap.h>
-#include <base/opengl_and_glfw.h>
 #include <dt/dt_impl.h>
 #include <gui/abstract/canvas.h>
 #include <gui/abstract/window_layout.h>
+#include <gui/base/opengl_and_glfw.h>
+#include <gui/base/pfd_wrap.h>
 #include <imgui/imgui.h>
 #include <imgui/key_shortcut.h>
 #include <shapes/bounding_box.h>
@@ -283,14 +283,13 @@ int main(int argc, char *argv[])
         constexpr int WINDOW_WIDTH = 1280;
         constexpr int WINDOW_HEIGHT = 720;
         GLFWOptions options;
-        options.title = project_title();
+        options.default_title = project_title();
         options.maximize_window = true;
         auto context = create_glfw_window_load_opengl(WINDOW_WIDTH, WINDOW_HEIGHT, options, any_fatal_err, back_framebuffer_id, &err_handler);
         return context;
     }();
     if (any_fatal_err || glfw_context.window() == nullptr)
         return EXIT_FAILURE;
-    const float framebuffer_scale = glfw_context.get_framebuffer_scale();
 
     // Setup Dear ImGui context
     const DearImGuiContext dear_imgui_context(glfw_context.window(), any_fatal_err);
@@ -357,6 +356,8 @@ int main(int argc, char *argv[])
     // Main loop
     ViewportWindow::Key previously_selected_tab;
     ViewportWindow::TabList tab_list;
+    float framebuffer_scale{1};
+    GLFWvidmode glfw_vid_mode{};
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -365,11 +366,32 @@ int main(int argc, char *argv[])
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
-        if (glfw_context.window_status().is_minimized)
+
+        // Window, display, monitor status
+        const auto window_status = glfw_context.window_status();
+        const auto [display_w, display_h] = glfw_context.framebuffer_size();
+        if (window_status.is_minimized || display_w == 0 || display_h == 0)
         {
             dear_imgui_context.sleep(10);
             continue;
         }
+        const GLFWvidmode* glfw_vid_mode_ptr = glfwGetVideoMode(glfwGetPrimaryMonitor());
+        assert(glfw_vid_mode_ptr);
+        if (glfw_vid_mode_ptr && (glfw_vid_mode != *glfw_vid_mode_ptr))
+        {
+            glfw_vid_mode = *glfw_vid_mode_ptr;
+            std::stringstream out;
+            out << "Monitor: " << glfw_vid_mode;
+            err_handler(stdutils::io::Severity::TRACE, out.str());
+        }
+        const bool framebuffer_scale_changed = glfw_context.get_framebuffer_scale(framebuffer_scale);
+        if (framebuffer_scale_changed)
+        {
+            std::stringstream out;
+            out << "Content scale: " << framebuffer_scale << "x";
+            err_handler(stdutils::io::Severity::TRACE, out.str());
+        }
+
 
         // Start the Dear ImGui frame
         dear_imgui_context.new_frame();
@@ -458,8 +480,6 @@ int main(int argc, char *argv[])
 #endif
 
         // OpenGL frame setup
-        const auto [display_w, display_h] = glfw_context.framebuffer_size();
-        assert(display_w > 0 && display_h > 0);     // Minimized window has been identified earlier
         if(!draw_2d_renderer->init_framebuffer(display_w, display_h))
         {
             err_handler(stdutils::io::Severity::FATAL, "Failed to initialize the framebuffer");

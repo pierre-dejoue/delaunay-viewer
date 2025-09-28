@@ -2,7 +2,7 @@
 // This code is distributed under the terms of the MIT License
 #include "renderer.h"
 
-#include <base/opengl_and_glfw.h>
+#include <gui/base/opengl_and_glfw.h>
 #include <lin/mat.h>
 #include <stdutils/enum.h>
 

@@ -1,28 +1,35 @@
 // Copyright (c) 2023 Pierre DEJOUE
 // This code is distributed under the terms of the MIT License
-#include <base/opengl_and_glfw.h>
+#include <gui/base/opengl_and_glfw.h>
 
 #include <stdutils/macros.h>
 
 #include <array>
 #include <algorithm>
 #include <cassert>
+#include <filesystem>
 #include <iomanip>
 #include <ios>
 #include <sstream>
 #include <string>
+
+namespace fs = std::filesystem;
 
 // Caution: GL_DEBUG_OUTPUT is not supported at all on macOS
 #ifndef SUPPORT_OPENGL_DEBUG_OUTPUT
 #define SUPPORT_OPENGL_DEBUG_OUTPUT 0
 #endif
 
-constexpr bool TRACE_GLFW_WINDOW_PROPERTIES = false;
+#ifndef TRACE_GLFW_WINDOW_PROPERTIES
+#ifndef NDEBUG
+#define TRACE_GLFW_WINDOW_PROPERTIES 1
+#endif
+#endif
 
 namespace {
 
 // Target OpenGL 3.3 for this project.
-// macOS: OpenGL 3.3 is supported starting with 10.9 Mavericks
+// macOS: OpenGL 3.3 is supported starting with 10.9 Mavericks.
 constexpr int TARGET_OPENGL_MAJOR = 3;
 constexpr int TARGET_OPENGL_MINOR = 3;
 constexpr bool TARGET_OPENGL_CORE_PROFILE = true;       // 3.2+ only. Recommended.
@@ -154,10 +161,61 @@ void glfw_scroll_event_callback(GLFWwindow* window_ptr, double xoffset, double y
     }
 }
 
+#if defined(GLFW_API_HAS_TRACKPAD_ZOOM)
+struct ZoomEventSingleton
+{
+    ZoomEventSingleton()
+        : m_window_ptr(nullptr)
+        , m_zoom_event_callback()
+        , m_chain_callback(nullptr)
+    { }
+
+    GLFWwindow*         m_window_ptr;
+    ZoomEventCallback   m_zoom_event_callback;
+    GLFWtrackpadzoomfun m_chain_callback;
+} g_zoom_event_singleton;
+
+// Function with type GLFWtrackpadzoomfun
+void glfw_zoom_event_callback(GLFWwindow* window_ptr, double scale)
+{
+    if (g_zoom_event_singleton.m_window_ptr == window_ptr && g_zoom_event_singleton.m_zoom_event_callback)
+    {
+        g_zoom_event_singleton.m_zoom_event_callback(static_cast<float>(scale));
+    }
+    if (g_zoom_event_singleton.m_chain_callback)
+    {
+        g_zoom_event_singleton.m_chain_callback(window_ptr, scale);
+    }
+}
+#endif
+
+struct DroppedFileSingleton
+{
+    DroppedFileSingleton()
+        : m_window_ptr(nullptr)
+        , m_dropped_file_callback()
+    { }
+
+    GLFWwindow*         m_window_ptr;
+    DroppedFileCallback m_dropped_file_callback;
+} g_dropped_file_singleton;
+
+void glfw_drop_callback(GLFWwindow* window_ptr, int path_count, const char** utf8_paths)
+{
+    // Only consider the first file if several are dropped simultaneously
+    if (path_count > 0 && g_dropped_file_singleton.m_window_ptr == window_ptr && g_dropped_file_singleton.m_dropped_file_callback)
+    {
+        // TODO: In C++20 u8path gets deprecated, instead use std::u8string as argument to the path ctor
+        fs::path path = fs::u8path(utf8_paths[0]);
+        g_dropped_file_singleton.m_dropped_file_callback(std::move(path));
+    }
+}
+
 } // namespace
 
 GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& options, const stdutils::io::ErrorHandler* err_handler)
     : m_window_ptr(nullptr)
+    , m_default_title("untitled")
     , m_glfw_init(false)
 {
     static bool call_once = false;
@@ -166,10 +224,16 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& o
     call_once = true;
 
     // Window title
-    if (options.title.empty() && err_handler) { (*err_handler)(stdutils::io::Severity::WARN, "Window title is not specified"); }
-    const std::string_view title = options.title.empty() ? "untitled" : options.title;
+    if (options.default_title.empty())
+    {
+        if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::WARN, "Window title is not specified"); }
+    }
+    else
+    {
+        m_default_title = options.default_title;
+    }
 
-    if (err_handler)
+    if (err_handler && *err_handler)
     {
         s_glfw_err_handler = *err_handler;
         glfwSetErrorCallback(glfw_error_callback);
@@ -177,7 +241,7 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& o
 
     if (!glfwInit())
     {
-        if (err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "GLFW failed to initialize"); }
+        if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "GLFW failed to initialize"); }
         return;
     }
     m_glfw_init = true;
@@ -194,11 +258,11 @@ GLFWWindowContext::GLFWWindowContext(int width, int height, const GLFWOptions& o
         glfwWindowHint(GLFW_MAXIMIZED, GL_TRUE);
     if (options.framebuffer_msaa_samples > 0)
         glfwWindowHint(GLFW_SAMPLES, static_cast<int>(options.framebuffer_msaa_samples));
-    assert(title.data());
-    m_window_ptr = glfwCreateWindow(width, height, title.data(), nullptr, nullptr);
+    assert(m_default_title.data());
+    m_window_ptr = glfwCreateWindow(width, height, m_default_title.data(), nullptr, nullptr);
     if (m_window_ptr == nullptr)
     {
-        if (err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "GLFW failed to create the window"); }
+        if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "GLFW failed to create the window"); }
         return;
     }
     glfwMakeContextCurrent(m_window_ptr);
@@ -238,10 +302,26 @@ std::pair<int, int> GLFWWindowContext::window_size() const
     return sz;
 }
 
-float GLFWWindowContext::get_framebuffer_scale() const
+void GLFWWindowContext::set_window_title(const char* title)
 {
-    float scale{1.f};
+    assert(title);
+    glfwSetWindowTitle(m_window_ptr, title);
+}
+
+void GLFWWindowContext::reset_window_title()
+{
+    glfwSetWindowTitle(m_window_ptr, m_default_title.data());
+}
+
+bool GLFWWindowContext::get_framebuffer_scale(float& scale) const
+{
     assert(m_window_ptr);
+    bool changed = false;
+    if (scale <= 0.f)
+    {
+        scale = 1.f;
+        changed = true;
+    }
 
     std::pair<int, int> fb_sz(0, 0);
     glfwGetFramebufferSize(m_window_ptr, &fb_sz.first, &fb_sz.second);
@@ -249,45 +329,108 @@ float GLFWWindowContext::get_framebuffer_scale() const
     glfwGetWindowSize(m_window_ptr, &window_sz.first, &window_sz.second);
 
     if (window_sz.first == 0 || window_sz.second == 0)
-        return scale;
+    {
+        // Leave scale as-is
+        return changed;
+    }
 
     const std::pair<float, float> fb_scale(
         static_cast<float>(fb_sz.first)  / static_cast<float>(window_sz.first),
         static_cast<float>(fb_sz.second) / static_cast<float>(window_sz.second)
     );
 
-    // Trace the window properties
-    if constexpr (TRACE_GLFW_WINDOW_PROPERTIES)
+#if TRACE_GLFW_WINDOW_PROPERTIES
+    static std::pair<int, int> prev_fb_sz(0, 0);
+    static std::pair<int, int> prev_window_sz(0, 0);
+    bool any_change = false;
+    if (prev_fb_sz != fb_sz)
     {
-        if (s_glfw_err_handler)
-        {
-            std::pair<float, float> content_scale(0.f, 0.f);
-            glfwGetWindowContentScale(m_window_ptr, &content_scale.first, &content_scale.second);
-            std::stringstream out;
-            out << "Framebuffer size: " << fb_sz.first << "x" << fb_sz.second;
-            s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
-            out = std::stringstream();
-            out << "Window size:      " << window_sz.first << "x" << window_sz.second;
-            s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
-            out = std::stringstream();
-            out << "Window content scale: " << content_scale.first << ", " << content_scale.second;
-            s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
-        }
+        prev_fb_sz = fb_sz;
+        any_change = true;
     }
+    if (prev_window_sz != window_sz)
+    {
+        prev_window_sz = window_sz;
+        any_change = true;
+    }
+    if (any_change && s_glfw_err_handler)
+    {
+        std::stringstream out;
+        out << "Framebuffer size: " << fb_sz.first << "x" << fb_sz.second;
+        s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
+        out = std::stringstream();
+        out << "Window size:      " << window_sz.first << "x" << window_sz.second;
+        s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
+    }
+#endif
 
     // If the scales are different on the X and Y axis, log an error and arbitrarily use scale.x
-    if (fb_scale.first != fb_scale.second && s_glfw_err_handler)
+    static bool err_logged_once = false;
+    if (s_glfw_err_handler && !err_logged_once && fb_scale.first != fb_scale.second)
     {
         std::stringstream out;
         out << "Different coordinate scales on the X and Y axis";
         out << "; Framebuffer: " << fb_sz.first << "x" << fb_sz.second;
         out << "; Window: " << window_sz.first << "x" << window_sz.second;
         s_glfw_err_handler(stdutils::io::Severity::ERR, out.str());
+        err_logged_once = true;
     }
-    scale = fb_scale.first;
 
+    // Set the scale
+    if (scale != fb_scale.first)
+    {
+        scale = fb_scale.first;
+        changed = true;
+    }
     assert(scale > 0.f);
-    return scale;
+
+    return changed;
+}
+
+bool GLFWWindowContext::get_window_content_scale(float& scale) const
+{
+    assert(m_window_ptr);
+    bool changed = false;
+    if (scale <= 0.f)
+    {
+        scale = 1.f;
+        changed = true;
+    }
+
+    std::pair<float, float> content_scale(0.f, 0.f);
+    glfwGetWindowContentScale(m_window_ptr, &content_scale.first, &content_scale.second);
+
+    if (content_scale.first <= 0.f || content_scale.second <= 0)
+    {
+        // Leave scale as-is
+        return changed;
+    }
+
+#if TRACE_GLFW_WINDOW_PROPERTIES
+    static std::pair<float, float> prev_content_scale(0.f, 0.f);
+    bool any_change = false;
+    if (prev_content_scale != content_scale)
+    {
+        prev_content_scale = content_scale;
+        any_change = true;
+    }
+    if (any_change && s_glfw_err_handler)
+    {
+        std::stringstream out;
+        out << "Window content scale: " << content_scale.first << ", " << content_scale.second;
+        s_glfw_err_handler(stdutils::io::Severity::TRACE, out.str());
+    }
+#endif
+
+    // Set the scale
+    if (scale != content_scale.first)
+    {
+        scale = content_scale.first;
+        changed = true;
+    }
+    assert(scale > 0.f);
+
+    return changed;
 }
 
 void GLFWWindowContext::set_scroll_event_callback(ScrollEventCallback callback)
@@ -297,6 +440,42 @@ void GLFWWindowContext::set_scroll_event_callback(ScrollEventCallback callback)
     g_scroll_event_singleton.m_chain_callback = glfwSetScrollCallback(m_window_ptr, glfw_scroll_event_callback);
 }
 
+void GLFWWindowContext::reset_scroll_event_callback()
+{
+    if (g_scroll_event_singleton.m_window_ptr)
+    {
+        glfwSetScrollCallback(m_window_ptr, g_scroll_event_singleton.m_chain_callback);
+        g_scroll_event_singleton.m_chain_callback = nullptr;
+        g_scroll_event_singleton.m_scroll_event_callback = ScrollEventCallback();
+        g_scroll_event_singleton.m_window_ptr = m_window_ptr = nullptr;
+    }
+}
+
+#if defined(GLFW_API_HAS_TRACKPAD_ZOOM)
+void GLFWWindowContext::set_zoom_event_callback(ZoomEventCallback callback)
+{
+    g_zoom_event_singleton.m_window_ptr = m_window_ptr;
+    g_zoom_event_singleton.m_zoom_event_callback = callback;
+    g_zoom_event_singleton.m_chain_callback = glfwSetTrackpadZoomCallback(m_window_ptr, glfw_zoom_event_callback);
+}
+#endif
+
+void GLFWWindowContext::set_dropped_file_callback(DroppedFileCallback callback)
+{
+    g_dropped_file_singleton.m_window_ptr = m_window_ptr;
+    g_dropped_file_singleton.m_dropped_file_callback = callback;
+    glfwSetDropCallback(m_window_ptr, glfw_drop_callback);
+}
+
+void GLFWWindowContext::reset_dropped_file_callback()
+{
+    if (g_dropped_file_singleton.m_window_ptr)
+    {
+        g_dropped_file_singleton.m_dropped_file_callback = DroppedFileCallback();
+        g_dropped_file_singleton.m_window_ptr = nullptr;
+    }
+}
+
 void GLFWWindowContext::glfw_version_info(std::ostream& out)
 {
     out << "GLFW " << GLFW_VERSION_MAJOR << '.' << GLFW_VERSION_MINOR << '.' << GLFW_VERSION_REVISION;
@@ -304,6 +483,22 @@ void GLFWWindowContext::glfw_version_info(std::ostream& out)
     out << " (" << glfw_platform_as_string(glfwGetPlatform()) << ")";
 #endif
     out << '\n';
+}
+
+bool operator==(const GLFWvidmode& lhs, const GLFWvidmode& rhs)
+{
+    // Use case: Tested every frame. More often than not the video modes will be equal therefore we'll go through all the comparisons
+    return (lhs.width       == rhs.width)
+        &  (lhs.height      == rhs.height)
+        &  (lhs.refreshRate == rhs.refreshRate)
+        &  (lhs.redBits     == rhs.redBits)
+        &  (lhs.greenBits   == rhs.greenBits)
+        &  (lhs.blueBits    == rhs.blueBits);
+}
+
+std::ostream& operator<<(std::ostream& out, const GLFWvidmode& vid)
+{
+    return out << vid.width << 'x' << vid.height << "; " << vid.refreshRate << "Hz; R.G.B " << vid.redBits << '.' << vid.greenBits << '.' << vid.blueBits;
 }
 
 bool load_opengl(const stdutils::io::ErrorHandler* err_handler)
@@ -317,7 +512,7 @@ bool load_opengl(const stdutils::io::ErrorHandler* err_handler)
 
     if (gl3w_err != GL3W_OK)
     {
-        if (err_handler)
+        if (err_handler && *err_handler)
         {
             std::stringstream out;
             out << "GL3W failed to initialize OpenGL (error code: " << gl3w_err << " " << gl3w_error_code_as_string(gl3w_err) << ")";
@@ -327,7 +522,7 @@ bool load_opengl(const stdutils::io::ErrorHandler* err_handler)
     }
     if (!gl3wIsSupported(TARGET_OPENGL_MAJOR, TARGET_OPENGL_MINOR))
     {
-        if (err_handler)
+        if (err_handler && *err_handler)
         {
             std::stringstream out;
             out << "OpenGL " << TARGET_OPENGL_MAJOR << "." << TARGET_OPENGL_MINOR << " is not supported";
@@ -452,9 +647,9 @@ bool gl_errors(const char* context, const stdutils::io::ErrorHandler* err_handle
     bool any_error = false;
     while ((err = glGetError()) != GL_NO_ERROR && count++ < 32)
     {
-        if (!any_error && err_handler) { (*err_handler)(stdutils::io::Severity::ERR, std::string("OpenGL error occured during ") + context); }
+        if (!any_error && err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::ERR, std::string("OpenGL error occured during ") + context); }
         any_error = true;
-        if (err_handler)
+        if (err_handler && *err_handler)
         {
             std::stringstream out;
             out << gl_error_str(err) << "("  << std::setbase(16) << std::showbase << err << ")";
@@ -471,7 +666,7 @@ bool gl_get_uniform_location(GLuint program, const GLchar *name, GLuint* out_loc
     GLint id = glGetUniformLocation(program, name);
     if (id < 0)
     {
-        if (err_handler)
+        if (err_handler && *err_handler)
         {
             std::stringstream out;
             out << "OpenGL: Uniform location [" << name << "] not found in the program";
@@ -490,7 +685,7 @@ bool gl_get_attrib_location(GLuint program, const GLchar *name, GLuint* out_loca
     GLint id = glGetAttribLocation(program, name);
     if (id < 0)
     {
-        if (err_handler)
+        if (err_handler && *err_handler)
         {
             std::stringstream out;
             out << "OpenGL: Attribute location [" << name << "] not found in the program";
@@ -554,7 +749,7 @@ namespace {
     template <GlInfoLogType Type>
     void gl_object_trace_log(GLuint object_id, const stdutils::io::ErrorHandler* err_handler = nullptr)
     {
-        if (err_handler == nullptr) { return; }
+        if (!(err_handler  && *err_handler)) { return; }
         GLint str_length = 0;
         if constexpr (Type == GlInfoLogType::Program)
             glGetProgramiv(object_id, GL_INFO_LOG_LENGTH, &str_length);
@@ -574,6 +769,7 @@ namespace {
         else
             glGetShaderInfoLog(object_id, str_length, nullptr, log.data() + log_begin);
         log.back() = ']';
+        assert(err_handler && *err_handler);
         (*err_handler)(stdutils::io::Severity::TRACE, log);
     }
 
@@ -582,7 +778,7 @@ namespace {
         assert(context);
         bool success = false;
         const auto err_report = [err_handler, shader_id, context](const bool error, const std::string_view& msg) {
-            if (err_handler)
+            if (err_handler && *err_handler)
             {
                 std::stringstream out;
                 out << "Compile " << context << " " << shader_id << ": " << msg;
@@ -613,10 +809,10 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     const GLuint program_id = glCreateProgram();
     if (program_id == 0u)
     {
-        if (err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glCreateProgram() failed"); }
+        if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glCreateProgram() failed"); }
         return 0;
     }
-    else if (err_handler && trace_log)
+    else if (err_handler  && *err_handler && trace_log)
     {
         std::stringstream out;
         out << "Create program " << program_id;
@@ -627,7 +823,7 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     const GLuint vertex_shader_id = glCreateShader(GL_VERTEX_SHADER);
     if (vertex_shader_id == 0u)
     {
-        if (err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glCreateShader(GL_VERTEX_SHADER) failed"); }
+        if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glCreateShader(GL_VERTEX_SHADER) failed"); }
         return 0;
     }
     shader_strs[1] = vertex_shader;
@@ -639,7 +835,7 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     const GLuint fragment_shader_id = glCreateShader(GL_FRAGMENT_SHADER);
     if (fragment_shader_id == 0u)
     {
-        if (err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glCreateShader(GL_FRAGMENT_SHADER) failed"); }
+        if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glCreateShader(GL_FRAGMENT_SHADER) failed"); }
         return 0;
     }
     shader_strs[1] = fragment_shader;
@@ -664,7 +860,7 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     gl_object_trace_log<GlInfoLogType::Program>(program_id, err_handler);
     if (link_status != GL_TRUE)
     {
-        if (err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glLinkProgram() failed"); }
+        if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "glLinkProgram() failed"); }
         return 0;
     }
 
@@ -676,7 +872,7 @@ GLuint gl_compile_shaders(const char* vertex_shader, const char* fragment_shader
     gl_object_trace_log<GlInfoLogType::Program>(program_id, err_handler);
     if (validation_status != GL_TRUE)
     {
-        if (err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "GL program validation failed"); }
+        if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::ERR, "GL program validation failed"); }
         return 0;
     }
 #endif
@@ -741,7 +937,7 @@ GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GL
         any_fatal_error = true;
     if constexpr (TARGET_OPENGL_DEBUG_CONTEXT)
     {
-        if (!any_fatal_error && err_handler)
+        if (!any_fatal_error && err_handler && *err_handler)
             gl_enable_debug(*err_handler);
     }
 
@@ -756,7 +952,7 @@ GLFWWindowContext create_glfw_window_load_opengl(int width, int height, const GL
         glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fb_id);
         if (fb_id < 0)
         {
-            if (err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "Negative back framebuffer id"); }
+            if (err_handler && *err_handler) { (*err_handler)(stdutils::io::Severity::FATAL, "Negative back framebuffer id"); }
             any_fatal_error = true;
         }
         back_framebuffer_id = static_cast<unsigned int>(fb_id);
