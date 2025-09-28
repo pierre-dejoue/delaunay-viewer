@@ -8,7 +8,7 @@ include(FetchContent)
 FetchContent_Declare(
     cdt
     GIT_REPOSITORY https://github.com/artem-ogre/CDT.git
-    GIT_TAG 1.3.0
+    GIT_TAG 1.4.4
     SOURCE_SUBDIR CDT
     EXCLUDE_FROM_ALL
 )

@@ -59,7 +59,7 @@ namespace cdt {
         std::vector<CDT::V2d<Fc>> result;
         result.reserve(points.size());
         std::transform(std::cbegin(points), std::cend(points), std::back_inserter(result), [](const auto& p) {
-            return CDT::V2d<Fc>::make(static_cast<Fc>(p.x), static_cast<Fc>(p.y));
+            return CDT::V2d<Fc>(static_cast<Fc>(p.x), static_cast<Fc>(p.y));
         });
         return result;
     }
