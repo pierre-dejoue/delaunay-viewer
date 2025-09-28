@@ -357,7 +357,10 @@ void parse_ssvg_image_paths(const ssvg::Path& path, const SVGImageGeometry& imag
             idx_start = idx;
         }
     }
-    parse_ssvg_image_path(path, idx_start, path.m_NumCommands, image_geometry, out_paths, err_handler);
+    if (idx_start < path.m_NumCommands)
+    {
+        parse_ssvg_image_path(path, idx_start, path.m_NumCommands, image_geometry, out_paths, err_handler);
+    }
 }
 
 template <typename F>
