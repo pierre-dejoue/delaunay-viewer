@@ -37,8 +37,7 @@ public:
     ShapeWindow(
         std::string_view name,
         shapes::io::ShapeAggregate<scalar>&& shapes,
-        const DtTracker<scalar>& dt_tracker,
-        ViewportWindow& viewport_window);
+        const DtTracker<scalar>& dt_tracker);
     ~ShapeWindow();
     ShapeWindow(const ShapeWindow&) = delete;
     ShapeWindow& operator=(const ShapeWindow&) = delete;
@@ -53,6 +52,8 @@ public:
     shapes::io::ShapeAggregate<scalar> get_tab_aggregate(const Key& selected_tab) const;
 
     void add_steiner_point(const shapes::Point2d<scalar>& pt);
+
+    const shapes::BoundingBox2d<scalar>& get_geometry_bounding_box() const { return m_geometry_bounding_box; }
 
 private:
     struct ShapeControl

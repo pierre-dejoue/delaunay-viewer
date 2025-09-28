@@ -248,7 +248,8 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
     {
         windows.viewport->reset();
         renderer.draw_list().clear_all();
-        windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), dt_tracker, *windows.viewport);
+        windows.shape_control = std::make_unique<ShapeWindow>(filename, std::move(shapes), dt_tracker);
+        windows.viewport->set_geometry_bounding_box(windows.shape_control->get_geometry_bounding_box());
     }
 }
 

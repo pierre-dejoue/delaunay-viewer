@@ -173,8 +173,7 @@ DrawCommand<ShapeWindow::scalar> ShapeWindow::ShapeControl::to_draw_command(cons
 ShapeWindow::ShapeWindow(
         std::string_view name,
         shapes::io::ShapeAggregate<scalar>&& shapes,
-        const DtTracker<scalar>& dt_tracker,
-        ViewportWindow& viewport_window)
+        const DtTracker<scalar>& dt_tracker)
     : m_title(std::string(name) + " Controls")
     , m_dt_tracker(dt_tracker)
     , m_prev_dt_tracker_signature(dt_tracker.state_signature())
@@ -218,7 +217,6 @@ ShapeWindow::ShapeWindow(
         }, shape_wrapper.shape);
     shapes.clear();
     init_bounding_box();
-    viewport_window.set_geometry_bounding_box(m_geometry_bounding_box);
 }
 
 ShapeWindow::~ShapeWindow() = default;
