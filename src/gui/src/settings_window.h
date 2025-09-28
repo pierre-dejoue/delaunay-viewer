@@ -3,7 +3,7 @@
 #include "dt_tracker.h"
 #include "viewport_window.h"
 
-#include <base/window_layout.h>
+#include <gui/abstract/window_layout.h>
 
 #include <string>
 

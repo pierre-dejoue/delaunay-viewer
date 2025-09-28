@@ -6,7 +6,7 @@
 // Include this file to get access to the OpenGL API and the GLFW API, as well as some utilities.
 //
 
-#include <base/canvas.h>
+#include <gui/abstract/canvas.h>
 #include <lin/mat.h>
 #include <shapes/bounding_box.h>
 #include <stdutils/io.h>

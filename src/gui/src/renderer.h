@@ -2,8 +2,8 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include <base/canvas.h>
-#include <base/color_data.h>
+#include <gui/abstract/canvas.h>
+#include <gui/abstract/color_data.h>
 #include <stdutils/io.h>
 #include <stdutils/locked_buffer.h>
 

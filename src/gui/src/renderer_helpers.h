@@ -6,7 +6,7 @@
 #include "draw_command.h"
 #include "drawing_options.h"
 
-#include <base/canvas.h>
+#include <gui/abstract/canvas.h>
 
 #include <memory>
 

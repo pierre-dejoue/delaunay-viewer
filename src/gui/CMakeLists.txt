@@ -4,6 +4,7 @@
 
 # Dependencies
 include(argagg)
+add_subdirectory(abstract)
 add_subdirectory(gl3w)
 add_subdirectory(base)
 add_subdirectory(imgui)

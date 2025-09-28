@@ -5,9 +5,8 @@
 #include "settings.h"
 #include "viewport_window.h"
 
-#include <base/canvas.h>
-#include <base/color_data.h>
-#include <base/window_layout.h>
+#include <gui/abstract/color_data.h>
+#include <gui/abstract/window_layout.h>
 #include <shapes/bounding_box.h>
 #include <shapes/io.h>
 #include <shapes/point.h>

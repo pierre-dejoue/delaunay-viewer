@@ -39,6 +39,7 @@ set_target_warnings(gui_base ON)
 
 target_link_libraries(gui_base
     PUBLIC
+    gui_abstract
     pfd
     gl3w
     glfw

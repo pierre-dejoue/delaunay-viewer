@@ -6,8 +6,8 @@
 #include "drawing_options.h"
 #include "renderer.h"
 
-#include <base/canvas.h>
-#include <base/color_data.h>
+#include <gui/abstract/canvas.h>
+#include <gui/abstract/color_data.h>
 #include <shapes/edge.h>
 #include <shapes/point_cloud.h>
 #include <shapes/path.h>

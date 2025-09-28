@@ -19,11 +19,11 @@
 #include "style.h"
 #include "viewport_window.h"
 
-#include <base/canvas.h>
 #include <base/pfd_wrap.h>
 #include <base/opengl_and_glfw.h>
-#include <base/window_layout.h>
 #include <dt/dt_impl.h>
+#include <gui/abstract/canvas.h>
+#include <gui/abstract/window_layout.h>
 #include <imgui/imgui.h>
 #include <imgui/key_shortcut.h>
 #include <shapes/bounding_box.h>
@@ -476,7 +476,7 @@ int main(int argc, char *argv[])
             const bool only_background = !windows.shape_control || !draw_commands_ptr;
 
             // Render
-            const auto fb_viewport_canvas = Canvas<float>(cast<scalar, float>(windows.viewport->get_viewport_canvas()), framebuffer_scale);
+            const Canvas<float> fb_viewport_canvas(cast<scalar, float>(windows.viewport->get_viewport_canvas()), framebuffer_scale);
             if (only_background)
             {
                 draw_2d_renderer->render_viewport_background(fb_viewport_canvas);

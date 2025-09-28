@@ -13,9 +13,9 @@
 
 #include <imgui.h>
 
-#include <base/canvas.h>
-#include <base/color_data.h>
-#include <base/window_layout.h>
+#include <gui/abstract/canvas.h>
+#include <gui/abstract/color_data.h>
+#include <gui/abstract/window_layout.h>
 #include <stdutils/io.h>
 
 #include <filesystem>

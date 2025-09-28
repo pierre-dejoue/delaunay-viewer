@@ -122,7 +122,7 @@ struct Draw2D::Impl
     {
         bool enabled{false};
         std::array<float, 12> corner_vertices{};
-        ColorData color{ 0.f, 0.f, 0.f, 1.f };
+        ColorData color = COLOR_DATA_BLACK;
     };
 
     Impl(const Settings& settings, const stdutils::io::ErrorHandler* err_handler);
