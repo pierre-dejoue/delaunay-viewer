@@ -1,0 +1,6 @@
+Delaunay Viewer changelog:
+--------------------------
+
+Release 0.1.0       2025/10/26
+
+    First release. The Windows executable is code signed.
