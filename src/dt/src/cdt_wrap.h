@@ -13,6 +13,7 @@
 
 #if defined(__GNUC__)
 #pragma GCC system_header
+#pragma GCC diagnostic ignored "-Wnull-dereference"
 #endif
 
 #include <CDT.h>
