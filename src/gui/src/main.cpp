@@ -3,10 +3,12 @@
  *
  * A tool to test and compare Delaunay triangulation libraries
  *
- * Copyright (c) 2023 Pierre DEJOUE
+ * Copyright (c) 2023-2025 Pierre DEJOUE
  * This code is distributed under the terms of the MIT License
+ *
  ******************************************************************************/
 
+#include "about_window.h"
 #include "argagg_wrap.h"
 #include "drawing_settings.h"
 #include "dt_tracker.h"
@@ -120,7 +122,7 @@ struct AppWindows
     } layout;
 };
 
-void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTracker<scalar>& dt_tracker, bool& application_should_close, bool& gui_dark_mode)
+void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTracker<scalar>& dt_tracker, bool& application_should_close, bool& gui_dark_mode, bool& open_about_window)
 {
     std::string filename = "no_file";
     application_should_close = false;
@@ -240,6 +242,14 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
             }
             ImGui::Separator();
             application_should_close = ImGui::MenuItem("Quit", ImGui::key_shortcut::quit().label);
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Help"))
+        {
+            if (ImGui::MenuItem("About"))
+            {
+                open_about_window = true;
+            }
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -373,6 +383,7 @@ int main(int argc, char *argv[])
     ViewportWindow::Key previously_selected_tab;
     ViewportWindow::TabList tab_list;
     float framebuffer_scale{1};
+    bool open_about_window{false};
     GLFWvidmode glfw_vid_mode{};
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
@@ -408,14 +419,13 @@ int main(int argc, char *argv[])
             err_handler(stdutils::io::Severity::TRACE, out.str());
         }
 
-
         // Start the Dear ImGui frame
         dear_imgui_context.new_frame();
 
         // Main menu
         {
             bool app_should_close = false;
-            main_menu_bar(windows, *draw_2d_renderer, dt_tracker, app_should_close, gui_dark_mode);
+            main_menu_bar(windows, *draw_2d_renderer, dt_tracker, app_should_close, gui_dark_mode, open_about_window);
             if (app_should_close)
                 glfwSetWindowShouldClose(glfw_context.window(), 1);
         }
@@ -427,6 +437,9 @@ int main(int argc, char *argv[])
             windows.settings->visit(can_be_erased, windows.layout.settings);
             assert(!can_be_erased); // Always ON
         }
+
+        // About window
+        open_about_window = open_about_window ? AboutWindow::visit() : false;
 
         // Renderer update
         const bool line_smooth_settings = settings.get_general_settings()->line_smooth;

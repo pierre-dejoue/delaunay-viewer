@@ -12,6 +12,7 @@ add_subdirectory(imgui)
 configure_file(src/project_defines.h.in project_defines.h @ONLY)
 
 set(GUI_SOURCES
+    src/about_window.cpp
     src/drawing_settings.cpp
     src/gui_style.cpp
     src/main.cpp

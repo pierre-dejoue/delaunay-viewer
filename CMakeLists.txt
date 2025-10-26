@@ -13,6 +13,13 @@ project(delaunay_viewer
 
 set(DELAUNAY_VIEWER_OFFICIAL_RELEASE OFF)
 
+set(THIS_PROJECT_OWNER "Pierre DEJOUE")
+set(THIS_PROJECT_YEAR_RANGE "2023-2025")
+set(THIS_PROJECT_SHORT_LICENSE "MIT license")
+set(THIS_PROJECT_SHORT_COPYRIGHT "Copyright (c) ${THIS_PROJECT_YEAR_RANGE} ${THIS_PROJECT_OWNER}")
+set(THIS_PROJECT_COPYRIGHT "${THIS_PROJECT_SHORT_COPYRIGHT}. ${THIS_PROJECT_SHORT_LICENSE}.")
+set(THIS_PROJECT_WEBSITE "https://github.com/pierre-dejoue/delaunay-viewer")
+
 option(DELAUNAY_VIEWER_BUILD_POLY2TRI "Build with the library poly2tri" ON)
 option(DELAUNAY_VIEWER_BUILD_CDT "Build with the library CDT" ON)
 option(DELAUNAY_VIEWER_BUILD_TRIANGLE "Build with Shewchuk's Triangle library" ON)
@@ -57,7 +64,6 @@ if(DELAUNAY_VIEWER_BUILD_UTESTS)
     add_subdirectory(src/tests/lin)
     add_subdirectory(src/tests/shapes)
 endif()
-
 
 set(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE)
 include(CPack)

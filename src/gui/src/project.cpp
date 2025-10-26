@@ -25,4 +25,34 @@ std::string_view get_version_string()
 #endif
 }
 
+std::string_view get_owner()
+{
+    return THIS_PROJECT_OWNER;
+}
+
+std::string_view get_year_range()
+{
+    return THIS_PROJECT_YEAR_RANGE;
+}
+
+std::string_view get_short_license()
+{
+    return THIS_PROJECT_SHORT_LICENSE;
+}
+
+std::string_view get_short_copyright()
+{
+    return THIS_PROJECT_SHORT_COPYRIGHT;
+}
+
+std::string_view get_copyright()
+{
+    return THIS_PROJECT_COPYRIGHT;
+}
+
+std::string_view get_website()
+{
+    return THIS_PROJECT_WEBSITE;
+}
+
 } // namespace project
