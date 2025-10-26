@@ -9,5 +9,5 @@ FetchContent_Populate(
     imgui
     QUIET
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.91.1
+    GIT_TAG v1.92.4
 )
