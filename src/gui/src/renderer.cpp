@@ -120,9 +120,8 @@ struct Draw2D::Impl
 
     struct Background
     {
-        bool enabled{false};
         std::array<float, 12> corner_vertices{};
-        ColorData color = COLOR_DATA_BLACK;
+        ColorData             color{COLOR_DATA_BLACK};
     };
 
     Impl(const Settings& settings, const stdutils::io::ErrorHandler* err_handler);
@@ -143,7 +142,7 @@ struct Draw2D::Impl
     DrawList draw_list;
     DrawList::Version draw_list_last_buffer_version;
     struct {
-        GLuint main{0};
+        GLuint main{0u};
     } gl_program_ids;
     struct {
         GLLocations main{};
@@ -171,17 +170,19 @@ Draw2D::Impl::Impl(const Settings& settings, const stdutils::io::ErrorHandler* e
     , background{}
     , err_handler(err_handler)
 {
-    // Programs
+    // Declare the programs
     bool success = true;
     {
-        gl_program_ids.main = gl_compile_shaders(VertexShaderSource::main, FragmentShaderSource::main, err_handler);
-        if (gl_program_ids.main == 0u)
+        GLuint& program_id = gl_program_ids.main;
+        GLLocations& locations = gl_locations.main;
+        program_id = gl_compile_shaders(VertexShaderSource::main, FragmentShaderSource::main, err_handler);
+        if (program_id == 0u)
             return;
 
-        success &= gl_get_uniform_location(gl_program_ids.main, "mat_proj",  &gl_locations.main.mat_proj, err_handler);
-        success &= gl_get_uniform_location(gl_program_ids.main, "uni_color", &gl_locations.main.uni_color, err_handler);
-        success &= gl_get_uniform_location(gl_program_ids.main, "pt_size",   &gl_locations.main.pt_size, err_handler);
-        success &= gl_get_attrib_location (gl_program_ids.main, "v_pos",     &gl_locations.main.v_pos, err_handler);
+        success &= gl_get_uniform_location(program_id, "mat_proj",  &locations.mat_proj,    err_handler);
+        success &= gl_get_uniform_location(program_id, "uni_color", &locations.uni_color,   err_handler);
+        success &= gl_get_uniform_location(program_id, "pt_size",   &locations.pt_size,     err_handler);
+        success &= gl_get_attrib_location (program_id, "v_pos",     &locations.v_pos,       err_handler);
     }
 
     success &= initialize_pipeline(settings);
@@ -331,7 +332,7 @@ void Draw2D::Impl::render_assets()
         const auto count = static_cast<GLsizei>(draw_call.m_range.second - draw_call.m_range.first);
         glUniform4fv(static_cast<GLint>(gl_locations.main.uni_color), 1, draw_call.m_uniform_color.data());
         glUniform1f(static_cast<GLint>(gl_locations.main.pt_size), draw_call.m_uniform_point_size);
-        const auto draw_cmd = static_cast<std::size_t>(draw_call.m_cmd);                                                                    assert(draw_cmd < stdutils::enum_size<DrawCmd>());
+        const auto draw_cmd = static_cast<std::size_t>(draw_call.m_cmd);                                                assert(draw_cmd < stdutils::enum_size<DrawCmd>());
         glDrawElements(lookup_gl_draw_cmd[draw_cmd], count, GL_UNSIGNED_INT, GLoffsetui(draw_call.m_range.first));
     }
     glUseProgram(0);
@@ -344,20 +345,16 @@ void Draw2D::Impl::render(const Canvas<float>& viewport_canvas, Flag::type flags
     if (framebuffer_size.first == 0 || framebuffer_size.second == 0)
         return;
 
-    // Set OpenGL viewport
-    set_opengl_viewport(viewport_canvas);
-
-    // Vertex buffers
-    update_corner_vertices(viewport_canvas);
-    update_assets_buffers();
-
     // Projection matrix
     const bool flip_y = flags & Flag::FlipYAxis;
     const auto bb = viewport_canvas.actual_bounding_box();
     mat_proj = gl_orth_proj_mat(bb, flip_y);
 
-    // Render background
-    if ((flags & Flag::ViewportBackground) && background.enabled) { render_background(); }
+    // Set OpenGL viewport
+    set_opengl_viewport(viewport_canvas);
+
+    // Vertex buffers
+    update_assets_buffers();
 
     // Render assets
     render_assets();
@@ -369,18 +366,15 @@ void Draw2D::Impl::render_viewport_background(const Canvas<float>& viewport_canv
     if (framebuffer_size.first == 0 || framebuffer_size.second == 0)
         return;
 
-    if (!background.enabled)
-        return;
+    // Projection matrix
+    const auto bb = viewport_canvas.actual_bounding_box();
+    mat_proj = gl_orth_proj_mat(bb);
 
     // Set OpenGL viewport
     set_opengl_viewport(viewport_canvas);
 
     // Vertex buffers
     update_corner_vertices(viewport_canvas);
-
-    // Projection matrix
-    const auto bb = viewport_canvas.actual_bounding_box();
-    mat_proj = gl_orth_proj_mat(bb);
 
     // Render background
     render_background();
@@ -413,19 +407,12 @@ void Draw2D::clear_framebuffer(ColorData clear_color)
 
 void Draw2D::set_viewport_background_color(const ColorData& color)
 {
-    p_impl->background.enabled = true;
     p_impl->background.color = color;
 }
 
 void Draw2D::set_viewport_background_color(float r, float g, float b, float a)
 {
-    p_impl->background.enabled = true;
-    p_impl->background.color = { r, g, b, a };
-}
-
-void Draw2D::no_viewport_background()
-{
-    p_impl->background.enabled = false;
+    p_impl->background.color = ColorData{ r, g, b, a };
 }
 
 DrawList& Draw2D::draw_list()

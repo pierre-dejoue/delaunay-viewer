@@ -70,8 +70,7 @@ struct Flag
 {
     using type = std::uint32_t;
     static constexpr type None = 0;
-    static constexpr type ViewportBackground = 1 << 0;
-    static constexpr type FlipYAxis = 1 << 1;
+    static constexpr type FlipYAxis = 1 << 0;
 };
 
 /**
@@ -111,15 +110,14 @@ public:
     // Viewport background color selection
     void set_viewport_background_color(const ColorData& color);
     void set_viewport_background_color(float r, float g, float b, float a = 1.f);
-    void no_viewport_background();
 
     // The current draw list
     DrawList& draw_list();
 
-    // Render (one call per frame)
+    // Render the assets (one call per frame)
     void render(const Canvas<float>& viewport_canvas, Flag::type flags = Flag::None);
 
-    // Render only the viewport background
+    // Render the viewport background
     void render_viewport_background(const Canvas<float>& viewport_canvas);
 
 private:

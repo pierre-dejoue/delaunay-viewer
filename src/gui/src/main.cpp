@@ -520,17 +520,13 @@ int main(int argc, char *argv[])
         if (windows.viewport)
         {
             // Rendering flags
-            renderer::Flag::type flags = renderer::Flag::ViewportBackground;;
-            if (settings.get_general_settings()->flip_y) { flags |= renderer::Flag::FlipYAxis; }
+            const renderer::Flag::type flags = settings.get_general_settings()->flip_y ? renderer::Flag::FlipYAxis : renderer::Flag::None;
             const bool only_background = !windows.shape_control || !draw_commands_ptr;
 
             // Render
             const Canvas<float> fb_viewport_canvas(cast<scalar, float>(windows.viewport->get_viewport_canvas()), framebuffer_scale);
-            if (only_background)
-            {
-                draw_2d_renderer->render_viewport_background(fb_viewport_canvas);
-            }
-            else
+            draw_2d_renderer->render_viewport_background(fb_viewport_canvas);
+            if (!only_background)
             {
                 assert(draw_commands_ptr);
                 bool new_cbp_segmentation = false;
