@@ -309,12 +309,21 @@ Canvas<F1> cast(const Canvas<F0>& canvas_src)
 template <typename F>
 struct MouseInCanvas
 {
-    MouseInCanvas(const Canvas<F>& canvas)
+    MouseInCanvas()
+        : canvas()
+        , is_hovered(false)
+        , is_held(false)
+        , mouse_pos()
+    {
+        // Is invalid
+    }
+
+    explicit MouseInCanvas(const Canvas<F>& canvas)
         : canvas(canvas)
         , is_hovered(false)
         , is_held(false)
         , mouse_pos()
-    {}
+    { }
 
     shapes::Point2d<F> to_world() const
     {
@@ -329,3 +338,8 @@ struct MouseInCanvas
     ScreenPos mouse_pos;
 };
 
+template <typename F>
+bool is_valid(const MouseInCanvas<F>& mouse_in_canvas)
+{
+    return is_valid(mouse_in_canvas.canvas);
+}

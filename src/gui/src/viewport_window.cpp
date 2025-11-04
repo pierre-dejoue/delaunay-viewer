@@ -38,7 +38,7 @@ ViewportWindow::ViewportWindow()
     : m_title("Viewport")
     , m_geometry_bounding_box()
     , m_canvas_bounding_box()
-    , m_prev_mouse_in_canvas(Canvas<scalar>())
+    , m_prev_mouse_in_canvas()
     , m_zoom_selection_box()
     , m_latest_selected_tab()
     , m_background_color(to_float_color(CanvasBackgroundColor_Default))
@@ -250,11 +250,10 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                 // Canvas
                 const auto canvas = build_canvas(tl_corner, canvas_sz, m_canvas_bounding_box, flip_y_axis);
                 MouseInCanvas mouse_in_canvas(canvas);
-                ImGuiIO& io = ImGui::GetIO();
                 ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
                 mouse_in_canvas.is_hovered = ImGui::IsItemHovered();
                 mouse_in_canvas.is_held = ImGui::IsItemActive();
-                mouse_in_canvas.mouse_pos = to_screen_pos(io.MousePos);
+                mouse_in_canvas.mouse_pos = to_screen_pos(ImGui::GetMousePos());
 
                 // Action of the left mouse button
                 if (mouse_in_canvas.is_hovered)
@@ -277,7 +276,7 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
                             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
                             {
-                                m_steiner_tool.callback(canvas.to_world(to_screen_pos(io.MousePos)));
+                                m_steiner_tool.callback(canvas.to_world(mouse_in_canvas.mouse_pos));
                             }
                             break;
                         }
@@ -311,7 +310,7 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                 // Action of the right mouse button: Pan
                 if (mouse_in_canvas.is_held && !m_zoom_selection_box.is_ongoing && ImGui::IsMouseDragging(ImGuiMouseButton_Right))
                 {
-                    pan(canvas.to_world_vector(to_screen_pos(io.MouseDelta)));
+                    pan(canvas.to_world_vector(to_screen_pos(ImGui::GetMouseDelta())));
                 }
 
 

@@ -50,6 +50,7 @@ ColorData to_float_color(ImU32 compact_color);
 
 namespace ImGui {
 
+inline ImVec2 GetMouseDelta() { return ImGui::GetIO().MouseDelta; }
 void HelpMarker(const char* desc);          // Function taken from imgui_demo.cpp
 void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond = 0);
 void BulletTextUnformatted(const char* txt);
