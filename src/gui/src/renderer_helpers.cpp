@@ -21,7 +21,7 @@ void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F
     DrawingOptions local_options = options;
     for (const auto& draw_command : draw_commands)
     {
-        assert(draw_command.shape != nullptr);
+        assert(draw_command.shape_ptr != nullptr);
         local_options.vertices = draw_command.vertices;
         local_options.edges = draw_command.edges;
         local_options.faces = draw_command.faces;
@@ -32,7 +32,7 @@ void update_opengl_draw_list(renderer::DrawList& draw_list, const DrawCommands<F
             [&draw_list, &local_options](const shapes::Triangles2d<F>& tri)     { draw_triangles(tri, draw_list, local_options); },
             []                          (const shapes::CubicBezierPath2d<F>&)   { assert(0); /* CBP should be converted to point paths first */ },
             [](const auto&) { assert(0); }
-        }, *draw_command.shape);
+        }, *draw_command.shape_ptr);
     }
 
     // Ensure the buffers are locked
@@ -78,7 +78,7 @@ const DrawCommands<F>& CBPSegmentation<F>::Impl::convert_cbps(const DrawCommands
     const F resolution = static_cast<F>(viewport_canvas.to_world(casteljau_length_resolution_in_screen_space));
     assert(resolution > 0);
 
-    const auto nb_cbps = static_cast<std::size_t>(std::count_if(draw_commands.cbegin(), draw_commands.cend(), [](const auto& draw_cmd) { return shapes::is_bezier_path(*draw_cmd.shape); }));
+    const auto nb_cbps = static_cast<std::size_t>(std::count_if(draw_commands.cbegin(), draw_commands.cend(), [](const auto& draw_cmd) { return shapes::is_bezier_path(*draw_cmd.shape_ptr); }));
 
     const F resolution_relative_delta = std::abs(resolution - last_segmentation_resolution) / last_segmentation_resolution;
 
@@ -102,7 +102,7 @@ const DrawCommands<F>& CBPSegmentation<F>::Impl::convert_cbps(const DrawCommands
     std::size_t cbp_idx = 0;
     for (const auto& draw_command : draw_commands)
     {
-        assert(draw_command.shape != nullptr);
+        assert(draw_command.shape_ptr != nullptr);
         auto& cpy_draw_cmd = result_draw_commands.emplace_back(draw_command);
         std::visit(stdutils::Overloaded {
             [this, resolution, new_segmentation, &cpy_draw_cmd, &cbp_idx](const shapes::CubicBezierPath2d<F>& cbp) {
@@ -113,7 +113,7 @@ const DrawCommands<F>& CBPSegmentation<F>::Impl::convert_cbps(const DrawCommands
                 }
                 // Contour draw command
                 assert(cbp_idx < cbps_contour_segmentation.size());
-                cpy_draw_cmd.shape = &cbps_contour_segmentation[cbp_idx];
+                cpy_draw_cmd.shape_ptr = &cbps_contour_segmentation[cbp_idx];
                 const bool backup_vertices_draw = cpy_draw_cmd.vertices.draw;
                 cpy_draw_cmd.vertices.draw = false;
                 // Endpoints draw command
@@ -125,7 +125,7 @@ const DrawCommands<F>& CBPSegmentation<F>::Impl::convert_cbps(const DrawCommands
                 cbp_idx++;
             },
             [](const auto&) { /* For non-CBP shapes, leave the copy of the draw command as it is */ }
-        }, *draw_command.shape);
+        }, *draw_command.shape_ptr);
     }
     assert(cbp_idx == nb_cbps);
     assert(cbps_endpoints.size() == nb_cbps);

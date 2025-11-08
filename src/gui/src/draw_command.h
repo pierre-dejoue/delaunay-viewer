@@ -15,8 +15,11 @@ struct PrimitiveProperties
 template <typename F>
 struct DrawCommand
 {
-    DrawCommand(const shapes::AllShapes<F>& shape);
-    const shapes::AllShapes<F>* shape;
+    using ShapePtr = const shapes::AllShapes<F>*;
+
+    explicit DrawCommand(const shapes::AllShapes<F>& shape);
+
+    ShapePtr            shape_ptr;
     PrimitiveProperties vertices;
     PrimitiveProperties edges;
     PrimitiveProperties faces;
@@ -27,7 +30,7 @@ using DrawCommands = std::vector<DrawCommand<F>>;
 
 template <typename F>
 DrawCommand<F>::DrawCommand(const shapes::AllShapes<F>& shape)
-    : shape(&shape)
+    : shape_ptr(&shape)
     , vertices()
     , edges()
     , faces()
