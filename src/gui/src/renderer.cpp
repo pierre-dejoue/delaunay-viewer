@@ -135,7 +135,7 @@ struct Draw2D::Impl
     void update_assets_buffers();
     void render_background();
     void render_assets();
-    void render(const Canvas<float>& viewport_canvas, Flag::type flags);
+    void render(const Canvas<float>& viewport_canvas);
     void render_viewport_background(const Canvas<float>& viewport_canvas);
 
     bool initialized;
@@ -339,14 +339,14 @@ void Draw2D::Impl::render_assets()
     glBindVertexArray(0);
 }
 
-void Draw2D::Impl::render(const Canvas<float>& viewport_canvas, Flag::type flags)
+void Draw2D::Impl::render(const Canvas<float>& viewport_canvas)
 {
     assert(initialized);
     if (framebuffer_size.first == 0 || framebuffer_size.second == 0)
         return;
 
     // Projection matrix
-    const bool flip_y = flags & Flag::FlipYAxis;
+    const bool flip_y = viewport_canvas.get_flip_y();
     const auto bb = viewport_canvas.actual_bounding_box();
     mat_proj = gl_orth_proj_mat(bb, flip_y);
 
@@ -420,9 +420,9 @@ DrawList& Draw2D::draw_list()
     return p_impl->draw_list;
 }
 
-void Draw2D::render(const Canvas<float>& viewport_canvas, Flag::type flags)
+void Draw2D::render(const Canvas<float>& viewport_canvas)
 {
-    p_impl->render(viewport_canvas, flags);
+    p_impl->render(viewport_canvas);
 }
 
 void Draw2D::render_viewport_background(const Canvas<float>& viewport_canvas)

@@ -66,13 +66,6 @@ private:
 // Reorder commands to draw surfaces first, then lines, then points
 void stable_sort_draw_commands(DrawList& draw_list);
 
-struct Flag
-{
-    using type = std::uint32_t;
-    static constexpr type None = 0;
-    static constexpr type FlipYAxis = 1 << 0;
-};
-
 /**
  * Main class of the 2D renderer
  *
@@ -115,7 +108,7 @@ public:
     DrawList& draw_list();
 
     // Render the assets (one call per frame)
-    void render(const Canvas<float>& viewport_canvas, Flag::type flags = Flag::None);
+    void render(const Canvas<float>& viewport_canvas);
 
     // Render the viewport background
     void render_viewport_background(const Canvas<float>& viewport_canvas);

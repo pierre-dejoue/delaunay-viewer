@@ -519,11 +519,8 @@ int main(int argc, char *argv[])
         // Viewport rendering
         if (windows.viewport)
         {
-            // Rendering flags
-            const renderer::Flag::type flags = settings.get_general_settings()->flip_y ? renderer::Flag::FlipYAxis : renderer::Flag::None;
-            const bool only_background = !windows.shape_control || !draw_commands_ptr;
-
             // Render
+            const bool only_background = !windows.shape_control || !draw_commands_ptr;
             const Canvas<float> fb_viewport_canvas(cast<scalar, float>(windows.viewport->get_viewport_canvas()), framebuffer_scale);
             draw_2d_renderer->render_viewport_background(fb_viewport_canvas);
             if (!only_background)
@@ -534,7 +531,7 @@ int main(int argc, char *argv[])
                 const bool update_buffers = geometry_has_changed || new_cbp_segmentation;
                 update_opengl_draw_list<scalar>(draw_2d_renderer->draw_list(), transformed_draw_commands, update_buffers, drawing_options);
                 stable_sort_draw_commands(draw_2d_renderer->draw_list());
-                draw_2d_renderer->render(fb_viewport_canvas, flags);
+                draw_2d_renderer->render(fb_viewport_canvas);
             }
         }
 
