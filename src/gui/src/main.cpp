@@ -122,10 +122,19 @@ struct AppWindows
     } layout;
 };
 
-void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTracker<scalar>& dt_tracker, bool& application_should_close, bool& gui_dark_mode, bool& open_about_window)
+struct MenuBarOptions
+{
+    bool* app_should_close;
+    bool* gui_dark_mode;
+    bool* open_about_window;
+    bool* show_imgui_demo_window;
+};
+
+void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTracker<scalar>& dt_tracker, const MenuBarOptions& options)
 {
     std::string filename = "no_file";
-    application_should_close = false;
+    assert(options.app_should_close);
+    (*options.app_should_close) = false;
     using scalar = ViewportWindow::scalar;
     shapes::io::ShapeAggregate<scalar> shapes;
     if (ImGui::BeginMainMenuBar())
@@ -207,7 +216,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
             });
             ImGui::Separator();
             bool save_input_as_dat_menu_enabled = static_cast<bool>(windows.shape_control);
-            if (ImGui::MenuItem("Save input as DAT", "", false, save_input_as_dat_menu_enabled))
+            if (ImGui::MenuItem("Save input as DAT", ImGui::NO_SHORTCUT, ImGui::NOT_SELECTED, save_input_as_dat_menu_enabled))
             {
                 std::filesystem::path path = pfd::target_path(
                     pfd::save_file("Select a file", "", { "DAT", "*.dat" }, pfd::opt::force_overwrite)
@@ -219,7 +228,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
                 }
             }
             bool save_tab_as_dat_menu_enabled = static_cast<bool>(windows.viewport) && static_cast<bool>(windows.shape_control);
-            if (ImGui::MenuItem("Save current viewport as DAT", "", false, save_tab_as_dat_menu_enabled))
+            if (ImGui::MenuItem("Save current viewport as DAT", ImGui::NO_SHORTCUT, ImGui::NOT_SELECTED, save_tab_as_dat_menu_enabled))
             {
                 std::filesystem::path path = pfd::target_path(
                     pfd::save_file("Select a file", "", { "DAT", "*.dat" }, pfd::opt::force_overwrite)
@@ -234,21 +243,28 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
             ImGui::Separator();
             if (ImGui::BeginMenu("Options"))
             {
-                if (ImGui::MenuItem("Dark Mode", "", &gui_dark_mode))
+                if (options.gui_dark_mode && ImGui::MenuItem("Dark Mode", ImGui::NO_SHORTCUT, options.gui_dark_mode))
                 {
-                    imgui_set_style(gui_dark_mode);
+                    imgui_set_style(*options.gui_dark_mode);
                 }
+#ifndef NDEBUG
+                if (options.show_imgui_demo_window)
+                {
+                    ImGui::MenuItem("ImGui Demo Window", ImGui::NO_SHORTCUT, options.show_imgui_demo_window);
+                }
+#endif
                 ImGui::EndMenu();
             }
             ImGui::Separator();
-            application_should_close = ImGui::MenuItem("Quit", ImGui::key_shortcut::quit().label);
+            *options.app_should_close = ImGui::MenuItem("Quit", ImGui::key_shortcut::quit().label);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Help"))
         {
             if (ImGui::MenuItem("About"))
             {
-                open_about_window = true;
+                assert(options.open_about_window);
+                *options.open_about_window = true;
             }
             ImGui::EndMenu();
         }
@@ -314,7 +330,7 @@ int main(int argc, char *argv[])
     std::cout.flush();
 
     // GUI Style
-    bool gui_dark_mode = false;
+    bool gui_dark_mode = true;
     imgui_set_style(gui_dark_mode);
 
     // Register the Delaunay triangulation implementations
@@ -383,7 +399,17 @@ int main(int argc, char *argv[])
     ViewportWindow::Key previously_selected_tab;
     ViewportWindow::TabList tab_list;
     float framebuffer_scale{1};
+    bool app_should_close{false};
     bool open_about_window{false};
+    bool show_imgui_demo_window{false};
+    const MenuBarOptions menu_bar_options = [&]() {
+        MenuBarOptions options;
+        options.app_should_close = &app_should_close;
+        options.gui_dark_mode = &gui_dark_mode;
+        options.open_about_window = &open_about_window;
+        options.show_imgui_demo_window = &show_imgui_demo_window;
+        return options;
+    }();
     GLFWvidmode glfw_vid_mode{};
     while (!glfwWindowShouldClose(glfw_context.window()))
     {
@@ -423,12 +449,9 @@ int main(int argc, char *argv[])
         dear_imgui_context.new_frame();
 
         // Main menu
-        {
-            bool app_should_close = false;
-            main_menu_bar(windows, *draw_2d_renderer, dt_tracker, app_should_close, gui_dark_mode, open_about_window);
-            if (app_should_close)
-                glfwSetWindowShouldClose(glfw_context.window(), 1);
-        }
+        main_menu_bar(windows, *draw_2d_renderer, dt_tracker, menu_bar_options);
+        if (app_should_close)
+            glfwSetWindowShouldClose(glfw_context.window(), 1);
 
         // Settings window
         if (windows.settings)
@@ -503,9 +526,12 @@ int main(int argc, char *argv[])
             }
         }
 
-#if DELAUNAY_VIEWER_IMGUI_DEMO_FLAG
-        // Dear ImGui Demo
-        ImGui::ShowDemoWindow();
+#ifndef NDEBUG
+        if (show_imgui_demo_window)
+        {
+            // Dear ImGui Demo
+            ImGui::ShowDemoWindow(&show_imgui_demo_window);
+        }
 #endif
 
         // OpenGL frame setup

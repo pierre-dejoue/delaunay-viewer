@@ -29,13 +29,6 @@ file(GLOB GUI_HEADERS src/*.h)
 
 add_executable(delaunay_viewer ${GUI_SOURCES} ${GUI_HEADERS})
 
-if(DELAUNAY_VIEWER_IMGUI_DEMO)
-    target_compile_definitions(delaunay_viewer
-        PRIVATE
-        DELAUNAY_VIEWER_IMGUI_DEMO_FLAG
-    )
-endif()
-
 if(APPLE)
     # OpenGL API is deprecated since macOS 10.14
     target_compile_definitions(delaunay_viewer

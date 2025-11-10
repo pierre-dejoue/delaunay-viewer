@@ -4,6 +4,7 @@ include(imgui)
 
 set(IMGUI_SRC
     ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
@@ -12,10 +13,6 @@ set(IMGUI_SRC
     src/imgui_helpers.cpp
     src/key_shortcut.cpp
 )
-
-if(DELAUNAY_VIEWER_IMGUI_DEMO)
-    list(APPEND IMGUI_SRC ${imgui_SOURCE_DIR}/imgui_demo.cpp)
-endif()
 
 set(IMGUI_HDR
     include/config/imgui_config.h

@@ -50,6 +50,10 @@ ColorData to_float_color(ImU32 compact_color);
 
 namespace ImGui {
 
+constexpr char* NO_SHORTCUT = nullptr;
+constexpr bool* NO_POPEN = nullptr;
+constexpr bool NOT_SELECTED = false;
+
 inline ImVec2 GetMouseDelta() { return ImGui::GetIO().MouseDelta; }
 void HelpMarker(const char* desc);          // Function taken from imgui_demo.cpp
 void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond = 0);

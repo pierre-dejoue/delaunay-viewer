@@ -24,7 +24,6 @@ option(DELAUNAY_VIEWER_BUILD_POLY2TRI "Build with the library poly2tri" ON)
 option(DELAUNAY_VIEWER_BUILD_CDT "Build with the library CDT" ON)
 option(DELAUNAY_VIEWER_BUILD_TRIANGLE "Build with Shewchuk's Triangle library" ON)
 option(DELAUNAY_VIEWER_BUILD_UTESTS "Build unit tests" OFF)
-option(DELAUNAY_VIEWER_IMGUI_DEMO "Show ImGUI demo window" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
