@@ -57,6 +57,9 @@ add_subdirectory(src/svg)
 # GUI
 add_subdirectory(src/gui)
 
+# Main application
+add_subdirectory(src/apps/delaunay_viewer)
+
 # Tests
 if(DELAUNAY_VIEWER_BUILD_UTESTS)
     add_subdirectory(src/tests/stdutils)
@@ -66,4 +69,3 @@ endif()
 
 set(CPACK_RESOURCE_FILE_LICENSE ${PROJECT_SOURCE_DIR}/LICENSE)
 include(CPack)
-
