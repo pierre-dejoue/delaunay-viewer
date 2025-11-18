@@ -60,30 +60,3 @@ void SetNextWindowPosAndSize(const WindowLayout& window_layout, ImGuiCond cond =
 void BulletTextUnformatted(const char* txt);
 
 } // namespace ImGui
-
-// Do not call this class ImGuiContext because this is an internal class of Dear ImGui
-struct GLFWwindow;
-class DearImGuiContext
-{
-public:
-    using FlagCode = unsigned int;
-    struct Flag
-    {
-        static constexpr FlagCode None = 0;
-        static constexpr FlagCode ManualINIFile = 1;
-    };
-    explicit DearImGuiContext(GLFWwindow* glfw_window, bool& any_fatal_error, FlagCode flags = Flag::None) noexcept;
-    ~DearImGuiContext();
-    DearImGuiContext(const DearImGuiContext&) = delete;
-    DearImGuiContext(DearImGuiContext&&) = delete;
-    DearImGuiContext& operator=(const DearImGuiContext&) = delete;
-    DearImGuiContext& operator=(DearImGuiContext&&) = delete;
-
-    void new_frame() const;
-    void render() const;
-    void backend_info(std::ostream& out) const;
-    void sleep(int ms) const;
-
-    void load_ini_settings_from_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept;
-    void append_ini_settings_to_file(const fs::path& ini_file, const stdutils::io::ErrorHandler& err_handler) const noexcept;
-};

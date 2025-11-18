@@ -4,8 +4,35 @@
 
 #include <stdutils/io.h>
 
+#include <cstddef>
+#include <filesystem>
+#include <functional>
+#include <istream>
 #include <string>
+#include <string_view>
 #include <sstream>
+#include <vector>
+
+namespace fs = std::filesystem;
+
+namespace {
+
+    void report_error(stdutils::io::SeverityCode, std::string_view)
+    {
+        // Do nothing
+    }
+
+    const fs::path& get_test_output_dir()
+    {
+        static const fs::path temp_path = []() {
+            const fs::path path = fs::temp_directory_path() / "stdutils_io";
+            std::filesystem::create_directory(path);
+            return path;
+        }();
+        return temp_path;
+    }
+
+} // namespace
 
 // str_severity_code() is robust to any input integer
 TEST_CASE("Severity codes as strings", "[stdutils::io]")
@@ -68,6 +95,61 @@ c)";
     CHECK(sstream.eof() == true);
     CHECK(sstream.fail() == true);
     CHECK(sstream.bad() == false);
+}
+
+
+TEST_CASE("Dump to and from a txt file", "[stdutils::io]")
+{
+    const fs::path temp_path = get_test_output_dir();
+
+    // Empty file
+    {
+        const fs::path empty_file = temp_path / "empty.txt";
+        const bool written = stdutils::io::dump_to_txt_file(empty_file, std::string_view(), report_error);
+        REQUIRE(written);
+        REQUIRE(fs::exists(empty_file));
+        CHECK(fs::file_size(empty_file) == 0);
+        std::string read_back = stdutils::io::dump_txt_file_to_memory(empty_file, report_error);
+        CHECK(read_back.empty());
+    }
+
+    // Small file
+    {
+        const fs::path small_file = temp_path / "small.txt";
+        const bool written = stdutils::io::dump_to_txt_file(small_file, "ab", report_error);
+        REQUIRE(written);
+        REQUIRE(fs::exists(small_file));
+        CHECK(fs::file_size(small_file) == 2);
+        std::string read_back = stdutils::io::dump_txt_file_to_memory(small_file, report_error);
+        CHECK(read_back.size() == 2);
+        CHECK(read_back == "ab");
+    }
+}
+
+TEST_CASE("Dump to and from a bin file", "[stdutils::io]")
+{
+    const fs::path temp_path = get_test_output_dir();
+
+    // Null buffer
+    {
+        const fs::path empty_file = temp_path / "empty.bin";
+        const bool written = stdutils::io::dump_to_bin_file(empty_file, nullptr, 42u, report_error);
+        CHECK_FALSE(written);
+    }
+
+    // Small bin file
+    {
+        const fs::path small_file = temp_path / "small.bin";
+        const std::vector<std::byte> contents { std::byte{0xFF}, std::byte{0xE0} };
+        const bool written = stdutils::io::dump_to_bin_file(small_file, contents.data(), contents.size(), report_error);
+        REQUIRE(written);
+        REQUIRE(fs::exists(small_file));
+        CHECK(fs::file_size(small_file) == 2);
+        const auto read_back = stdutils::io::dump_bin_file_to_memory(small_file, report_error);
+        REQUIRE(read_back.size() == 2);
+        CHECK(read_back.data()[0] == contents[0]);
+        CHECK(read_back.data()[1] == contents[1]);
+    }
 }
 
 TEST_CASE("LineStream on a one-liner", "[stdutils::io]")

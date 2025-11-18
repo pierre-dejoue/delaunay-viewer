@@ -8,6 +8,15 @@
 #include <type_traits>
 #include <vector>
 
+TEST_CASE("Trivial dynamic extent span<T>", "[span]")
+{
+    stdutils::Span<int> span;
+
+    CHECK(span.size() == 0);
+    CHECK(span.empty() == true);
+    CHECK(span.data() == nullptr);
+}
+
 TEST_CASE("Dynamic extent span<T> to span<const T>", "[span]")
 {
     std::vector<int> test_vect { 0, 2, 3, 4 };

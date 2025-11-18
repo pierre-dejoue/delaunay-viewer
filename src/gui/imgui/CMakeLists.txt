@@ -10,14 +10,20 @@ set(IMGUI_SRC
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    src/font_mngr.cpp
+    src/imgui_context_impl.cpp
+    src/imgui_context.cpp
     src/imgui_helpers.cpp
     src/key_shortcut.cpp
 )
 
 set(IMGUI_HDR
     include/config/imgui_config.h
+    include/imgui/font_mngr.h
     include/imgui/imgui.h
+    include/imgui/imgui_context.h
     include/imgui/key_shortcut.h
+    src/imgui_context_impl.h
     ${imgui_SOURCE_DIR}/imconfig.h
     ${imgui_SOURCE_DIR}/imgui.h
     ${imgui_SOURCE_DIR}/imgui_internal.h

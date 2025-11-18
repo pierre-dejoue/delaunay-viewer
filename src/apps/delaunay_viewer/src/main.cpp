@@ -12,6 +12,7 @@
 #include "argagg_wrap.h"
 #include "drawing_settings.h"
 #include "dt_tracker.h"
+#include "font_files.h"
 #include "gui_style.h"
 #include "project.h"
 #include "renderer.h"
@@ -27,6 +28,7 @@
 #include <gui/base/opengl_and_glfw.h>
 #include <gui/base/pfd_wrap.h>
 #include <imgui/imgui.h>
+#include <imgui/imgui_context.h>
 #include <imgui/key_shortcut.h>
 #include <shapes/bounding_box.h>
 #include <shapes/bounding_box_algos.h>
@@ -35,6 +37,7 @@
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
 #include <stdutils/platform.h>
+#include <stdutils/span.h>
 #include <stdutils/time.h>
 #include <svg/svg.h>
 
@@ -319,7 +322,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
 
     // Setup Dear ImGui context
-    const DearImGuiContext dear_imgui_context(glfw_context.window(), any_fatal_err);
+    DearImGuiContext dear_imgui_context(glfw_context.window(), any_fatal_err);
     if (any_fatal_err)
         return EXIT_FAILURE;
 
@@ -332,6 +335,22 @@ int main(int argc, char *argv[])
     // GUI Style
     bool gui_dark_mode = true;
     imgui_set_style(gui_dark_mode);
+
+    // Main font
+    {
+        const bool success = [&dear_imgui_context, &err_handler]() {
+            const auto font_file = get_font_file(FontFileRef::TITILLIUM_WEB);
+            assert(font_file.encoding == EmbeddedFile::Encoding::Bytes);
+            return dear_imgui_context.register_main_font(
+                font_file.data,
+                std::string_view(font_file.source),
+                20.f,
+                DearImGuiContext::SCALE_FONTS_AND_STYLE,
+                err_handler
+            );
+        }();
+        if (!success && err_handler) { err_handler(stdutils::io::Severity::WARN, "Fallback on the default ImGui font"); }
+    }
 
     // Register the Delaunay triangulation implementations
     if (!delaunay::register_all_implementations())
