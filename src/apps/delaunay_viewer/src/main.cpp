@@ -125,6 +125,18 @@ struct AppWindows
     } layout;
 };
 
+void set_app_windows_layout(AppWindows& app_windows, float ui_scaling = 1.f)
+{
+    assert(ui_scaling > 0.f);
+    constexpr float WINDOW_SETTINGS_BASE_WIDTH = 400.f;
+    constexpr float WINDOW_SETTINGS_BASE_HEIGHT = 450.f;
+    const float w = WINDOW_SETTINGS_BASE_WIDTH * ui_scaling;
+    const float h = WINDOW_SETTINGS_BASE_HEIGHT;
+    app_windows.layout.settings      = WindowLayout(0.f, 0.f,    w,    h);
+    app_windows.layout.viewport      = WindowLayout(w,   0.f, -1.f, -1.f);
+    app_windows.layout.shape_control = WindowLayout(0.f,   h,    w, -1.f);
+}
+
 struct MenuBarOptions
 {
     bool* app_should_close;
@@ -367,11 +379,7 @@ int main(int argc, char *argv[])
     AppWindows windows;
     windows.settings = std::make_unique<SettingsWindow>(settings, dt_tracker);
     windows.viewport = std::make_unique<ViewportWindow>();
-    constexpr float WINDOW_SETTINGS_WIDTH = 400.f;
-    constexpr float WINDOW_SETTINGS_HEIGHT = 450.f;
-    windows.layout.settings      = WindowLayout(0.f,                   0.f,                    WINDOW_SETTINGS_WIDTH, WINDOW_SETTINGS_HEIGHT);
-    windows.layout.viewport      = WindowLayout(WINDOW_SETTINGS_WIDTH, 0.f,                    -1.f,                  -1.f);
-    windows.layout.shape_control = WindowLayout(0.f,                   WINDOW_SETTINGS_HEIGHT, WINDOW_SETTINGS_WIDTH, -1.f);
+    set_app_windows_layout(windows);
 
     // Steiner callback
     windows.viewport->set_steiner_callback([&windows, &err_handler](const shapes::Point2d<scalar>& p) {
@@ -418,6 +426,8 @@ int main(int argc, char *argv[])
     ViewportWindow::Key previously_selected_tab;
     ViewportWindow::TabList tab_list;
     float framebuffer_scale{1};
+    float window_content_scale{1};
+    float ui_scaling{1};
     bool app_should_close{false};
     bool open_about_window{false};
     bool show_imgui_demo_window{false};
@@ -464,8 +474,24 @@ int main(int argc, char *argv[])
             err_handler(stdutils::io::Severity::TRACE, out.str());
         }
 
+        // DPI awareness
+        const bool window_content_scale_changed = glfw_context.get_window_content_scale(window_content_scale);
+        if (window_content_scale_changed)
+        {
+            std::stringstream out;
+            out << "Window content scale (DPI ratio): " << window_content_scale << "x";
+            err_handler(stdutils::io::Severity::TRACE, out.str());
+        }
+        assert(framebuffer_scale != 0.f);
+        ui_scaling = window_content_scale / framebuffer_scale;
+        if (framebuffer_scale_changed || window_content_scale_changed)
+        {
+            set_app_windows_layout(windows, ui_scaling);
+        }
+
         // Start the Dear ImGui frame
         dear_imgui_context.new_frame();
+        dear_imgui_context.set_ui_scaling(ui_scaling);
 
         // Main menu
         main_menu_bar(windows, *draw_2d_renderer, dt_tracker, menu_bar_options);
