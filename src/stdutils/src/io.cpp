@@ -38,26 +38,6 @@ std::string_view str_severity_code(SeverityCode code) noexcept
     return str_severity_code_lookup[code_idx];
 }
 
-std::ostream& operator<<(std::ostream& out, Endianness endianness)
-{
-    switch (endianness)
-    {
-        case Endianness::BigEndian:
-            out << "Big-endian";
-            break;
-
-        case Endianness::LittleEndian:
-            out << "Little-endian";
-            break;
-
-        default:
-            assert(0);
-            out << "Unknown_enum";
-            break;
-    }
-    return out;
-}
-
 std::string dump_txt_file_to_memory(const std::filesystem::path& filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
     return open_and_parse_txt_file<std::string, char>(filepath, [](std::istream& in, const stdutils::io::ErrorHandler&) {

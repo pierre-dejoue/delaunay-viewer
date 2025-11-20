@@ -308,12 +308,15 @@ int main(int argc, char *argv[])
     if (args["version"])
     {
         std::cout << project_title() << std::endl;
-        stdutils::platform::print_compiler_all_info(std::cout);
+        stdutils::platform::stream_out_info(std::cout, stdutils::platform::InfoFlag::ALL_INFO, stdutils::platform::InfoStyle::Newline);
         return EXIT_SUCCESS;
     }
     if (args["platform"])
     {
-        stdutils::platform::print_platform_info(std::cout);
+        stdutils::platform::InfoFlags flags = stdutils::platform::InfoFlag::OS
+                                            | stdutils::platform::InfoFlag::ARCH
+                                            | stdutils::platform::InfoFlag::COMPILER;
+        stdutils::platform::stream_out_info(std::cout, flags, stdutils::platform::InfoStyle::Newline);
         return EXIT_SUCCESS;
     }
 

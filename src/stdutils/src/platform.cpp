@@ -8,8 +8,14 @@
 
 #include <array>
 #include <cassert>
+#include <cstdint>
 #include <cstdlib>
+#include <filesystem>
+#include <memory>
 #include <sstream>
+#include <string_view>
+
+namespace fs = std::filesystem;
 
 #if defined(__APPLE__)
 #include "platform_macos.h"
@@ -23,7 +29,7 @@ std::ostream& operator<<(std::ostream& out, OS os)
     switch(os)
     {
         case OS::UNKNOWN:
-            out << "Unknown";
+            out << "Unknown_os";
             break;
 
         case OS::LINUX:
@@ -51,7 +57,7 @@ std::ostream& operator<<(std::ostream& out, Arch arch)
     switch (arch)
     {
         case Arch::UNKNOWN:
-            out << "Unknown";
+            out << "Unknown_arch";
             break;
 
         case Arch::x86:
@@ -74,12 +80,50 @@ std::ostream& operator<<(std::ostream& out, Arch arch)
     return out;
 }
 
+std::string_view architecture_user_friendly()
+{
+    constexpr auto arch = architecture();
+    if constexpr (arch == Arch::x86 || arch == Arch::x86_64)
+        return "Intel";
+    else if constexpr (arch == Arch::arm64)
+        return "ARM";
+    else
+    {
+        assert(0);
+        return "Unknown_enum";
+    }
+}
+
+std::ostream& operator<<(std::ostream& out, Endianness endianness)
+{
+    switch (endianness)
+    {
+        case Endianness::UNKNOWN:
+            out << "Unknown_endianness";
+            break;
+
+        case Endianness::LE:
+            out << "LE";
+            break;
+
+        case Endianness::BE:
+            out << "BE";
+            break;
+
+        default:
+            assert(0);
+            out << "Unknown_enum";
+            break;
+    }
+    return out;
+}
+
 std::ostream& operator<<(std::ostream& out, Compiler compiler)
 {
     switch (compiler)
     {
         case Compiler::UNKNOWN:
-            out << "Unknown";
+            out << "Unknown_compiler";
             break;
 
         case Compiler::MSVC:
@@ -112,7 +156,7 @@ std::string compiler_version()
     switch (compiler())
     {
         case Compiler::UNKNOWN:
-            out << "Unknown";
+            out << "Unknown_compiler_version";
             break;
 
         case Compiler::MSVC:
@@ -147,58 +191,64 @@ std::string compiler_version()
     return out.str();
 }
 
-void print_os(std::ostream& out, bool endl)
+void stream_out_info(std::ostream& out, InfoFlags flags, InfoStyle style)
 {
-    constexpr auto os_id = os();
-    out << "OS: " << os_id;
-    if (endl) { out << '\n'; }
+    const std::string_view sep = style == InfoStyle::Oneliner ? "; " : "\n";
+    bool first = true;
+    InfoFlag::type mask = 1;
+    for (unsigned int shift = 0; shift < 32; shift++)
+    {
+        const InfoFlag::type flag_selection = flags & mask;
+        mask <<= 1;
+        if (flag_selection == 0) { continue; }
+        if (!first) { out << sep; }
+        first = false;
+        switch (flag_selection)
+        {
+            case InfoFlag::OS:
+                out << "OS: " << os();
+                break;
+
+            case InfoFlag::ARCH:
+                out << "Arch: " << architecture();
+                break;
+
+            case InfoFlag::ENDIANNESS:
+                out << "Endianness: " << endianness();
+                break;
+
+            case InfoFlag::COMPILER:
+                out << "Compiler: " << compiler();
+                if constexpr (compiler() != Compiler::UNKNOWN)
+                    out << " " << compiler_version();
+                break;
+
+            case InfoFlag::CPP_STANDARD:
+                out << "C++ Standard: " << __cplusplus;
+                break;
+
+            case InfoFlag::COMPILE_DATE:
+                out << "Compilation date: " << __DATE__ << " " << __TIME__;
+                break;
+
+            default:
+                assert(0);
+                // unknown flag
+                break;
+        }
+    }
+    if (style == InfoStyle::Newline) { out << std::endl; }
 }
 
-void print_cpp_standard(std::ostream& out, bool endl)
+fs::path get_executable_folder(int argc, const char * const * argv)
 {
-    out << "C++ Standard: " << __cplusplus;
-    if (endl) { out << '\n'; }
+    return (argc > 0 && argv != nullptr && argv[0] != nullptr) ? std::filesystem::canonical(fs::path(argv[0]).parent_path()) : fs::path();
 }
 
-void print_compiler_info(std::ostream& out, bool endl)
+std::string get_executable_raw_path(int argc, const char * const * argv)
 {
-    constexpr auto compiler_id = compiler();
-    out << "Compiler: " << compiler_id;
-    if constexpr (compiler_id != Compiler::UNKNOWN)
-        out << " " << compiler_version();
-    if (endl) { out << '\n'; }
+    return (argc > 0 && argv != nullptr && argv[0] != nullptr) ? std::string(argv[0]) : std::string();
 }
-
-void print_architecture_info(std::ostream& out, bool endl)
-{
-    constexpr auto arch_id = architecture();
-    out<< "Arch: " << arch_id;
-    if (endl) { out << '\n'; }
-}
-
-void print_compilation_date(std::ostream& out, bool endl)
-{
-    out << "Compilation date: " << __DATE__ << " " << __TIME__;
-    if (endl) { out << '\n'; }
-}
-
-void print_platform_info(std::ostream& out, bool endl)
-{
-    print_os(out, endl);                if (!endl) { out << "; "; };
-    print_architecture_info(out, endl); if (!endl) { out << "; "; };
-    print_compiler_info(out, endl);
-}
-
-void print_compiler_all_info(std::ostream& out, bool endl)
-{
-    print_os(out, endl);                if (!endl) { out << "; "; };
-    print_architecture_info(out, endl); if (!endl) { out << "; "; };
-    print_compiler_info(out, endl);     if (!endl) { out << "; "; };
-    print_cpp_standard(out, endl);      if (!endl) { out << "; "; };
-    print_compilation_date(out, endl);
-}
-
-namespace fs = std::filesystem;
 
 fs::path get_local_app_data_path() noexcept
 {

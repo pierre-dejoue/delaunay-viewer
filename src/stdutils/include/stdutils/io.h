@@ -48,17 +48,6 @@ using ErrorMessage = std::string_view;
 using ErrorHandler = std::function<void(SeverityCode, ErrorMessage)>;
 
 /**
- * Endianess enum
- */
-enum class Endianness
-{
-    BigEndian,
-    LittleEndian,
-};
-
-std::ostream& operator<<(std::ostream& out, Endianness endianness);
-
-/**
  * Floating point IO precision
  *
  * Set the output stream precision so that the round-trip fp -> text -> fp is exact.
