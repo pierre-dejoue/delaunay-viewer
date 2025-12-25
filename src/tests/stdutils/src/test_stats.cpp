@@ -2,7 +2,7 @@
 // This code is distributed under the terms of the MIT License
 #include <catch_amalgamated.hpp>
 
-#include <stdutils/numbers.h>
+#include <stdutils/constants.h>
 #include <stdutils/stats.h>
 
 #include <array>
@@ -17,7 +17,7 @@ namespace {
         std::vector<F> result;
         result.reserve(n);
         F inv_n = F{1} / static_cast<F>(n);
-        F two_pi = F{2} * stdutils::numbers::pi_v<F>;
+        constexpr F two_pi = stdutils::constants::two_pi_v<F>;
         for (std::size_t idx = 0; idx < n; idx++)
         {
             result.emplace_back(offset + r * std::cos(static_cast<F>(idx) * inv_n * two_pi));
