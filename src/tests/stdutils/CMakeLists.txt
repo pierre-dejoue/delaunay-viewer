@@ -5,6 +5,7 @@ include(catch2)
 
 set(UTESTS_SOURCES
     src/test_algorithm.cpp
+    src/test_enum.cpp
     src/test_io.cpp
     src/test_locked_buffer.cpp
     src/test_memory.cpp

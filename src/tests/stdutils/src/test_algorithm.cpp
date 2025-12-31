@@ -49,6 +49,50 @@ TEST_CASE("stdutils::clamp", "[algorithm]")
     }
 }
 
+TEST_CASE("stdutils::clamp a class enum", "[algorithm]")
+{
+    bool clamped = false;
+    enum class TestEnum
+    {
+        A = 0,
+        B,
+        C,
+    };
+    TestEnum en = TestEnum::A;
+    en = stdutils::clamp<TestEnum>(TestEnum::C, TestEnum::A, TestEnum::C, clamped);
+    CHECK(en == TestEnum::C);
+    CHECK(!clamped);
+    en = stdutils::clamp<TestEnum>(TestEnum::A, TestEnum::A, TestEnum::C, clamped);
+    CHECK(en == TestEnum::A);
+    CHECK(!clamped);
+    en = stdutils::clamp<TestEnum>(static_cast<TestEnum>(12), TestEnum::A, TestEnum::C, clamped);
+    CHECK(en == TestEnum::C);
+    CHECK(clamped);
+}
+
+TEST_CASE("stdutils::clamp_enum", "[algorithm]")
+{
+    bool clamped = false;
+    enum class TestEnum
+    {
+        A = 0,                          // The first enum value must be 0
+        B,
+        C,
+        _ENUM_SIZE_                     // The last enum value must be the special value _ENUM_SIZE_
+    };
+    REQUIRE(stdutils::enum_size<TestEnum>() == 3);
+    TestEnum en = TestEnum::A;
+    en = stdutils::clamp_enum<TestEnum>(TestEnum::C, clamped);
+    CHECK(en == TestEnum::C);
+    CHECK(!clamped);
+    en = stdutils::clamp_enum<TestEnum>(TestEnum::A, clamped);
+    CHECK(en == TestEnum::A);
+    CHECK(!clamped);
+    en = stdutils::clamp_enum<TestEnum>(static_cast<TestEnum>(12), clamped);
+    CHECK(en == TestEnum::C);
+    CHECK(clamped);
+}
+
 TEST_CASE("stdutils::erase on a vector", "[algorithm]")
 {
     std::vector<int> vect { 0, 1, 2, 6, 0, 0, 5, 0, 1 };

@@ -8,8 +8,9 @@
 namespace stdutils {
 
 /**
- * Assuming an enumeration declaration follows the convention of being a range from 0 to the special value _ENUM_SIZE_,
- * then the following functions can be used to retrieve the range of the valid enumeration values
+ * Assuming an enumeration declaration follows the convention of being a continuous range from 0 to
+ * the special value _ENUM_SIZE_, then the following functions can be used to retrieve the range of
+ * valid enumeration values
  *
  * e.g.
  *
@@ -44,11 +45,20 @@ constexpr E enum_last_value() noexcept
     return static_cast<E>(static_cast<T>(E::_ENUM_SIZE_) - T{1});
 }
 
-template <typename E>
-constexpr std::size_t enum_size() noexcept
+template <typename E, typename T = std::size_t>
+constexpr T enum_size() noexcept
 {
     static_assert(std::is_enum_v<E>);
-    return static_cast<std::size_t>(E::_ENUM_SIZE_);
+    static_assert(std::is_integral_v<T>);
+    static_assert(std::is_unsigned_v<T>);
+    return static_cast<T>(E::_ENUM_SIZE_);
+}
+
+template <typename E>
+constexpr bool enum_is_in_range(E e) noexcept
+{
+    static_assert(std::is_enum_v<E>);
+    return e < E::_ENUM_SIZE_;
 }
 
 } // namespace stdutils

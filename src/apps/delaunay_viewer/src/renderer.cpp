@@ -332,8 +332,8 @@ void Draw2D::Impl::render_assets()
         const auto count = static_cast<GLsizei>(draw_call.m_range.second - draw_call.m_range.first);
         glUniform4fv(static_cast<GLint>(gl_locations.main.uni_color), 1, draw_call.m_uniform_color.data());
         glUniform1f(static_cast<GLint>(gl_locations.main.pt_size), draw_call.m_uniform_point_size);
-        const auto draw_cmd = static_cast<std::size_t>(draw_call.m_cmd);                                                assert(draw_cmd < stdutils::enum_size<DrawCmd>());
-        glDrawElements(lookup_gl_draw_cmd[draw_cmd], count, GL_UNSIGNED_INT, GLoffsetui(draw_call.m_range.first));
+        assert(stdutils::enum_is_in_range(draw_call.m_cmd));
+        glDrawElements(lookup_gl_draw_cmd[static_cast<std::size_t>(draw_call.m_cmd)], count, GL_UNSIGNED_INT, GLoffsetui(draw_call.m_range.first));
     }
     glUseProgram(0);
     glBindVertexArray(0);

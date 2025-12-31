@@ -3,7 +3,6 @@
 #include <imgui/font_mngr.h>
 
 #include <imgui/imgui.h>
-#include <stdutils/enum.h>
 #include <stdutils/io.h>
 #include <stdutils/type_traits.h>
 
