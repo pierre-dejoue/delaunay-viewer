@@ -1,3 +1,5 @@
+// Copyright (c) 2023 Pierre DEJOUE
+// This code is distributed under the terms of the MIT License
 #include <svg/svg.h>
 
 #include <shapes/vect.h>
@@ -495,7 +497,7 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
 
 } // namespace
 
-Paths<double> parse_svg_paths(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
+Paths<double> parse_paths(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept
 {
     return parse_svg_paths_gen<double>(filepath, err_handler);
 }

@@ -207,7 +207,7 @@ void main_menu_bar(AppWindows& windows, renderer::Draw2D& renderer, const DtTrac
                 for (const auto& path : paths)
                 {
                     std::cout << "User selected SVG file " << path << std::endl;
-                    auto file_paths = svg::io::parse_svg_paths(path, io_err_handler);
+                    auto file_paths = svg::io::parse_paths(path, io_err_handler);
                     std::cout << "Nb of point paths: " << file_paths.point_paths.size() << ". Nb of cubic bezier paths: " << file_paths.cubic_bezier_paths.size() << "." << std::endl;
                     filename = path.filename().string();
                     shapes.clear();

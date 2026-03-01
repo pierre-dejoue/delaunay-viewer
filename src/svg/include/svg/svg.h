@@ -1,3 +1,5 @@
+// Copyright (c) 2023 Pierre DEJOUE
+// This code is distributed under the terms of the MIT License
 #pragma once
 
 #include <shapes/path.h>
@@ -16,7 +18,7 @@ struct Paths
     std::vector<shapes::CubicBezierPath2d<F>>  cubic_bezier_paths;
 };
 
-Paths<double> parse_svg_paths(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept;
+Paths<double> parse_paths(std::filesystem::path filepath, const stdutils::io::ErrorHandler& err_handler) noexcept;
 
 } // namespace io
 } // namespace svg
