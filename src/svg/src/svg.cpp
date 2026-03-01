@@ -5,12 +5,13 @@
 #include <ssvg/ssvg.h>
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
+#include <stdutils/memory.h>
+#include <stdutils/string.h>
 
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
-#include <cstring>
 #include <exception>
 #include <fstream>
 #include <sstream>
@@ -23,7 +24,7 @@ namespace {
 ssvg::ShapeAttributes init_default_shape_attr()
 {
     ssvg::ShapeAttributes defaultAttrs;
-    IGNORE_RETURN std::memset(&defaultAttrs, 0, sizeof(ssvg::ShapeAttributes));
+    IGNORE_RETURN stdutils::memset<ssvg::ShapeAttributes>(&defaultAttrs, 0);
     defaultAttrs.m_Parent = nullptr;
     defaultAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
     defaultAttrs.m_StrokePaint.m_ColorABGR = 0x00000000;
@@ -35,15 +36,21 @@ ssvg::ShapeAttributes init_default_shape_attr()
     defaultAttrs.m_StrokeOpacity = 1.0f;
     defaultAttrs.m_FillOpacity = 1.0f;
     defaultAttrs.m_FontSize = 8.0f;
-    //defaultAttrs.m_Opacity
+    defaultAttrs.m_Opacity = 0.0f;
     defaultAttrs.m_Flags = 0;
     defaultAttrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
     defaultAttrs.m_StrokeLineCap = ssvg::LineCap::Butt;
     defaultAttrs.m_FillRule = ssvg::FillRule::NonZero;
-    //defaultAttrs.m_ID
-    const std::string font_family = "sans-serif";
-    const std::size_t memcpy_sz = std::min(font_family.size(), static_cast<std::size_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1));
-    IGNORE_RETURN std::memcpy(&defaultAttrs.m_FontFamily[0], font_family.data(), memcpy_sz);
+    assert(stdutils::string::strnlen(&defaultAttrs.m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
+    {
+        constexpr std::string_view font_family = "sans-serif";
+        constexpr std::size_t memcpy_sz = std::min(font_family.size(), static_cast<std::size_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1));
+        IGNORE_RETURN stdutils::memcpy<char>(&defaultAttrs.m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN, font_family.data(), memcpy_sz);
+        assert(stdutils::string::is_null_terminated(&defaultAttrs.m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN));
+    }
+#if SSVG_CONFIG_CLASS_MAX_LEN
+    assert(stdutils::string::strnlen(&defaultAttrs.m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN) == 0);
+#endif
     return defaultAttrs;
 }
 

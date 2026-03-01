@@ -3,10 +3,10 @@
 #pragma once
 
 #include <shapes/vect.h>
+#include <stdutils/memory.h>
 
 #include <cassert>
 #include <cstdlib>
-#include <cstring>
 
 namespace shapes {
 
@@ -255,7 +255,7 @@ CasteljauCubicBezier2d<F>::CasteljauCubicBezier2d(const CubicBezierMap2d<F>& bez
     const F* p = bezier.cps();
     assert(p);
     assert(0.f <= t && t <= 1.f);
-    std::memcpy(cps.data(), p, 4 * dim * sizeof(F));
+    IGNORE_RETURN stdutils::memcpy<F>(cps.data(), cps.size(), p, 4 * dim * sizeof(F));
 
     // P0, P1, P2, P3
     const F* p0 = &p[0 * dim];

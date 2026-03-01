@@ -10,7 +10,7 @@
 #include <array>
 #include <cassert>
 #include <cmath>
-#include <cstring>
+#include <cstddef>
 #include <filesystem>
 #include <sstream>
 
