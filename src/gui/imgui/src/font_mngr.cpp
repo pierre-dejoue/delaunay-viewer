@@ -3,7 +3,9 @@
 #include <imgui/font_mngr.h>
 
 #include <imgui/imgui.h>
+#include <stdutils/enum.h>
 #include <stdutils/io.h>
+#include <stdutils/memory.h>
 #include <stdutils/type_traits.h>
 
 #include <algorithm>
@@ -27,19 +29,12 @@ namespace {
 
 // ImFontAtlas::AddFontDefault() must be called once to ensure Dear ImGui's default font is loaded in the font atlas
 // and can be used as the fallback font in case a font file cannot be loaded by the FontManager
-ImFont* s_default_font()
-{
-    ImGuiIO& io = ImGui::GetIO();
-
-    return io.Fonts->Fonts.empty()
-        ? io.Fonts->AddFontDefault()
-        : io.Fonts->Fonts[0];
-}
-
 ImFont* get_default_font()
 {
-    ImFont* const default_font = s_default_font();
-    return default_font;
+    ImGuiIO& io = ImGui::GetIO();
+    return io.Fonts->Fonts.empty()
+        ? io.Fonts->AddFontDefaultVector()
+        : io.Fonts->Fonts[0];
 }
 
 } // namespace
@@ -47,10 +42,13 @@ ImFont* get_default_font()
 struct FontManager::Impl
 {
 private:
+    // The caller has the ownership of the font data buffer
     void load_font(stdutils::Span<const std::byte> font_buffer, std::string_view font_name, float base_font_size, const stdutils::io::ErrorHandler& err_handler);
 public:
     Impl(float scaling_factor);
+    // The caller has the ownership of the font data buffer
     Impl(stdutils::Span<const std::byte> font_buffer, std::string_view font_name, float base_font_size, const stdutils::io::ErrorHandler& err_handler, float scaling_factor);
+    // Data is copied from the file to the FontManager that keeps the ownership
     Impl(fs::path fonts_folder, std::string_view font_file, float base_font_size, const stdutils::io::ErrorHandler& err_handler, float scaling_factor);
     ~Impl();
 
@@ -61,8 +59,11 @@ public:
 
     bool set_as_the_default_font() const noexcept;
 
+    using FontData = stdutils::FixedByteBuffer;
+
     bool            success;
     ImFont*         font_ptr;
+    FontData        font_data;
     unsigned int    pushed_fonts;
     float           base_font_size;
     float           scaling_factor;
@@ -70,17 +71,21 @@ public:
 
 void FontManager::Impl::load_font(stdutils::Span<const std::byte> font_buffer, std::string_view font_name, float base_font_size, const stdutils::io::ErrorHandler& err_handler)
 {
-    ImFontConfig font_config;
+    // Create a Dear ImGui font config
+    const ImFontConfig font_config = [&]() {
+        ImFontConfig config;
+        // Copy the font name, limited to the size available in the ImGui font config
+        constexpr std::size_t NameSZ = stdutils::array_size_v<decltype(config.Name)>;
+        std::strncpy(config.Name, font_name.data(), NameSZ);
+        config.Name[NameSZ-1] = '\0';
+        // The ownership of the font data is in the FontManager or above it
+        config.FontDataOwnedByAtlas = false;
+        return config;
+    }();
 
-    // Copy the font name, limited to the size available in the ImGui font config
-    constexpr std::size_t NameSZ = stdutils::array_size_v<decltype(font_config.Name)>;
-    std::strncpy(font_config.Name, font_name.data(), NameSZ);
-    font_config.Name[NameSZ-1] = '\0';
-
-    ImGuiIO& io = ImGui::GetIO();
-    // Transfer the ownership of the font data to Dear ImGui, which will copy the buffer. We can safely drop the const qualifier
-    font_config.FontDataOwnedByAtlas = false;
+    // We must drop the const qualifer despite the fact function AddFontFromMemoryTTF does not tamper with the source data
     auto* font_data = const_cast<std::byte*>(font_buffer.data());
+    ImGuiIO& io = ImGui::GetIO();
     ImFont* new_font_ptr = io.Fonts->AddFontFromMemoryTTF(reinterpret_cast<void*>(font_data), static_cast<int>(font_buffer.size()), base_font_size, &font_config, io.Fonts->GetGlyphRangesDefault());
 
     if (!new_font_ptr)
@@ -110,6 +115,7 @@ void FontManager::Impl::load_font(stdutils::Span<const std::byte> font_buffer, s
 FontManager::Impl::Impl(float scaling_factor)
     : success{false}
     , font_ptr{get_default_font()}
+    , font_data()
     , pushed_fonts{0}
     , base_font_size{0.f}
     , scaling_factor{scaling_factor}
@@ -150,7 +156,8 @@ FontManager::Impl::Impl(fs::path fonts_folder, std::string_view font_file, float
         return;
     }
 
-    stdutils::FixedByteBuffer font_data = stdutils::io::dump_bin_file_to_memory(font_full_path, err_handler);
+    // The FontManager is the owner of the font data
+    font_data = stdutils::io::dump_bin_file_to_memory(font_full_path, err_handler);
 
     if (font_data.empty())
     {
