@@ -21,7 +21,7 @@ enum class OS
     UNKNOWN = 0,
     LINUX,
     MACOS,
-    WINDOWS
+    WINDOWS,
 };
 
 constexpr OS os();
@@ -35,7 +35,7 @@ enum class Arch
     UNKNOWN = 0,
     x86,
     x86_64,
-    arm64
+    arm64,
 };
 
 constexpr Arch architecture();
@@ -49,7 +49,7 @@ enum class Endianness
 {
     UNKNOWN = 0,
     LE,
-    BE
+    BE,
 };
 
 constexpr Endianness endianness();
@@ -64,7 +64,7 @@ enum class Compiler
     MSVC,
     GNU_C_CPP,
     CLANG,
-    INTEL
+    INTEL,
 };
 
 constexpr Compiler compiler();
@@ -89,7 +89,7 @@ using InfoFlags = InfoFlag::type;
 enum class InfoStyle : bool
 {
     Oneliner,
-    Newline
+    Newline,
 };
 
 void stream_out_info(std::ostream& out, InfoFlags flags, InfoStyle style);

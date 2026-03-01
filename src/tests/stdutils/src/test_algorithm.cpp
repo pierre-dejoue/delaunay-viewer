@@ -228,3 +228,40 @@ TEST_CASE("merge", "[algorithm]")
     stdutils::merge(dst, src, std::less<char>());
     CHECK(dst == "abcdefghijklmnopqrstuvwxyz");
 }
+
+TEST_CASE("repeat and retry", "[algorithm]")
+{
+    unsigned int count = 0;
+    auto f = [&count]() { return ++count >= 3; };
+    // Repeat N times
+    {
+        count = 0;
+        stdutils::repeat_n_times(5, f);
+        CHECK(count == 5);
+    }
+    // Retry a maximum of N times
+    {
+        count = 0;
+        const bool success = stdutils::retry_n_times(0, f);
+        CHECK(success == false);
+        CHECK(count == 0);
+    }
+    {
+        count = 0;
+        const bool success = stdutils::retry_n_times(1, f);
+        CHECK(success == false);
+        CHECK(count == 1);
+    }
+    {
+        count = 0;
+        const bool success = stdutils::retry_n_times(2, f);
+        CHECK(success == false);
+        CHECK(count == 2);
+    }
+    {
+        count = 0;
+        const bool success = stdutils::retry_n_times(5, f);
+        CHECK(success == true);
+        CHECK(count == 3);
+    }
+}

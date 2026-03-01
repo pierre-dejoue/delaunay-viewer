@@ -39,21 +39,21 @@ std::ostream& operator<<(std::ostream& out, const HexEscape& hex_escape)
 
 namespace string {
 
-std::string tolower(const std::string& in)
+std::string tolower(std::string_view in)
 {
     std::string out(in);
     std::transform(in.cbegin(), in.cend(), out.begin(), [](char c) -> char { return ('A' <= c && c <= 'Z') ? c + char{0x20} : c; });
     return out;
 }
 
-std::string toupper(const std::string& in)
+std::string toupper(std::string_view in)
 {
     std::string out(in);
     std::transform(in.cbegin(), in.cend(), out.begin(), [](char c) -> char { return ('a' <= c && c <= 'z') ? c - char{0x20} : c; });
     return out;
 }
 
-std::string capitalize(const std::string& in)
+std::string capitalize(std::string_view in)
 {
     std::string out = tolower(in);
     if (!out.empty()) { out.front() = ::stdutils::ascii::toupper(out.front()); }

@@ -2,14 +2,17 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
+#include <stdutils/io.h>
+
 #include <cstdlib>
 #include <string>
 
-/**
- * Utilities for testing
- */
+// Utilities for testing
 namespace stdutils {
 namespace testing {
+
+// An error handler that counts messages except for INFO and TRACE
+stdutils::io::ErrorHandler warn_and_err_counter(int& counter);
 
 struct CopyMoveString
 {

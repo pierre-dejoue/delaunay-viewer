@@ -18,6 +18,7 @@ struct Range
     using scalar = T;
     Range() : min(std::numeric_limits<T>::max()), max(std::numeric_limits<T>::lowest()) {}
     Range(T min, T max) : min(min), max(max) { assert(min <= max); }
+    static Range unit() { return Range(0, 1); }
     bool is_populated() const noexcept { return min <= max; }
     Range<T>& add(T v);
     Range<T>& add_border(T v);
@@ -27,6 +28,7 @@ struct Range
     T center() const noexcept { return (min + max) / T{2}; }
     bool operator==(const Range<T>& o) const noexcept { return min == o.min && max == o.max; }
     bool intersect(const Range<T>& o) const noexcept { return max >= o.min && o.max >= min; }
+    bool contains(T v) const noexcept { return min <= v && v <= max; }
     T min;
     T max;
 };
@@ -46,6 +48,12 @@ template <typename F>
 void scale_around_center_in_place(Range<F>& range, F scale);
 template <typename F>
 Range<F> scale_around_center(const Range<F>& range, F scale);
+
+// Translate a range
+template <typename T>
+void translate_in_place(Range<T>& range, T dir);
+template <typename T>
+Range<T> translate(const Range<T>& range, T dir);
 
 // Conservative rounding of a range with floating-point type.
 // Round the boundaries to the nearest integer value such that the output range fully contains the input one.
@@ -126,6 +134,21 @@ Range<F> scale_around_center(const Range<F>& range, F scale)
 {
     Range<F> result = range;
     scale_around_point_in_place(result, scale, range.center());
+    return result;
+}
+
+template <typename T>
+void translate_in_place(Range<T>& range, T dir)
+{
+    range.min += dir;
+    range.max += dir;
+}
+
+template <typename T>
+Range<T> translate(const Range<T>& range, T dir)
+{
+    Range<T> result = range;
+    translate_in_place(result, dir);
     return result;
 }
 

@@ -6,14 +6,40 @@
 #include <stdutils/span.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <type_traits>
 #include <stdexcept>
 
 namespace stdutils {
+
+/**
+ * Versions of memcpy with sanity checks
+ *
+ * - Check for null pointers
+ * - Check that nb_bytes <= max_dest_sz * sizeof(T)
+ * - In case of error, copy nothing and return false
+ */
+template <typename T>
+bool memcpy(T* dest, const void* src);                                                   // Copies at most sizeof(T) bytes
+
+template <typename T>
+bool memcpy(T* dest, std::size_t max_dest_sz, const void* src, std::size_t nb_bytes);    // Copies at most max_dest_sz * sizeof(T) bytes
+
+
+/**
+ * Versions of memset with sanity checks
+ */
+template <typename T>
+bool memset(T* dest, int ch);                                                            // Sets at most sizeof(T) bytes
+
+template <typename T>
+bool memset(T* dest, std::size_t max_dest_sz, int ch, std::size_t nb_bytes);             // Sets at most max_dest_sz * sizeof(T) bytes
+
 
 /**
  * A buffer which size is fixed and set at runtime
@@ -89,6 +115,64 @@ using FixedByteBuffer = FixedBuffer<std::byte>;
 //
 //
 
+
+template <typename T>
+bool memcpy(T* dest, const void* src)
+{
+    if (dest == nullptr || src == nullptr)
+    {
+        assert(0);
+        return false;
+    }
+    IGNORE_RETURN std::memcpy(static_cast<void*>(dest), src, sizeof(T));
+    return true;
+}
+
+template <typename T>
+bool memcpy(T* dest, std::size_t max_dest_sz, const void* src, std::size_t nb_bytes)
+{
+    if (dest == nullptr || src == nullptr)
+    {
+        assert(0);
+        return false;
+    }
+    if (nb_bytes > max_dest_sz * sizeof(T))
+    {
+        assert(0);
+        return false;
+    }
+    IGNORE_RETURN std::memcpy(static_cast<void*>(dest), src, nb_bytes);
+    return true;
+}
+
+template <typename T>
+bool memset(T* dest, int ch)
+{
+    if (dest == nullptr)
+    {
+        assert(0);
+        return false;
+    }
+    IGNORE_RETURN std::memset(static_cast<void*>(dest), ch, sizeof(T));
+    return true;
+}
+
+template <typename T>
+bool memset(T* dest, std::size_t max_dest_sz, int ch, std::size_t nb_bytes)
+{
+    if (dest == nullptr)
+    {
+        assert(0);
+        return false;
+    }
+    if (nb_bytes > max_dest_sz * sizeof(T))
+    {
+        assert(0);
+        return false;
+    }
+    IGNORE_RETURN std::memset(static_cast<void*>(dest), ch, nb_bytes);
+    return true;
+}
 
 template <typename T>
 FixedBuffer<T>::FixedBuffer() noexcept
@@ -211,11 +295,11 @@ void copy(FixedBuffer<T>& dest, const FixedBuffer<T>& src)
     {
         throw std::invalid_argument("FixedBuffer size mismatch");
     }
-    if (src.size() > 0)
+    if (dest.size() > 0)
     {
         assert(src.data());
         assert(dest.data());
-        IGNORE_RETURN std::copy_n<const T*, std::size_t, T*>(src.data(), src.size(), dest.data());
+        IGNORE_RETURN memcpy<T>(dest.data(), dest.size(), src.data(), dest.size() * sizeof(T));
     }
 }
 

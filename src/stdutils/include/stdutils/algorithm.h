@@ -17,12 +17,12 @@ namespace stdutils {
 // Min/max updates
 template <class T>
 constexpr void max_update(T& to, const T& from) { to = std::max(to, from); }
-template< class T, class Compare>
+template <class T, class Compare>
 constexpr void max_update(T& to, const T& from, Compare comp) { to = std::max(to, from, comp); }
 
 template <class T>
 constexpr void min_update(T& to, const T& from) { to = std::min(to, from); }
-template< class T, class Compare>
+template <class T, class Compare>
 constexpr void min_update(T& to, const T& from, Compare comp) { to = std::min(to, from, comp); }
 
 template <class T>
@@ -36,7 +36,7 @@ constexpr const T& clamp(const T& v, const T& lo, const T& hi, bool& clamped) { 
 template <class T, class Compare>
 constexpr const T& clamp(const T& v, const T& lo, const T& hi, Compare comp, bool& clamped) { assert(!comp(hi, lo)); const T& r = std::clamp(v, lo, hi, comp); clamped = (r != v); return r; }
 
-// Clamp enumeration values assuming the enumeration is a range starting with value 0 and ending with the special value _ENUM_SIZE_
+// Clamp enumeration values assuming the enumeration is a continuous range starting with value 0 and ending with the special value _ENUM_SIZE_
 // NB: Cannot return const E& because the min/max clamp values are local to the definition
 template <class E>
 constexpr E clamp_enum(const E& v, bool& clamped) { static_assert(std::is_enum_v<E>); return clamp(v, enum_first_value<E>(), enum_last_value<E>(), clamped); }
@@ -84,6 +84,9 @@ void merge(C<T>& dst, const C<T>& src, Compare comp);
 template <typename Func>
 void repeat_n_times(std::size_t n, Func f);
 
+// Retry a maximum of n times, until the functor returns true
+template <typename Func>
+bool retry_n_times(std::size_t n, Func f);
 
 //
 //
@@ -221,6 +224,14 @@ template <typename Func>
 void repeat_n_times(std::size_t n, Func f)
 {
     while (n--) { f(); }
+}
+
+template <typename Func>
+bool retry_n_times(std::size_t n, Func f)
+{
+    bool success = false;
+    while (n-- && !success) { success = f(); }
+    return success;
 }
 
 } // namespace stdutils

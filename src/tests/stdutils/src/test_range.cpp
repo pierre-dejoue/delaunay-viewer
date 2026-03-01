@@ -4,6 +4,41 @@
 
 #include <stdutils/range.h>
 
+TEST_CASE("Range length() and contains(p)", "[range]")
+{
+    using F = double;
+
+    const stdutils::Range<F> empty_range;
+    REQUIRE(empty_range.is_populated() == false);
+
+    stdutils::Range<F> some_range;
+    REQUIRE(some_range.is_populated() == false);
+    CHECK(some_range.length() == 0.0);
+    CHECK(some_range.contains(-2.0) == false);
+    CHECK(some_range.contains(-1.0) == false);
+    CHECK(some_range.contains( 0.0) == false);
+    CHECK(some_range.contains( 1.0) == false);
+    CHECK(some_range.contains( 2.0) == false);
+
+    some_range.add(-1.0);
+    CHECK(some_range.is_populated() == true);
+    CHECK(some_range.length() == 0.0);
+    CHECK(some_range.contains(-2.0) == false);
+    CHECK(some_range.contains(-1.0) == true);
+    CHECK(some_range.contains( 0.0) == false);
+    CHECK(some_range.contains( 1.0) == false);
+    CHECK(some_range.contains( 2.0) == false);
+
+    some_range.add(1.0);
+    CHECK(some_range.is_populated() == true);
+    CHECK(some_range.length() == 2.0);
+    CHECK(some_range.contains(-2.0) == false);
+    CHECK(some_range.contains(-1.0) == true);
+    CHECK(some_range.contains( 0.0) == true);
+    CHECK(some_range.contains( 1.0) == true);
+    CHECK(some_range.contains( 2.0) == false);
+}
+
 TEST_CASE("Merge ranges", "[range]")
 {
     using F = float;
@@ -12,7 +47,7 @@ TEST_CASE("Merge ranges", "[range]")
     REQUIRE(empty_range.is_populated() == false);
 
     stdutils::Range<F> range_a;
-    REQUIRE(empty_range.is_populated() == false);
+    REQUIRE(range_a.is_populated() == false);
     range_a.merge(empty_range);
     CHECK(range_a.is_populated() == false);
     range_a.add(-1.0f);
