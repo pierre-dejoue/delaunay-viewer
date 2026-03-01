@@ -18,7 +18,7 @@ jobs:
           - os: windows
             arch: arm64
 
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}-${{ (matrix.os == 'macos' && (matrix.arch == 'x86_64' && '15-intel')) || 'latest' }}
 
     env:
       CMAKE_CONFIG_PROJECT: -DDELAUNAY_VIEWER_BUILD_POLY2TRI=ON -DDELAUNAY_VIEWER_BUILD_CDT=ON -DDELAUNAY_VIEWER_BUILD_TRIANGLE=ON -DDELAUNAY_VIEWER_BUILD_UTESTS=ON

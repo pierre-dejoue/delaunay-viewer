@@ -26,7 +26,7 @@ jobs:
           - os: windows
             arch: arm64
 
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}-${{ (matrix.os == 'macos' && (matrix.arch == 'x86_64' && '15-intel')) || 'latest' }}
 
     env:
       CMAKE_CONFIG_PROJECT: -DDELAUNAY_VIEWER_BUILD_POLY2TRI=ON -DDELAUNAY_VIEWER_BUILD_CDT=ON -DDELAUNAY_VIEWER_BUILD_TRIANGLE=ON -DDELAUNAY_VIEWER_BUILD_UTESTS=ON
@@ -57,20 +57,30 @@ jobs:
       run: cmake --install . --config ${{ inputs.build_type }} --prefix install
 
     - if: matrix.os == 'windows'
-      name: Sign Windows executables with Trusted Signing
-      uses: azure/trusted-signing-action@v0
+      name: Sign Windows executables witt artifact signing
+      uses: azure/artifact-signing-action@v1
       with:
         azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
         azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
         azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-        endpoint: ${{ secrets.AZURE_ENDPOINT }}
-        trusted-signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+        endpoint: https://neu.codesigning.azure.net/
+        signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
         certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
         files-folder: ${{ github.workspace }}\build\install\bin
         files-folder-filter: exe
         file-digest: SHA256
         timestamp-rfc3161: http://timestamp.acs.microsoft.com
         timestamp-digest: SHA256
+        exclude-environment-credential: false
+        exclude-workload-identity-credential: true
+        exclude-managed-identity-credential: true
+        exclude-shared-token-cache-credential: true
+        exclude-visual-studio-credential: true
+        exclude-visual-studio-code-credential: true
+        exclude-azure-cli-credential: true
+        exclude-azure-powershell-credential: true
+        exclude-azure-developer-cli-credential: true
+        exclude-interactive-browser-credential: true
 
     - if: matrix.os != 'windows'
       name: Tar files
