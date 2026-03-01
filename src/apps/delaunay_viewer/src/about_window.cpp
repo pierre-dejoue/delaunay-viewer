@@ -23,7 +23,7 @@ std::string s_application_copyright()
 {
     std::stringstream out;
     out << project::get_short_copyright() << "\n\n";
-    out << project::get_short_license();
+    out << "Source code distributed under the terms of the " << project::get_short_license();
     return out.str();
 }
 

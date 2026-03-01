@@ -3,7 +3,7 @@
  *
  * A tool to test and compare Delaunay triangulation libraries
  *
- * Copyright (c) 2023-2025 Pierre DEJOUE
+ * Copyright (c) 2023-2026 Pierre DEJOUE
  * This code is distributed under the terms of the MIT License
  *
  ******************************************************************************/
