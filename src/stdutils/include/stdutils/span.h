@@ -32,8 +32,8 @@ public:
     Span() noexcept : m_ptr(nullptr), m_size(0) { }
     Span(T* ptr, std::size_t size) noexcept : m_ptr(ptr), m_size(size) { assert(!m_ptr ^ m_size); }
     Span(const Span<T>&) noexcept = default;
-    Span(Span<T>&&) noexcept = default;
     Span<T>& operator=(const Span<T>&) noexcept = default;
+    Span(Span<T>&&) noexcept = default;
     Span<T>& operator=(Span<T>&&) noexcept = default;
 
     // For qualification conversions (e.g. non-const T to const T)
@@ -92,8 +92,8 @@ public:
     explicit Span(std::array<T, Sz>& arr) noexcept : m_ptr(arr.data()) { assert(m_ptr); }
     explicit Span(const std::array<std::remove_const_t<T>, Sz>& arr) noexcept : m_ptr(arr.data()) { assert(m_ptr); }
     Span(const this_type&) noexcept = default;
-    Span(this_type&&) noexcept = default;
     this_type& operator=(const this_type&) noexcept = default;
+    Span(this_type&&) noexcept = default;
     this_type& operator=(this_type&&) noexcept = default;
 
     // For qualification conversions (e.g. non-const T to const T)

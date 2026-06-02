@@ -21,8 +21,8 @@ struct CopyMoveString
     CopyMoveString(std::string&& str) : m_str(str) { m_ctor_counter++; }
     CopyMoveString(const CopyMoveString& o) : m_str(o.m_str) { m_copy_ctor_counter++; }
     CopyMoveString& operator=(const CopyMoveString& o) { m_str = o.m_str;  m_copy_assign_counter++; return *this; }
-    CopyMoveString(CopyMoveString&& o) : m_str(std::move(o.m_str)) { m_move_ctor_counter++; }
-    CopyMoveString& operator=(CopyMoveString&& o) { m_str = std::move(o.m_str); m_move_assign_counter++; return *this; }
+    CopyMoveString(CopyMoveString&& o) noexcept : m_str(std::move(o.m_str)) { m_move_ctor_counter++; }
+    CopyMoveString& operator=(CopyMoveString&& o) noexcept { m_str = std::move(o.m_str); m_move_assign_counter++; return *this; }
 
     bool operator==(const CopyMoveString& o) const { return m_str == o.m_str; }
 
