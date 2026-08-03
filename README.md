@@ -23,8 +23,7 @@ In addition to the triangulation libraries themselves:
 * [GL3W](https://github.com/skaslev/gl3w) (Also see: [README](src/gui/gl3w/README.md))
 * [GLFW](https://www.glfw.org/)
 * [Portable File Dialogs](https://github.com/samhocevar/portable-file-dialogs)
-* [simple-svg](https://github.com/jdryg/simple-svg)
-* [bx](https://github.com/bkaradzic/bx) (A dependency of simple-svg)
+* [simple-svg](https://github.com/pierre-dejoue/simple-svg) (A fork of the [original simple-svg](https://github.com/jdryg/simple-svg))
 * [Argagg](https://github.com/vietjtnguyen/argagg)
 * [Catch2](https://github.com/catchorg/Catch2.git) (For unit testing)
 

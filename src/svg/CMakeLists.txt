@@ -5,11 +5,7 @@
 include(compiler_options)
 
 # Third parties
-include(bx)
 include(simple-svg)
-
-# ssvg_init: Wrapper for simple-svg's initialization, that explicitly depends on 'bx'.
-# The compilation of 'bx' generates a lot of warnings, that is why it is isolated.
 
 set(SSVG_INIT_SOURCES
     src/ssvg/ssvg_init.cpp
@@ -24,7 +20,6 @@ target_include_directories(ssvg_init
 
 target_link_libraries(ssvg_init
     PRIVATE
-    bx
     simple-svg
 )
 
