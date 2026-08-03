@@ -2,6 +2,8 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
+#include <stdutils/minmax.h>
+
 #include <cstdlib>
 #include <type_traits>
 
@@ -60,5 +62,14 @@ constexpr bool enum_is_in_range(E e) noexcept
     static_assert(std::is_enum_v<E>);
     return e < E::_ENUM_SIZE_;
 }
+
+// Clamp enumeration
+// NB:
+// - Cannot return const E& because the min/max clamp values are local to the definition
+// - The version with the bool& clamped argument cannot be constexpr
+template <typename E>
+constexpr E clamp_enum(const E& v)                { static_assert(std::is_enum_v<E>); return stdutils::clamp<E>(v, enum_first_value<E>(), enum_last_value<E>()); }
+template <typename E>
+          E clamp_enum(const E& v, bool& clamped) { static_assert(std::is_enum_v<E>); return stdutils::clamp<E>(v, enum_first_value<E>(), enum_last_value<E>(), clamped); }
 
 } // namespace stdutils

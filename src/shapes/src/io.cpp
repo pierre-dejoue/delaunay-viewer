@@ -319,7 +319,8 @@ template <typename F>
 void save_shapes_as_stream_gen(std::ostream& out, const StreamWriterInput<F>& input, const stdutils::io::ErrorHandler& err_handler)
 {
     UNUSED(err_handler);
-    const auto initial_fp_digits = stdutils::io::accurate_fp_precision<F>(out);
+    stdutils::io::SaveNumbersFormatting save_fmt(out);
+    stdutils::io::fp_accurate_precision<F>(out);
     const char sep = input.sep;
     if (!input.head_comment.empty())
     {
@@ -404,7 +405,6 @@ void save_shapes_as_stream_gen(std::ostream& out, const StreamWriterInput<F>& in
             [](const auto&) { assert(0); }
         }, shape_wrapper.shape);
     }
-    out << std::setprecision(initial_fp_digits);
 }
 
 } // namespace

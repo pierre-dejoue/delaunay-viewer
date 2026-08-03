@@ -34,7 +34,6 @@ TEST_CASE("Test enum utility templates", "[enum]")
     //CHECK(stdutils::enum_is_in_range(0));                         // Would trigger a static_assert
 }
 
-
 TEST_CASE("Test enum utility templates on a non-compliant enumeration", "[enum]")
 {
     enum class Enumeration
@@ -50,4 +49,67 @@ TEST_CASE("Test enum utility templates on a non-compliant enumeration", "[enum]"
     //CHECK(stdutils::enum_last_value<Enumeration>()  == Enumeration::C);   // Won't compile
     //CHECK(stdutils::enum_size<Enumeration>() == 3);                       // Won't compile
     //CHECK(stdutils::enum_is_in_range(Enumeration::A));                    // Won't compile
+}
+
+TEST_CASE("stdutils::clamp a regular class enum", "[enum]")
+{
+    bool clamped = false;
+    enum class TestEnum
+    {
+        A = 0,
+        B,
+        C,
+    };
+
+    // Test the constexpr version
+    static_assert(stdutils::clamp<TestEnum>(TestEnum::A,               TestEnum::A, TestEnum::C) == TestEnum::A);
+    static_assert(stdutils::clamp<TestEnum>(TestEnum::B,               TestEnum::A, TestEnum::C) == TestEnum::B);
+    static_assert(stdutils::clamp<TestEnum>(TestEnum::C,               TestEnum::A, TestEnum::C) == TestEnum::C);
+    static_assert(stdutils::clamp<TestEnum>(static_cast<TestEnum>(12), TestEnum::A, TestEnum::C) == TestEnum::C);
+
+    // Test the version with bool& clamped
+    TestEnum en = TestEnum::A;
+    en = stdutils::clamp<TestEnum>(TestEnum::C, TestEnum::A, TestEnum::C, clamped);
+    CHECK(en == TestEnum::C);
+    CHECK(!clamped);
+    en = stdutils::clamp<TestEnum>(TestEnum::A, TestEnum::A, TestEnum::C, clamped);
+    CHECK(en == TestEnum::A);
+    CHECK(!clamped);
+    en = stdutils::clamp<TestEnum>(static_cast<TestEnum>(12), TestEnum::A, TestEnum::C, clamped);
+    CHECK(en == TestEnum::C);
+    CHECK(clamped);
+
+    // The clamp_enum functions won't compile with regular enums
+    //en = stdutils::clamp_enum<TestEnum>(TestEnum::A);                     // Won't compile
+}
+
+TEST_CASE("stdutils::clamp_enum", "[enum]")
+{
+    bool clamped = false;
+    enum class TestEnum
+    {
+        A = 0,                          // The first enum value must be 0
+        B,
+        C,
+        _ENUM_SIZE_                     // The last enum value must be the special value _ENUM_SIZE_
+    };
+    REQUIRE(stdutils::enum_size<TestEnum>() == 3);
+
+    // Test the constexpr version
+    static_assert(stdutils::clamp_enum<TestEnum>(TestEnum::A) == TestEnum::A);
+    static_assert(stdutils::clamp_enum<TestEnum>(TestEnum::B) == TestEnum::B);
+    static_assert(stdutils::clamp_enum<TestEnum>(TestEnum::C) == TestEnum::C);
+    static_assert(stdutils::clamp_enum<TestEnum>(static_cast<TestEnum>(12)) == TestEnum::C);
+
+    // Test the version with bool& clamped
+    TestEnum en = TestEnum::A;
+    en = stdutils::clamp_enum<TestEnum>(TestEnum::C, clamped);
+    CHECK(en == TestEnum::C);
+    CHECK(!clamped);
+    en = stdutils::clamp_enum<TestEnum>(TestEnum::A, clamped);
+    CHECK(en == TestEnum::A);
+    CHECK(!clamped);
+    en = stdutils::clamp_enum<TestEnum>(static_cast<TestEnum>(12), clamped);
+    CHECK(en == TestEnum::C);
+    CHECK(clamped);
 }

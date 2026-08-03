@@ -2,7 +2,8 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include <algorithm>
+#include <stdutils/minmax.h>
+
 #include <cassert>
 #include <optional>
 
@@ -15,13 +16,16 @@ namespace parameter {
 template <typename T>
 struct Limits
 {
-    T def;
     T min;
+    T def;
     T max;
 
-    const T& clamp(const T& v) const noexcept;
-    T clamped_value_or_default(const std::optional<T>& opt_v) const noexcept;
-    bool is_legit() const noexcept;
+    constexpr Limits() : min{}, def{}, max{} { }
+    constexpr Limits(T min, T def, T max) : min(min), def(def), max(max) { assert(min <= def); assert(def <= max); }
+
+    constexpr const T& clamp(const T& v) const noexcept;
+    constexpr T clamped_value_or_default(const std::optional<T>& opt_v) const noexcept;
+    constexpr bool is_legit() const noexcept;
 };
 
 template <>
@@ -29,11 +33,18 @@ struct Limits<bool>
 {
     bool def;
 
-    bool clamped_value_or_default(const std::optional<bool>& opt_boolean) const noexcept;
+    constexpr Limits() : def(false) {}
+    constexpr Limits(bool def) : def(def) {}
+
+    constexpr bool clamped_value_or_default(const std::optional<bool>& opt_boolean) const noexcept;
 };
 
 inline constexpr Limits<bool> limits_true  { true  };
 inline constexpr Limits<bool> limits_false { false };
+
+// Casting
+template <typename U, typename T>
+constexpr Limits<U> cast_limit_to(const Limits<T>& limit);
 
 
 //
@@ -44,33 +55,33 @@ inline constexpr Limits<bool> limits_false { false };
 
 
 template <typename T>
-const T& Limits<T>::clamp(const T& v) const noexcept
+constexpr const T& Limits<T>::clamp(const T& v) const noexcept
 {
-    return std::clamp(v, min, max);
+    return stdutils::clamp<T>(v, min, max);
 }
 
 template <typename T>
-T Limits<T>::clamped_value_or_default(const std::optional<T>& opt_v) const noexcept
+constexpr T Limits<T>::clamped_value_or_default(const std::optional<T>& opt_v) const noexcept
 {
     assert(min <= def && def <= max);
-    return std::clamp(opt_v.value_or(def), min, max);
+    return stdutils::clamp<T>(opt_v.value_or(def), min, max);
 }
 
 template <typename T>
-bool Limits<T>::is_legit() const noexcept
+constexpr bool Limits<T>::is_legit() const noexcept
 {
     return min <= def && def <= max;
 }
 
-inline bool Limits<bool>::clamped_value_or_default(const std::optional<bool>& opt_boolean) const noexcept
+constexpr inline bool Limits<bool>::clamped_value_or_default(const std::optional<bool>& opt_boolean) const noexcept
 {
     return opt_boolean.value_or(def);
 }
 
 template <typename U, typename T>
-Limits<U> cast_limit_to(const Limits<T>& limit)
+constexpr Limits<U> cast_limit_to(const Limits<T>& limit)
 {
-    return Limits<U>{ static_cast<U>(limit.def), static_cast<U>(limit.min), static_cast<U>(limit.max) };
+    return Limits<U> { static_cast<U>(limit.min), static_cast<U>(limit.def), static_cast<U>(limit.max) };
 }
 
 } // namespace parameter

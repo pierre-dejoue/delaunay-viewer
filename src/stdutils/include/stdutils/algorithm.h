@@ -12,34 +12,10 @@
 #include <type_traits>
 #include <utility>
 
+// Min/max and clamp are part of the algorithms (as per the STL convention)
+#include <stdutils/minmax.h>
+
 namespace stdutils {
-
-// Min/max updates
-template <class T>
-constexpr void max_update(T& to, const T& from) { to = std::max(to, from); }
-template <class T, class Compare>
-constexpr void max_update(T& to, const T& from, Compare comp) { to = std::max(to, from, comp); }
-
-template <class T>
-constexpr void min_update(T& to, const T& from) { to = std::min(to, from); }
-template <class T, class Compare>
-constexpr void min_update(T& to, const T& from, Compare comp) { to = std::min(to, from, comp); }
-
-template <class T>
-constexpr void minmax_update(std::pair<T, T>& to, const T& from) { assert(to.first <= to.second); if (from < to.first) { to.first = from; } else if (to.second < from) { to.second = from; } }
-template <class T, class Compare>
-constexpr void minmax_update(std::pair<T, T>& to, const T& from, Compare comp) { assert(!comp(to.second, to.first)); if (comp(from, to.first)) { to.first = from; } else if (comp(to.second, from)) { to.second = from; } }
-
-// Like std::clamp but with an output boolean flag 'clamped'
-template <class T>
-constexpr const T& clamp(const T& v, const T& lo, const T& hi, bool& clamped) { assert(lo <= hi); const T& r = std::clamp(v, lo, hi); clamped = (r != v); return r; }
-template <class T, class Compare>
-constexpr const T& clamp(const T& v, const T& lo, const T& hi, Compare comp, bool& clamped) { assert(!comp(hi, lo)); const T& r = std::clamp(v, lo, hi, comp); clamped = (r != v); return r; }
-
-// Clamp enumeration values assuming the enumeration is a continuous range starting with value 0 and ending with the special value _ENUM_SIZE_
-// NB: Cannot return const E& because the min/max clamp values are local to the definition
-template <class E>
-constexpr E clamp_enum(const E& v, bool& clamped) { static_assert(std::is_enum_v<E>); return clamp(v, enum_first_value<E>(), enum_last_value<E>(), clamped); }
 
 // Sort three elements
 template <typename T>
