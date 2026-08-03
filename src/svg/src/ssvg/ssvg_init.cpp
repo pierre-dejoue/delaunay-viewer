@@ -2,21 +2,34 @@
 // This code is distributed under the terms of the MIT License
 #include "ssvg_init.h"
 
-#include <bx/allocator.h>
 #include <ssvg/ssvg.h>
 
 namespace {
-    bx::DefaultAllocator s_bx_default_allocator;
 
-    bx::AllocatorI* s_initialize_ssvg_lib()
+class SSVGInit {
+public:
+    SSVGInit()
+        : initialized{false}
     {
-        ssvg::initLib(&s_bx_default_allocator);
-        return &s_bx_default_allocator;
+        ssvg::initLib();
+        initialized = true;
     }
-}
+
+    ~SSVGInit()
+    {
+        ssvg::shutdownLib();
+    }
+
+    bool is_initialized() const noexcept { return initialized; }
+
+private:
+    bool initialized;
+};
+
+} // namespace
 
 bool svg::io::initialize_ssvg_lib()
 {
-    static bx::AllocatorI* bx_allocator = s_initialize_ssvg_lib();
-    return bx_allocator != nullptr;
+    static const SSVGInit ssvg_init;
+    return ssvg_init.is_initialized();
 }

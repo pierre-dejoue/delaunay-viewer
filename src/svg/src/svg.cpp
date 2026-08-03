@@ -24,49 +24,10 @@ namespace io {
 
 namespace {
 
-ssvg::ShapeAttributes init_default_shape_attr()
-{
-    ssvg::ShapeAttributes defaultAttrs;
-    IGNORE_RETURN stdutils::memset<ssvg::ShapeAttributes>(&defaultAttrs, 0);
-    defaultAttrs.m_Parent = nullptr;
-    defaultAttrs.m_StrokePaint.m_Type = ssvg::PaintType::None;
-    defaultAttrs.m_StrokePaint.m_ColorABGR = 0x00000000;
-    defaultAttrs.m_FillPaint.m_Type = ssvg::PaintType::None;
-    defaultAttrs.m_FillPaint.m_ColorABGR = 0x00000000;
-    ssvg::transformIdentity(&defaultAttrs.m_Transform[0]);
-    defaultAttrs.m_StrokeMiterLimit = 4.0f;
-    defaultAttrs.m_StrokeWidth = 1.0f;
-    defaultAttrs.m_StrokeOpacity = 1.0f;
-    defaultAttrs.m_FillOpacity = 1.0f;
-    defaultAttrs.m_FontSize = 8.0f;
-    defaultAttrs.m_Opacity = 0.0f;
-    defaultAttrs.m_Flags = 0;
-    defaultAttrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
-    defaultAttrs.m_StrokeLineCap = ssvg::LineCap::Butt;
-    defaultAttrs.m_FillRule = ssvg::FillRule::NonZero;
-    assert(stdutils::strnlen(&defaultAttrs.m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
-    {
-        constexpr std::string_view font_family = "sans-serif";
-        constexpr std::size_t memcpy_sz = stdutils::min(font_family.size(), static_cast<std::size_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1));
-        IGNORE_RETURN stdutils::memcpy<char>(&defaultAttrs.m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN, font_family.data(), memcpy_sz);
-        assert(stdutils::string::is_null_terminated(&defaultAttrs.m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN));
-    }
-#if SSVG_CONFIG_CLASS_MAX_LEN
-    assert(stdutils::string::strnlen(&defaultAttrs.m_Class[0], SSVG_CONFIG_CLASS_MAX_LEN) == 0);
-#endif
-    return defaultAttrs;
-}
-
-const ssvg::ShapeAttributes& get_default_shape_attributes()
-{
-    static ssvg::ShapeAttributes defaultAttrs = init_default_shape_attr();
-    return defaultAttrs;
-}
-
 struct SSVGImageEncapsulate
 {
     SSVGImageEncapsulate(ssvg::Image* img_ptr) : ptr(img_ptr) { }
-    ~SSVGImageEncapsulate() { if (ptr) { ssvg::imageDestroy(ptr); } }
+    ~SSVGImageEncapsulate() { if (ptr) { ssvg::imageFree(ptr); } }
     ssvg::Image* const ptr;
 };
 
@@ -78,7 +39,7 @@ struct SSVGImageEncapsulate
 //  ( b  d  f )
 //  ( 0  0  1 )
 //
-using SVGTransformMatrix = std::array<float, 6>;
+using SVGTransformMatrix = std::array<float, ssvg::TRANSFORM_ARRAY_SZ>;
 
 struct SVGImageGeometry
 {
@@ -128,30 +89,34 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
     for (unsigned int idx = idx_start; idx < idx_end; idx++)
     {
         const auto cmd_type = path.m_Commands[idx].m_Type;
-        if (idx == idx_start && cmd_type != ssvg::PathCmdType::Enum::MoveTo)
+        if (idx == idx_start && cmd_type != ssvg::PathCmdType::MoveTo)
         {
             warning_msg = "Path should start with a MoveTo command";
             can_import_path = false;
         }
         switch (cmd_type)
         {
-            case ssvg::PathCmdType::Enum::MoveTo:
-            case ssvg::PathCmdType::Enum::LineTo:
+            case ssvg::PathCmdType::Nop:
+                // Do nothing
+                break;
+
+            case ssvg::PathCmdType::MoveTo:
+            case ssvg::PathCmdType::LineTo:
                 // Ignore on first pass
                 break;
 
-            case ssvg::PathCmdType::Enum::CubicTo:
-            case ssvg::PathCmdType::Enum::QuadraticTo:
+            case ssvg::PathCmdType::CubicTo:
+            case ssvg::PathCmdType::QuadraticTo:
                 count_cubicto++;
                 break;
 
-            case ssvg::PathCmdType::Enum::ArcTo:
+            case ssvg::PathCmdType::ArcTo:
                 count_cubicto++;
                 // TODO Proper conversion to cubic Bezier
                 err_handler(stdutils::io::Severity::WARN, "Path ArcTo converted to a straight line");
                 break;
 
-            case ssvg::PathCmdType::Enum::ClosePath:
+            case ssvg::PathCmdType::ClosePath:
                 // Ignore on first pass
                 break;
 
@@ -174,7 +139,11 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
             const auto& cmd = path.m_Commands[idx];
             switch (cmd.m_Type)
             {
-                case ssvg::PathCmdType::Enum::MoveTo:       // Data: [0] = x, [1] = y
+                case ssvg::PathCmdType::Nop:
+                    // De nothing
+                    break;
+
+                case ssvg::PathCmdType::MoveTo:       // Data: [0] = x, [1] = y
                     assert(new_cbp.vertices.empty());
                     ssvg::transformPoint(image_geometry.transformation.data(), &cmd.m_Data[0], &tr_data[0]);
                     new_cbp.vertices.emplace_back(
@@ -182,7 +151,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                         static_cast<F>(tr_data[1]));
                     break;
 
-                case ssvg::PathCmdType::Enum::LineTo:       // Data: [0] = x, [1] = y
+                case ssvg::PathCmdType::LineTo:       // Data: [0] = x, [1] = y
                 {
                     // Convert straight line to a cubic bezier
                     assert(!new_cbp.vertices.empty());
@@ -201,7 +170,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                     break;
                 }
 
-                case ssvg::PathCmdType::Enum::CubicTo:      // Data: [0] = x1, [1] = y1, [2] = x2, [3] = y2, [4] = x, [5] = y
+                case ssvg::PathCmdType::CubicTo:      // Data: [0] = x1, [1] = y1, [2] = x2, [3] = y2, [4] = x, [5] = y
                     ssvg::transformPoint(image_geometry.transformation.data(), &cmd.m_Data[0], &tr_data[0]);
                     ssvg::transformPoint(image_geometry.transformation.data(), &cmd.m_Data[2], &tr_data[2]);
                     ssvg::transformPoint(image_geometry.transformation.data(), &cmd.m_Data[4], &tr_data[4]);
@@ -216,7 +185,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                         static_cast<F>(tr_data[5]));
                     break;
 
-                case ssvg::PathCmdType::Enum::QuadraticTo:  // Data: [0] = x1, [1] = y1, [2] = x, [3] = y
+                case ssvg::PathCmdType::QuadraticTo:  // Data: [0] = x1, [1] = y1, [2] = x, [3] = y
                 {
                     // Convert quad bezier to a cubic bezier
                     assert(!new_cbp.vertices.empty());
@@ -239,7 +208,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                     break;
                 }
 
-                case ssvg::PathCmdType::Enum::ArcTo:        // Data: [0] = rx, [1] = ry, [2] = x-axis-rotation, [3] = large-arc-flag, [4] = sweep-flag, [5] = x, [6] = y
+                case ssvg::PathCmdType::ArcTo:        // Data: [0] = rx, [1] = ry, [2] = x-axis-rotation, [3] = large-arc-flag, [4] = sweep-flag, [5] = x, [6] = y
                 {
                     // The conversion from Arc to Cubic Bezier performed by simple-svg (with flag ssvg::ImageLoadFlags::ConvertArcToCubicBezier) has been proven broken.
                     // It generates nan on some cases (for example with test file icons8-futurama-leela.svg).
@@ -260,7 +229,7 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
                     break;
                 }
 
-                case ssvg::PathCmdType::Enum::ClosePath:
+                case ssvg::PathCmdType::ClosePath:
                     // Often when the path is closed the first and and the last vertices are the same. Otherwise it is a straight line.
                     if (new_cbp.vertices.size() > 2)
                     {
@@ -303,21 +272,25 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
             const auto& cmd = path.m_Commands[idx];
             switch (cmd.m_Type)
             {
-                case ssvg::PathCmdType::Enum::MoveTo:       // Data: [0] = x, [1] = y
-                case ssvg::PathCmdType::Enum::LineTo:       // Data: [0] = x, [1] = y
+                case ssvg::PathCmdType::Nop:
+                    // Do nothing
+                    break;
+
+                case ssvg::PathCmdType::MoveTo:       // Data: [0] = x, [1] = y
+                case ssvg::PathCmdType::LineTo:       // Data: [0] = x, [1] = y
                     ssvg::transformPoint(image_geometry.transformation.data(), &cmd.m_Data[0], &tr_data[0]);
                     new_pp.vertices.emplace_back(
                         static_cast<F>(tr_data[0]),
                         static_cast<F>(tr_data[1]));
                     break;
 
-                case ssvg::PathCmdType::Enum::CubicTo:
-                case ssvg::PathCmdType::Enum::QuadraticTo:
-                case ssvg::PathCmdType::Enum::ArcTo:
+                case ssvg::PathCmdType::CubicTo:
+                case ssvg::PathCmdType::QuadraticTo:
+                case ssvg::PathCmdType::ArcTo:
                     assert(0);
                     break;
 
-                case ssvg::PathCmdType::Enum::ClosePath:
+                case ssvg::PathCmdType::ClosePath:
                     // Often when the path is closed the first and and the last vertices are the same. Otherwise it is a straight line.
                     if (new_pp.vertices.size() > 2)
                     {
@@ -361,7 +334,7 @@ void parse_ssvg_image_paths(const ssvg::Path& path, const SVGImageGeometry& imag
     // There can be multiple paths: as many as there are MoveTo commands
     while (++idx < path.m_NumCommands)
     {
-        if (path.m_Commands[idx].m_Type == ssvg::PathCmdType::Enum::MoveTo)
+        if (path.m_Commands[idx].m_Type == ssvg::PathCmdType::MoveTo)
         {
             parse_ssvg_image_path(path, idx_start, idx, image_geometry, out_paths, err_handler);
             idx_start = idx;
@@ -374,81 +347,79 @@ void parse_ssvg_image_paths(const ssvg::Path& path, const SVGImageGeometry& imag
 }
 
 template <typename F>
-void parse_ssvg_image_shape(const ssvg::Shape* shape_ptr, const SVGImageGeometry& image_geometry, Paths<F>& out_paths, const stdutils::io::ErrorHandler& err_handler)
-{
-    const auto sub_image_geometry = image_geometry.transform(&shape_ptr->m_Attrs->m_Transform[0]);
-    switch (shape_ptr->m_Type)
-    {
-        case ssvg::ShapeType::Enum::Group:
-            parse_ssvg_image_shape_list(&shape_ptr->m_ShapeList, sub_image_geometry, out_paths, err_handler);
-            break;
-
-        case ssvg::ShapeType::Enum::Rect:
-            err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Rect");
-            break;
-
-        case ssvg::ShapeType::Enum::Circle:
-            err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Circle");
-            break;
-
-        case ssvg::ShapeType::Enum::Ellipse:
-            err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Ellipse");
-            break;
-
-        case ssvg::ShapeType::Enum::Line:
-        {
-            ssvg::Line line;
-            ssvg::transformPoint(sub_image_geometry.transformation.data(), &shape_ptr->m_Line.x1, &line.x1);
-            ssvg::transformPoint(sub_image_geometry.transformation.data(), &shape_ptr->m_Line.x2, &line.x2);
-            auto& new_pp = out_paths.point_paths.emplace_back();
-            new_pp.closed = false;
-            new_pp.vertices.emplace_back(
-                static_cast<F>(line.x1),
-                static_cast<F>(line.y1));
-            new_pp.vertices.emplace_back(
-                static_cast<F>(line.x2),
-                static_cast<F>(line.y2));
-            break;
-        }
-
-        case ssvg::ShapeType::Enum::Polyline:
-        case ssvg::ShapeType::Enum::Polygon:
-        {
-            std::array<float, 2> coord;
-            auto& new_pp = out_paths.point_paths.emplace_back();
-            new_pp.closed = (shape_ptr->m_Type == ssvg::ShapeType::Enum::Polygon);
-            for (unsigned int idx = 0; idx < shape_ptr->m_PointList.m_NumPoints; idx++)
-            {
-                ssvg::transformPoint(sub_image_geometry.transformation.data(), &shape_ptr->m_PointList.m_Coords[2 * idx], &coord[0]);
-                new_pp.vertices.emplace_back(
-                    static_cast<F>(coord[0]),
-                    static_cast<F>(coord[1]));
-            }
-            assert(std::all_of(new_pp.vertices.begin(), new_pp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); }));
-            break;
-        }
-
-        case ssvg::ShapeType::Enum::Path:
-            parse_ssvg_image_paths(shape_ptr->m_Path, sub_image_geometry, out_paths, err_handler);
-            break;
-
-        case ssvg::ShapeType::Enum::Text:
-            err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Text");
-            break;
-
-        default:
-            assert(0);
-            err_handler(stdutils::io::Severity::ERR, "Unknown ssvg::ShapeType::Enum");
-            break;
-    }
-}
-
-template <typename F>
 void parse_ssvg_image_shape_list(const ssvg::ShapeList* shape_list_ptr, const SVGImageGeometry& image_geometry, Paths<F>& out_paths, const stdutils::io::ErrorHandler& err_handler)
 {
-    for (unsigned int idx = 0; idx < shape_list_ptr->m_NumShapes; idx++)
+    for (unsigned int shape_idx = 0; shape_idx < shape_list_ptr->m_NumShapes; shape_idx++)
     {
-        parse_ssvg_image_shape(&shape_list_ptr->m_Shapes[idx], image_geometry, out_paths, err_handler);
+        const ssvg::ShapeAttributes* attrs = ssvg::shapeListGetShapeAttributes(shape_list_ptr, shape_idx);
+        const SVGImageGeometry sub_image_geometry = attrs ? image_geometry.transform(&attrs->m_Transform[0]) : image_geometry;
+        const ssvg::Shape* shape_ptr = ssvg::shapeListGetShape(shape_list_ptr, shape_idx);
+        assert(shape_ptr);
+        const auto shape_type = ssvg::shapeListGetShapeType(shape_list_ptr, shape_idx);
+        switch (shape_type)
+        {
+            case ssvg::ShapeType::Enum::Group:
+                parse_ssvg_image_shape_list(&shape_ptr->m_ShapeList, sub_image_geometry, out_paths, err_handler);
+                break;
+
+            case ssvg::ShapeType::Enum::Rect:
+                err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Rect");
+                break;
+
+            case ssvg::ShapeType::Enum::Circle:
+                err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Circle");
+                break;
+
+            case ssvg::ShapeType::Enum::Ellipse:
+                err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Ellipse");
+                break;
+
+            case ssvg::ShapeType::Enum::Line:
+            {
+                ssvg::Line line;
+                ssvg::transformPoint(sub_image_geometry.transformation.data(), &shape_ptr->m_Line.x1, &line.x1);
+                ssvg::transformPoint(sub_image_geometry.transformation.data(), &shape_ptr->m_Line.x2, &line.x2);
+                auto& new_pp = out_paths.point_paths.emplace_back();
+                new_pp.closed = false;
+                new_pp.vertices.emplace_back(
+                    static_cast<F>(line.x1),
+                    static_cast<F>(line.y1));
+                new_pp.vertices.emplace_back(
+                    static_cast<F>(line.x2),
+                    static_cast<F>(line.y2));
+                break;
+            }
+
+            case ssvg::ShapeType::Enum::Polyline:
+            case ssvg::ShapeType::Enum::Polygon:
+            {
+                std::array<float, 2> coord;
+                auto& new_pp = out_paths.point_paths.emplace_back();
+                new_pp.closed = (shape_ptr->m_Type == ssvg::ShapeType::Enum::Polygon);
+                for (unsigned int idx = 0; idx < shape_ptr->m_PointList.m_NumPoints; idx++)
+                {
+                    ssvg::transformPoint(sub_image_geometry.transformation.data(), &shape_ptr->m_PointList.m_Coords[2 * idx], &coord[0]);
+                    new_pp.vertices.emplace_back(
+                        static_cast<F>(coord[0]),
+                        static_cast<F>(coord[1]));
+                }
+                assert(std::all_of(new_pp.vertices.begin(), new_pp.vertices.end(), [](const auto& p) { return shapes::isfinite(p); }));
+                break;
+            }
+
+            case ssvg::ShapeType::Enum::Path:
+                parse_ssvg_image_paths(shape_ptr->m_Path, sub_image_geometry, out_paths, err_handler);
+                break;
+
+            case ssvg::ShapeType::Enum::Text:
+                err_handler(stdutils::io::Severity::WARN, "Ignored a SVG shape of type Text");
+                break;
+
+            default:
+                assert(0);
+                err_handler(stdutils::io::Severity::ERR, "Unknown ssvg::ShapeType::Enum");
+                break;
+        }
     }
 }
 
@@ -471,9 +442,8 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
     }, err_handler);
     try
     {
-        constexpr std::uint32_t svg_parser_flags = 0;
-        initialize_ssvg_lib();
-        SSVGImageEncapsulate ssvg_img(ssvg::imageLoad(svg_buffer.data(), svg_parser_flags, &get_default_shape_attributes()));
+        IGNORE_RETURN initialize_ssvg_lib();
+        SSVGImageEncapsulate ssvg_img(ssvg::imageLoad(svg_buffer.data(), ssvg::ImageLoadFlags::None));
         if (ssvg_img.ptr == nullptr)
         {
             err_handler(stdutils::io::Severity::ERR, "Library simple-svg failed to parse the image");
