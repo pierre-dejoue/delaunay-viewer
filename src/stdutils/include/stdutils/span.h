@@ -50,6 +50,9 @@ public:
     const_pointer data() const noexcept { return m_ptr; }
     const_pointer begin() const noexcept { return m_ptr; }
     const_pointer end() const noexcept { return m_ptr + m_size; }
+    const_pointer cdata() const noexcept { return m_ptr; }
+    const_pointer cbegin() const noexcept { return m_ptr; }
+    const_pointer cend() const noexcept { return m_ptr + m_size; }
 
     reference operator[](std::size_t idx) { assert(idx < m_size); return *(m_ptr + idx); }
     const_reference operator[](std::size_t idx) const { assert(idx < m_size); return *(m_ptr + idx); }
@@ -110,6 +113,9 @@ public:
     const_pointer data() const noexcept { return m_ptr; }
     const_pointer begin() const noexcept { return m_ptr; }
     const_pointer end() const noexcept { return m_ptr + Sz; }
+    const_pointer cdata() const noexcept { return m_ptr; }
+    const_pointer cbegin() const noexcept { return m_ptr; }
+    const_pointer cend() const noexcept { return m_ptr + Sz; }
 
     reference operator[](std::size_t idx) { assert(idx < Sz); return *(m_ptr + idx); }
     const_reference operator[](std::size_t idx) const { assert(idx < Sz); return *(m_ptr + idx); }

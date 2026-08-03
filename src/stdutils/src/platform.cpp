@@ -6,6 +6,8 @@
 
 #include <stdutils/platform.h>
 
+#include <stdutils/time.h>
+
 #include <array>
 #include <cassert>
 #include <cstdint>
@@ -228,7 +230,7 @@ void stream_out_info(std::ostream& out, InfoFlags flags, InfoStyle style)
                 break;
 
             case InfoFlag::COMPILE_DATE:
-                out << "Compilation date: " << __DATE__ << " " << __TIME__;
+                out << "Compilation date: " << build_date_and_time();
                 break;
 
             default:

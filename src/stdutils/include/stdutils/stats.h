@@ -2,8 +2,8 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include <stdutils/algorithm.h>
 #include <stdutils/io.h>
+#include <stdutils/minmax.h>
 
 #include <algorithm>
 #include <cassert>
@@ -233,7 +233,7 @@ F median(InputIt begin, InputIt end)
 template <typename F>
 std::ostream& operator<<(std::ostream& out, const Result<F>& result)
 {
-    stdutils::io::SaveNumericFormat save_fmt(out);
+    stdutils::io::SaveNumbersFormatting save_fmt(out);
     out << "samples: " << result.n
         << std::setprecision(3) << std::scientific
         << ", min: " << result.min

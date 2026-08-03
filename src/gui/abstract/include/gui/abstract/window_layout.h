@@ -3,8 +3,8 @@
 #pragma once
 
 #include <gui/abstract/canvas.h>
+#include <stdutils/minmax.h>
 
-#include <algorithm>
 #include <cassert>
 
 class WindowLayout
@@ -40,8 +40,8 @@ public:
     ScreenSize size(ScreenSize workspace_sz) const noexcept
     {
         return ScreenSize(
-            std::max(1.f, m_size.x > 0.f ? m_size.x - m_padding : workspace_sz.x - m_position.x - m_padding),
-            std::max(1.f, m_size.y > 0.f ? m_size.y - m_padding : workspace_sz.y - m_position.y - m_padding)
+            stdutils::max(1.f, m_size.x > 0.f ? m_size.x - m_padding : workspace_sz.x - m_position.x - m_padding),
+            stdutils::max(1.f, m_size.y > 0.f ? m_size.y - m_padding : workspace_sz.y - m_position.y - m_padding)
         );
     }
 

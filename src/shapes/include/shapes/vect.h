@@ -3,8 +3,8 @@
 #pragma once
 
 #include <shapes/comparison.h>
+#include <stdutils/minmax.h>
 
-#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <ostream>
@@ -200,7 +200,7 @@ constexpr F sq_norm(const Vect2d<F>& v)
 template <typename F>
 constexpr F inf_norm(const Vect2d<F>& v)
 {
-    return std::max(std::abs(v.x), std::abs(v.y));
+    return stdutils::max<F>(std::abs(v.x), std::abs(v.y));
 }
 
 template <typename F>
@@ -218,7 +218,7 @@ constexpr F sq_norm(const Vect3d<F>& v)
 template <typename F>
 constexpr F inf_norm(const Vect3d<F>& v)
 {
-    return std::max(std::abs(v.x), std::max(std::abs(v.y), std::abs(v.z)));
+    return stdutils::max_triple(std::abs(v.x), std::abs(v.y), std::abs(v.z));
 }
 
 //

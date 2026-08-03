@@ -3,6 +3,7 @@
 #include <catch_amalgamated.hpp>
 
 #include <stdutils/io.h>
+#include <stdutils/macros.h>
 
 #include <cstddef>
 #include <filesystem>
@@ -48,6 +49,51 @@ TEST_CASE("Severity codes as strings", "[stdutils::io]")
         "ZERO",    "ERROR",   "WARNING", "INFO",    "TRACE",
         "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN", "UNKNOWN"
     });
+}
+
+TEST_CASE("Empty error handler", "[stdutils::io]")
+{
+    stdutils::io::ErrorHandler empty_err_handler;
+    CHECK_THROWS_AS(
+        empty_err_handler(stdutils::io::Severity::INFO, "Calling an empty error handler will cause an exception"),
+        std::bad_function_call
+    );
+    if (empty_err_handler)
+    {
+        empty_err_handler(stdutils::io::Severity::INFO, "For that reason you always want to test its validity before calling it");
+    }
+}
+
+struct TestErrorCode
+{
+    static constexpr stdutils::io::ErrorCode MyTestError = 42;
+};
+
+TEST_CASE("What error?", "[stdutils::io]")
+{
+    // Default constructed error is no error
+    stdutils::io::WhatError what;
+    REQUIRE(!what);
+    CHECK(what.code() == stdutils::io::Error::None);
+    CHECK(what.msg().empty());
+
+    // An unspecified error
+    what = stdutils::io::WhatError("Some unspecified error");
+    REQUIRE(what);
+    CHECK(what.code() == stdutils::io::Error::Unspecified);
+    CHECK(!what.msg().empty());
+
+    // Clear the error
+    what.clear();
+    REQUIRE(!what);
+    CHECK(what.code() == stdutils::io::Error::None);
+    CHECK(what.msg().empty());
+
+    // User defined error codes
+    what = stdutils::io::WhatError("My test error", TestErrorCode::MyTestError);
+    REQUIRE(what);
+    CHECK(what.code() == 42);
+    CHECK(!what.msg().empty());
 }
 
 // Not really a test, just going step by step while the user is reading from a stream with std::getline
@@ -96,7 +142,6 @@ c)";
     CHECK(sstream.fail() == true);
     CHECK(sstream.bad() == false);
 }
-
 
 TEST_CASE("Dump to and from a txt file", "[stdutils::io]")
 {
@@ -505,5 +550,69 @@ e
         // Total number of lines
         std::istringstream sstream(commented_txt);
         CHECK(stdutils::io::countlines(sstream) == TOTAL_NB_OF_LINES);
+    }
+}
+
+namespace {
+
+template <typename F>
+std::string format_fp_relative_precision(int precision, F fp)
+{
+    std::stringstream out;
+    stdutils::io::fp_relative_precision<F>(out, precision);
+    out << fp;
+    return out.str();
+}
+
+template <typename F>
+std::string format_fp_fixed_precision(unsigned int precision, F fp)
+{
+    std::stringstream out;
+    stdutils::io::fp_fixed_precision(out, precision);
+    out << fp;
+    return out.str();
+}
+
+} // namespace
+
+TEST_CASE("fp_relative_precision", "[stdutils::io]")
+{
+    using FP = double;
+    {
+        const FP fp = 1.234;
+        CHECK(format_fp_relative_precision(1, fp) == "1");
+        CHECK(format_fp_relative_precision(2, fp) == "1.2");
+        CHECK(format_fp_relative_precision(3, fp) == "1.23");
+        CHECK(format_fp_relative_precision(4, fp) == "1.234");
+        CHECK(format_fp_relative_precision(5, fp) == "1.234");
+    }
+    {
+        const FP fp = 123.4;
+        CHECK(format_fp_relative_precision(1, fp) == "1e+02");
+        CHECK(format_fp_relative_precision(2, fp) == "1.2e+02");
+        CHECK(format_fp_relative_precision(3, fp) == "123");
+        CHECK(format_fp_relative_precision(4, fp) == "123.4");
+        CHECK(format_fp_relative_precision(5, fp) == "123.4");
+    }
+}
+
+TEST_CASE("fp_fixed_precision", "[stdutils::io]")
+{
+    using FP = double;
+    {
+        const FP fp = 1.234;
+        CHECK(format_fp_fixed_precision(0, fp) == "1");
+        CHECK(format_fp_fixed_precision(1, fp) == "1.2");
+        CHECK(format_fp_fixed_precision(2, fp) == "1.23");
+        CHECK(format_fp_fixed_precision(3, fp) == "1.234");
+        CHECK(format_fp_fixed_precision(4, fp) == "1.2340");
+    }
+    {
+        const FP fp = 123.4;
+        CHECK(format_fp_fixed_precision(0, fp) == "123");
+        CHECK(format_fp_fixed_precision(1, fp) == "123.4");
+        CHECK(format_fp_fixed_precision(2, fp) == "123.40");
+        CHECK(format_fp_fixed_precision(3, fp) == "123.400");
+        CHECK(format_fp_fixed_precision(4, fp) == "123.4000");
     }
 }

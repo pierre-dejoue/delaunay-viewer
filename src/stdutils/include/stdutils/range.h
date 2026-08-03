@@ -2,7 +2,8 @@
 // This code is distributed under the terms of the MIT License
 #pragma once
 
-#include <algorithm>
+#include <stdutils/minmax.h>
+
 #include <cassert>
 #include <cmath>
 #include <limits>
@@ -75,8 +76,8 @@ std::ostream& operator<<(std::ostream& out, const Range<T>& range);
 template <typename T>
 Range<T>& Range<T>::add(T v)
 {
-    min = std::min(min, v);
-    max = std::max(max, v);
+    stdutils::min_update(min, v);
+    stdutils::max_update(max, v);
     return *this;
 }
 
@@ -92,8 +93,8 @@ Range<T>& Range<T>::add_border(T v)
 template <typename T>
 Range<T>& Range<T>::merge(const Range<T>& o)
 {
-    min = std::min(min, o.min);
-    max = std::max(max, o.max);
+    stdutils::min_update(min, o.min);
+    stdutils::max_update(max, o.max);
     return *this;
 }
 

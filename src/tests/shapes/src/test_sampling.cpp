@@ -164,7 +164,7 @@ TEST_CASE("Sample cubic Bezier curves and measure accuracy", "[sampling]")
             CHECK(shapes::nb_edges(pp) == nb_edges);
             REQUIRE(!pp.vertices.empty());
             const auto uniformity_stats = path_normalized_uniformity_stats(pp);
-            stdutils::io::SaveNumericFormat save_fmt(trace_out);
+            stdutils::io::SaveNumbersFormatting save_fmt(trace_out);
             trace_out << "edges: " << std::setw(5) << nb_edges << " "
                       << std::setprecision(3) << std::scientific
                       << " normalized_range: " << uniformity_stats.range

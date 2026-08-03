@@ -135,3 +135,185 @@ TEST_CASE("Allocate an uninitialized fixed-sized buffer of POD struct", "[memory
     pod_buffer.init(P{3});
     CHECK(pod_buffer.data()[4].p == 3);
 }
+
+// Structure to test memcpy/memset/memmove
+struct A
+{
+    char a0;
+    char a1;
+    char a2;
+    char a3;
+};
+
+TEST_CASE("Safer memcpy: Copy a single A struct", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memcpy<A>(nullptr, ref.data()));
+    CHECK(str == ref);
+
+    str = ref;
+    CHECK(stdutils::memcpy<A>(reinterpret_cast<A*>(str.data() + 2), ref.data() + 10) == true);
+    CHECK(str == "01ABCD6789ABCDEF");
+    //              ^^^^
+}
+
+TEST_CASE("Safer memcpy: General call memcpy<A>()", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memcpy<A>(reinterpret_cast<A*>(str.data()), 4, ref.data() + 2, 17));
+    CHECK(str == ref);
+
+    str = ref;
+    CHECK(stdutils::memcpy<A>(reinterpret_cast<A*>(str.data() + 4), 3, ref.data() + 2, 11) == true);
+    CHECK(str == "012323456789ABCF");
+    //            0123***********F
+}
+
+TEST_CASE("Safer memcpy: General call memcpy<char>()", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memcpy<char>(str.data() + 1, 15, ref.data(), 16));
+    CHECK(str == ref);
+
+    str = ref;
+    CHECK(stdutils::memcpy<char>(str.data() + 1, 15, ref.data() + 10, 6) == true);
+    CHECK(str == "0ABCDEF789ABCDEF");
+    //            0******789ABCDEF
+}
+
+TEST_CASE("Safer memset: Fill a single struct A", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memset<A>(nullptr, 42));
+    CHECK(str == ref);
+
+    str = ref;
+    CHECK(stdutils::memset<A>(reinterpret_cast<A*>(str.data() + 2), 42) == true);
+    CHECK(str == "01****6789ABCDEF");
+}
+
+TEST_CASE("Safer memset: General memset<A>()", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memset<A>(reinterpret_cast<A*>(str.data()), 4, 42, str.length() + 1));
+    CHECK(str == ref);
+
+    str = ref;
+    CHECK(stdutils::memset<A>(reinterpret_cast<A*>(str.data()), 4, 42, 13) == true);
+    CHECK(str == "*************DEF");
+
+}
+
+TEST_CASE("Safer memset: General memset<char>()", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memset<char>(str.data() + 4, 12, 42, 13));
+    CHECK(str == ref);
+
+    str = ref;
+    CHECK(stdutils::memset<char>(str.data() + 4, 12, 42, 5) == true);
+    CHECK(str == "0123*****9ABCDEF");
+}
+
+TEST_CASE("Safer memmove: Move a single struct A", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memmove<A>(nullptr, str.data()));
+    CHECK(str == ref);
+
+    // Overlap, src < dest
+    str = ref;
+    CHECK(stdutils::memmove<A>(reinterpret_cast<A*>(str.data() + 2), str.data()) == true);
+    CHECK(str == "0101236789ABCDEF");
+    //            vvvv
+    //            01****6789ABCDEF
+    //              ^^^^
+
+    // src == dest
+    str = ref;
+    CHECK(stdutils::memmove<A>(reinterpret_cast<A*>(str.data() + 3), str.data() + 3) == true);
+    CHECK(str == ref);
+
+    // Overlap, src > dest
+    str = ref;
+    CHECK(stdutils::memmove<A>(reinterpret_cast<A*>(str.data() + 4), str.data() + 5) == true);
+    CHECK(str == "0123567889ABCDEF");
+    //                 vvvv
+    //            0123****89ABCDEF
+    //                ^^^^
+
+}
+
+TEST_CASE("Safer memmove: General call memmove<A>", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memmove<A>(reinterpret_cast<A*>(str.data()), 4, str.data() + 2, 17));
+    CHECK(str == ref);
+
+    // Overlap, src < dest
+    str = ref;
+    CHECK(stdutils::memmove<A>(reinterpret_cast<A*>(str.data() + 4), 3, str.data() + 2, 11) == true);
+    CHECK(str == "012323456789ABCF");
+    //              vvvvvvvvvvv
+    //            0123***********F
+    //                ^^^^^^^^^^^
+
+    // src == dest
+    str = ref;
+    CHECK(stdutils::memmove<A>(reinterpret_cast<A*>(str.data() + 2), 3, str.data() + 2, 11) == true);
+    CHECK(str == ref);
+
+    // Overlap, src > dest
+    str = ref;
+    CHECK(stdutils::memmove<A>(reinterpret_cast<A*>(str.data() + 2), 3, str.data() + 3, 9) == true);
+    CHECK(str == "013456789ABBCDEF");
+    //               vvvvvvvvv
+    //            01*********BCDEF
+    //              ^^^^^^^^^
+}
+
+TEST_CASE("Safer memmove: General call memmove<char>", "[memory]")
+{
+    const std::string ref = "0123456789ABCDEF";
+    std::string str = ref;
+
+    CHECK_FALSE(stdutils::memmove<char>(str.data() + 1, 15, str.data(), 16));
+    CHECK(str == ref);
+
+    // Overlap, src < dest
+    str = ref;
+    CHECK(stdutils::memmove<char>(str.data() + 2, 14, str.data() + 1, 6) == true);
+    CHECK(str == "0112345689ABCDEF");
+    //             vvvvvv
+    //            01******89ABCDEF
+    //              ^^^^^^
+
+    // src == dest
+    str = ref;
+    CHECK(stdutils::memmove<char>(str.data() + 1, 15, str.data() + 1, 6) == true);
+    CHECK(str == ref);
+
+    // Overlap, src > dest
+    str = ref;
+    CHECK(stdutils::memmove<char>(str.data() + 6, 10, str.data() + 10, 6) == true);
+    CHECK(str == "012345ABCDEFCDEF");
+    //                     vvvvvv
+    //            012345******CDEF
+    //                  ^^^^^^
+}

@@ -9,6 +9,7 @@ set(UTESTS_SOURCES
     src/test_io.cpp
     src/test_locked_buffer.cpp
     src/test_memory.cpp
+    src/test_minmax.cpp
     src/test_platform.cpp
     src/test_range.cpp
     src/test_span.cpp
@@ -16,6 +17,7 @@ set(UTESTS_SOURCES
     src/test_string.cpp
     src/test_testing.cpp
     src/test_type_traits.cpp
+    src/test_utf8.cpp
 )
 
 add_executable(utests_stdutils ${UTESTS_SOURCES})

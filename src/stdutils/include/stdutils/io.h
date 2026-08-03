@@ -4,13 +4,13 @@
 
 #include <stdutils/memory.h>
 
-#include <algorithm>
 #include <cstddef>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iomanip>
+#include <ios>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -48,37 +48,86 @@ using ErrorMessage = std::string_view;
 using ErrorHandler = std::function<void(SeverityCode, ErrorMessage)>;
 
 /**
- * Floating point IO precision
+ * Error code + message
  *
- * Set the output stream precision so that the round-trip fp -> text -> fp is exact.
- * Return the original precision of the stream.
+ * The user is free to expand the list of error codes proposed below
  */
-template <typename F, typename CharT>
-int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out);
+using ErrorCode = int;
+struct Error
+{
+    static constexpr ErrorCode None = 0;
+    static constexpr ErrorCode Unspecified = 1;
+};
 
-/**
- * Floating point IO precision
- *
- * Set the output stream precision. If passed a negative value, set to the same precision as stdutlls::accurate_fp_precision
- * Return the original precision of the stream.
- */
-template <typename F, typename CharT>
-int fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out, int precision = -1);
-
-/**
- * RAII class to save/restore stream format for numerical values
- */
-template <typename CharT = char>
-class SaveNumericFormat
+class WhatError
 {
 public:
-    SaveNumericFormat(std::basic_ostream<CharT, std::char_traits<CharT>>& out);
-    ~SaveNumericFormat();
+    WhatError()
+        : m_err_msg()
+        , m_err_code{Error::None}
+    { }
+
+    WhatError(std::string err_msg, ErrorCode err_code = Error::Unspecified)
+        : m_err_msg(std::move(err_msg))
+        , m_err_code(err_code)
+    { }
+
+    std::string_view msg()  const noexcept { return m_err_msg; }
+    ErrorCode        code() const noexcept { return m_err_code; }
+
+    explicit operator bool() const noexcept { return m_err_code != Error::None; }
+
+    void clear() noexcept { m_err_msg.clear();  m_err_code = Error::None; }
+
+private:
+    std::string m_err_msg;
+    ErrorCode   m_err_code;
+};
+
+/**
+ * RAII class to save/restore the stream formatting of numerical values
+ */
+template <typename CharT = char>
+class SaveNumbersFormatting
+{
+public:
+    SaveNumbersFormatting(std::basic_ostream<CharT, std::char_traits<CharT>>& out);
+    ~SaveNumbersFormatting();
 private:
     std::basic_ostream<CharT, std::char_traits<CharT>>& m_out;
     std::ios_base::fmtflags m_flags;
     std::streamsize m_precision;
 };
+
+/**
+ * Floating point IO precision
+ *
+ * Set the output stream precision so that the round-trip fp -> text -> fp is exact.
+ *
+ * Use in conjunction with SaveNumbersFormatting<CharT> in order to restore preexisting formatting.
+ */
+template <typename F, typename CharT>
+void fp_accurate_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out);
+
+/**
+ * Floating point IO relative precision
+ *
+ * Set the output stream precision. If passed a negative value, set to the same precision as stdutlls::fp_accurate_precision
+ *
+ * Use in conjunction with SaveNumbersFormatting<CharT> in order to restore preexisting formatting.
+ */
+template <typename F, typename CharT>
+void fp_relative_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out, int precision = -1);
+
+/**
+ * Floating point IO fixed precision
+ *
+ * Set the output stream precision in fixed notation. The precision is the number of digits after the dot sign.
+ *
+ * Use in conjunction with SaveNumbersFormatting<CharT> in order to restore preexisting formatting.
+ */
+template <typename CharT>
+void fp_fixed_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out, unsigned int precision);
 
 /**
  * Pass a file to a parser of std::basic_istream
@@ -93,6 +142,8 @@ Ret open_and_parse_bin_file(const std::filesystem::path& filepath, const StreamP
 
 /**
  * Save a file with a writer to std::basic_ostream
+ *
+ * The StreamWriter can throw, and it should throw in case an error is detected. It intentionaly does not return a bool)
  */
 template <typename Obj, typename CharT>
 using StreamWriter = std::function<void(std::basic_ostream<CharT, std::char_traits<CharT>>&, const Obj&, const stdutils::io::ErrorHandler&)>;
@@ -194,39 +245,42 @@ std::size_t countlines(std::basic_istream<CharT, std::char_traits<CharT>>& istre
 //
 
 
-template <typename F, typename CharT>
-int accurate_fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out)
-{
-    // The precision max_digits10 (9 for float, 17 for double) ensures the round-trip "fp -> text -> fp" will be exact.
-    constexpr int max_fp_digits = std::numeric_limits<F>::max_digits10;
-    const int initial_fp_digits = static_cast<int>(out.precision());
-    out << std::setprecision(max_fp_digits);
-    return initial_fp_digits;
-}
-
-template <typename F, typename CharT>
-int fp_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out, int precision)
-{
-    const int initial_fp_digits = static_cast<int>(out.precision());
-    if (precision < 0)
-        out << std::setprecision(std::numeric_limits<F>::max_digits10);
-    else
-        out << std::setprecision(precision);
-    return initial_fp_digits;
-}
-
 template <typename CharT>
-SaveNumericFormat<CharT>::SaveNumericFormat(std::basic_ostream<CharT, std::char_traits<CharT>>& out)
+SaveNumbersFormatting<CharT>::SaveNumbersFormatting(std::basic_ostream<CharT, std::char_traits<CharT>>& out)
     : m_out(out)
     , m_flags(out.flags())
     , m_precision(out.precision())
 { }
 
 template <typename CharT>
-SaveNumericFormat<CharT>::~SaveNumericFormat()
+SaveNumbersFormatting<CharT>::~SaveNumbersFormatting()
 {
     m_out.flags(m_flags);
     m_out.precision(m_precision);
+}
+
+template <typename F, typename CharT>
+void fp_accurate_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out)
+{
+    // The precision max_digits10 (9 for float, 17 for double) ensures the round-trip "fp -> text -> fp" will be exact.
+    constexpr int max_fp_digits = std::numeric_limits<F>::max_digits10;
+    out << std::defaultfloat << std::setprecision(max_fp_digits);
+}
+
+template <typename F, typename CharT>
+void fp_relative_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out, int precision)
+{
+    out << std::defaultfloat;
+    if (precision < 0)
+        out << std::setprecision(std::numeric_limits<F>::max_digits10);
+    else
+        out << std::setprecision(precision);
+}
+
+template <typename CharT>
+void fp_fixed_precision(std::basic_ostream<CharT, std::char_traits<CharT>>& out, unsigned int precision)
+{
+    out << std::fixed << std::setprecision(static_cast<int>(precision));
 }
 
 namespace details {
@@ -275,6 +329,7 @@ bool save_file(const std::filesystem::path& filepath, bool binary, const StreamW
         if (outputstream.is_open())
         {
             stream_writer(outputstream, obj, err_handler);
+            // If the stream_writer did not throw, it is a success!
             success = true;
         }
         else if (err_handler)
@@ -408,9 +463,13 @@ bool Basic_SkipLineStream<CharT>::skip_line(const std::string& line) const
         {
             return true;
         }
-        return std::any_of(m_skip_tokens.cbegin(), m_skip_tokens.cend(), [&token](const auto& comment_token) {
-            return token.substr(0, comment_token.size()) == comment_token;
-        });
+        for (const auto& comment_token: m_skip_tokens)
+        {
+            if (token.substr(0, comment_token.size()) == comment_token)
+            {
+                return true;
+            }
+        }
     }
     return false;
 }

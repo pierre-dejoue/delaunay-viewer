@@ -8,6 +8,7 @@
 #include <stdutils/io.h>
 #include <stdutils/macros.h>
 #include <stdutils/memory.h>
+#include <stdutils/minmax.h>
 #include <stdutils/string.h>
 
 #include <algorithm>
@@ -43,10 +44,10 @@ ssvg::ShapeAttributes init_default_shape_attr()
     defaultAttrs.m_StrokeLineJoin = ssvg::LineJoin::Miter;
     defaultAttrs.m_StrokeLineCap = ssvg::LineCap::Butt;
     defaultAttrs.m_FillRule = ssvg::FillRule::NonZero;
-    assert(stdutils::string::strnlen(&defaultAttrs.m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
+    assert(stdutils::strnlen(&defaultAttrs.m_ID[0], SSVG_CONFIG_ID_MAX_LEN) == 0);
     {
         constexpr std::string_view font_family = "sans-serif";
-        constexpr std::size_t memcpy_sz = std::min(font_family.size(), static_cast<std::size_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1));
+        constexpr std::size_t memcpy_sz = stdutils::min(font_family.size(), static_cast<std::size_t>(SSVG_CONFIG_FONT_FAMILY_MAX_LEN - 1));
         IGNORE_RETURN stdutils::memcpy<char>(&defaultAttrs.m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN, font_family.data(), memcpy_sz);
         assert(stdutils::string::is_null_terminated(&defaultAttrs.m_FontFamily[0], SSVG_CONFIG_FONT_FAMILY_MAX_LEN));
     }
@@ -87,7 +88,7 @@ struct SVGImageGeometry
         : transformation { 1.f, 0.f, 0.f, 1.f, 0.f, 0.f }
         , width(width)
         , height(height)
-        , min_resolution(RESOLUTION_RATIO * std::max(1.f, std::max(width, height)))
+        , min_resolution(RESOLUTION_RATIO * stdutils::max_triple(1.f, width, height))
     {}
 
     SVGImageGeometry(const float* svg_transform, float width, float height)

@@ -18,28 +18,88 @@
 namespace stdutils {
 
 /**
+ * Auto-free C pointer. Useful when interfacing with code that makes use of C-style malloc.
+ */
+template <typename T>
+struct AutoFreePtr
+{
+    AutoFreePtr(T* ptr = nullptr) : ptr(ptr) { }
+    ~AutoFreePtr() { if (ptr != nullptr) { std::free(ptr); } }
+    T* ptr;
+};
+
+template <typename T>
+struct AutoFreeCPtr
+{
+    AutoFreeCPtr(const T* ptr = nullptr) : ptr(ptr) { }
+    ~AutoFreeCPtr() { if (ptr != nullptr) { std::free(ptr); } }
+    const T* ptr;
+};
+
+
+/**
  * Versions of memcpy with sanity checks
  *
  * - Check for null pointers
+ * - Check if dest == src, in which case do nothing and return true
  * - Check that nb_bytes <= max_dest_sz * sizeof(T)
  * - In case of error, copy nothing and return false
  */
 template <typename T>
-bool memcpy(T* dest, const void* src);                                                   // Copies at most sizeof(T) bytes
+bool memcpy(T* dest, const void* src);                                                   // Copy exactly sizeof(T) bytes
 
 template <typename T>
-bool memcpy(T* dest, std::size_t max_dest_sz, const void* src, std::size_t nb_bytes);    // Copies at most max_dest_sz * sizeof(T) bytes
+bool memcpy(T* dest, std::size_t max_dest_sz, const void* src, std::size_t nb_bytes);    // Copy at most max_dest_sz * sizeof(T) bytes
 
 
 /**
  * Versions of memset with sanity checks
  */
 template <typename T>
-bool memset(T* dest, int ch);                                                            // Sets at most sizeof(T) bytes
+bool memset(T* dest, int ch);                                                            // Set at exactly sizeof(T) bytes
 
 template <typename T>
-bool memset(T* dest, std::size_t max_dest_sz, int ch, std::size_t nb_bytes);             // Sets at most max_dest_sz * sizeof(T) bytes
+bool memset(T* dest, std::size_t max_dest_sz, int ch, std::size_t nb_bytes);             // Set at most max_dest_sz * sizeof(T) bytes
 
+
+/**
+ * Versions of memmove with sanity checks
+ *
+ * - Check for null pointers
+ * - Check if dest == src, in which case do nothing and return true
+ * - Check that nb_bytes <= max_dest_sz * sizeof(T)
+ * - In case of error, move nothing and return false
+ */
+template <typename T>
+bool memmove(T* dest, const void* src);                                                   // Move exactly sizeof(T) bytes
+
+template <typename T>
+bool memmove(T* dest, std::size_t max_dest_sz, const void* src, std::size_t nb_bytes);    // Move at most max_dest_sz * sizeof(T) bytes
+
+
+/**
+ * Local pointer to a local
+ *
+ * The pointer is reset (to nullptr) when this object leaves scope.
+ * Useful when a pointer to a scoped variable is used.
+ */
+template <typename T>
+class ScopedPtrToLocal {
+public:
+    ScopedPtrToLocal(T** local_ptr_ptr, T& local_var)
+        : m_ptr_ptr(local_ptr_ptr)
+    {
+        assert(m_ptr_ptr);
+        *m_ptr_ptr = &local_var;
+    }
+
+    ~ScopedPtrToLocal()
+    {
+        *m_ptr_ptr = nullptr;
+    }
+private:
+    T** m_ptr_ptr;
+};
 
 /**
  * A buffer which size is fixed and set at runtime
@@ -101,9 +161,12 @@ private:
     std::size_t             m_size;
 };
 
-// Explicit copy of one fixed buffer into another. The sizes of both buffers MUST match.
+// Explicit copy of data into a FixedBuffer. The sizes of both buffers MUST match.
+template <typename T>
+void copy(FixedBuffer<T>& dest, const Span<const T>& src);
 template <typename T>
 void copy(FixedBuffer<T>& dest, const FixedBuffer<T>& src);
+
 
 // A raw memory buffer
 using FixedByteBuffer = FixedBuffer<std::byte>;
@@ -121,8 +184,11 @@ bool memcpy(T* dest, const void* src)
 {
     if (dest == nullptr || src == nullptr)
     {
-        assert(0);
         return false;
+    }
+    if (static_cast<void*>(dest) == src)
+    {
+        return true;
     }
     IGNORE_RETURN std::memcpy(static_cast<void*>(dest), src, sizeof(T));
     return true;
@@ -133,13 +199,15 @@ bool memcpy(T* dest, std::size_t max_dest_sz, const void* src, std::size_t nb_by
 {
     if (dest == nullptr || src == nullptr)
     {
-        assert(0);
         return false;
     }
     if (nb_bytes > max_dest_sz * sizeof(T))
     {
-        assert(0);
         return false;
+    }
+    if (static_cast<void*>(dest) == src)
+    {
+        return true;
     }
     IGNORE_RETURN std::memcpy(static_cast<void*>(dest), src, nb_bytes);
     return true;
@@ -150,7 +218,6 @@ bool memset(T* dest, int ch)
 {
     if (dest == nullptr)
     {
-        assert(0);
         return false;
     }
     IGNORE_RETURN std::memset(static_cast<void*>(dest), ch, sizeof(T));
@@ -162,15 +229,47 @@ bool memset(T* dest, std::size_t max_dest_sz, int ch, std::size_t nb_bytes)
 {
     if (dest == nullptr)
     {
-        assert(0);
         return false;
     }
     if (nb_bytes > max_dest_sz * sizeof(T))
     {
-        assert(0);
         return false;
     }
     IGNORE_RETURN std::memset(static_cast<void*>(dest), ch, nb_bytes);
+    return true;
+}
+
+template <typename T>
+bool memmove(T* dest, const void* src)
+{
+    if (dest == nullptr || src == nullptr)
+    {
+        return false;
+    }
+    if (static_cast<void*>(dest) == src)
+    {
+        return true;
+    }
+    IGNORE_RETURN std::memmove(static_cast<void*>(dest), src, sizeof(T));
+    return true;
+}
+
+template <typename T>
+bool memmove(T* dest, std::size_t max_dest_sz, const void* src, std::size_t nb_bytes)
+{
+    if (dest == nullptr || src == nullptr)
+    {
+        return false;
+    }
+    if (nb_bytes > max_dest_sz * sizeof(T))
+    {
+        return false;
+    }
+    if (static_cast<void*>(dest) == src)
+    {
+        return true;
+    }
+    IGNORE_RETURN std::memmove(static_cast<void*>(dest), src, nb_bytes);
     return true;
 }
 
@@ -289,11 +388,11 @@ bool FixedBuffer<T>::operator!=(const FixedBuffer<T>& other) const
 }
 
 template <typename T>
-void copy(FixedBuffer<T>& dest, const FixedBuffer<T>& src)
+void copy(FixedBuffer<T>& dest, const Span<const T>& src)
 {
     if (dest.size() != src.size())
     {
-        throw std::invalid_argument("FixedBuffer size mismatch");
+        throw std::invalid_argument("Buffers size mismatch");
     }
     if (dest.size() > 0)
     {
@@ -301,6 +400,12 @@ void copy(FixedBuffer<T>& dest, const FixedBuffer<T>& src)
         assert(dest.data());
         IGNORE_RETURN memcpy<T>(dest.data(), dest.size(), src.data(), dest.size() * sizeof(T));
     }
+}
+
+template <typename T>
+void copy(FixedBuffer<T>& dest, const FixedBuffer<T>& src)
+{
+    copy<T>(dest, src.cspan());
 }
 
 } // namespace stdutils

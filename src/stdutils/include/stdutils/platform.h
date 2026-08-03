@@ -74,7 +74,8 @@ std::string compiler_version();
 /**
  * Stream out information related to the platform and the compilation
  */
-struct InfoFlag {
+struct InfoFlag
+{
     using type = std::uint32_t;
     static constexpr type OS            = 1 << 0;
     static constexpr type ARCH          = 1 << 1;
