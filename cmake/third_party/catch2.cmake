@@ -9,7 +9,7 @@ FetchContent_Populate(
     catch2
     QUIET
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-    GIT_TAG        v3.4.0
+    GIT_TAG        v3.15.3                                      # July 2026
 )
 
 #
