@@ -421,3 +421,45 @@ TEST_CASE("Replace all occuurence of a word in a string", "[stdutils::string]")
         CHECK(result == "AAAAABBCCCCAAAAABBCCCCDDCCCCBBAAAAA");
     }
 }
+
+TEST_CASE("String prefix", "[stdutils::string]")
+{
+    static_assert(stdutils::string::starts_with("Hello, World!", "He") == true);
+    static_assert(stdutils::string::starts_with("Hello, World!", "Ha") == false);
+    static_assert(stdutils::string::starts_with("H", "He") == false);
+    static_assert(stdutils::string::starts_with("Hello, World!", "H") == true);
+    static_assert(stdutils::string::starts_with("Hello, World!", 'H') == true);
+    static_assert(stdutils::string::starts_with("Hello, World!", 'e') == false);
+    static_assert(stdutils::string::starts_with("", 'H') == false);
+
+    const std::string_view test_str = "Hello!";
+    CHECK(stdutils::string::starts_with(test_str, "He") == true);
+    CHECK(stdutils::string::starts_with(test_str, "Ha") == false);
+    CHECK(stdutils::string::starts_with(test_str.substr(0, 1), "He") == false);
+    CHECK(stdutils::string::starts_with(test_str, "H") == true);
+    CHECK(stdutils::string::starts_with(test_str, 'H') == true);
+    CHECK(stdutils::string::starts_with(test_str, 'e') == false);
+    CHECK(stdutils::string::starts_with("", 'H') == false);
+    CHECK(stdutils::string::starts_with(test_str, test_str) == true);
+}
+
+TEST_CASE("String suffix", "[stdutils::string]")
+{
+    static_assert(stdutils::string::ends_with("Hello, World!", "d!") == true);
+    static_assert(stdutils::string::ends_with("Hello, World!", "World") == false);
+    static_assert(stdutils::string::ends_with("H", "He") == false);
+    static_assert(stdutils::string::ends_with("Hello, World!", "!") == true);
+    static_assert(stdutils::string::ends_with("Hello, World!", '!') == true);
+    static_assert(stdutils::string::ends_with("Hello, World!", 'd') == false);
+    static_assert(stdutils::string::ends_with("", '!') == false);
+
+    const std::string_view test_str = "Hello!";
+    CHECK(stdutils::string::ends_with(test_str, "lo!") == true);
+    CHECK(stdutils::string::ends_with(test_str, "llo") == false);
+    CHECK(stdutils::string::ends_with(test_str.substr(0, 1), "He") == false);
+    CHECK(stdutils::string::ends_with(test_str, "!") == true);
+    CHECK(stdutils::string::ends_with(test_str, '!') == true);
+    CHECK(stdutils::string::ends_with(test_str, 'd') == false);
+    CHECK(stdutils::string::ends_with("", '!') == false);
+    CHECK(stdutils::string::ends_with(test_str, test_str) == true);
+}
