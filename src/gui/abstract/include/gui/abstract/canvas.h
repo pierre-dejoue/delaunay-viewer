@@ -3,6 +3,7 @@
 #pragma once
 
 #include <shapes/bounding_box.h>
+#include <shapes/bounding_box_algos.h>
 #include <shapes/point.h>
 #include <shapes/vect.h>
 
@@ -292,7 +293,8 @@ bool is_valid(const Canvas<F>& canvas)
 template <typename F0, typename F1>
 Canvas<F1> cast(const Canvas<F0>& canvas_src)
 {
-    const auto bb_tgt = shapes::cast<F0, F1>(canvas_src.geometry_bounding_box());
+    auto bb_tgt = shapes::cast<F0, F1>(canvas_src.geometry_bounding_box());
+    shapes::ensure_min_extent(bb_tgt);
     return Canvas<F1>(
         canvas_src.get_tl_corner(),
         canvas_src.get_size(),
