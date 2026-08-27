@@ -1,6 +1,6 @@
 // Copyright (c) 2023 Pierre DEJOUE
 // This code is distributed under the terms of the MIT License
-#include <svg/svg.h>
+#include <svg/svg_load.h>
 
 #include <shapes/vect.h>
 #include <ssvg_init.h>

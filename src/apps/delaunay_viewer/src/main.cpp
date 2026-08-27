@@ -39,7 +39,7 @@
 #include <stdutils/platform.h>
 #include <stdutils/span.h>
 #include <stdutils/time.h>
-#include <svg/svg.h>
+#include <svg/svg_load.h>
 
 #include <algorithm>
 #include <array>

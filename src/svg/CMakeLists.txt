@@ -26,7 +26,7 @@ target_link_libraries(ssvg_init
 # SVG module
 
 set(LIB_SOURCES
-    src/svg.cpp
+    src/svg_load.cpp
 )
 
 add_library(svg STATIC ${LIB_SOURCES})
