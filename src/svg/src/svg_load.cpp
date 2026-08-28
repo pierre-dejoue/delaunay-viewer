@@ -210,10 +210,8 @@ void parse_ssvg_image_path(const ssvg::Path& path, const unsigned int idx_start,
 
                 case ssvg::PathCmdType::ArcTo:        // Data: [0] = rx, [1] = ry, [2] = x-axis-rotation, [3] = large-arc-flag, [4] = sweep-flag, [5] = x, [6] = y
                 {
-                    // The conversion from Arc to Cubic Bezier performed by simple-svg (with flag ssvg::ImageLoadFlags::ConvertArcToCubicBezier) has been proven broken.
-                    // It generates nan on some cases (for example with test file icons8-futurama-leela.svg).
-                    // For now we just convert arc to straight lines
-                    // TODO implement a more sensible conversion to cubic Bezier
+                    // NB: If the SVG was loaded with ssvg::ImageLoadFlags::ConvertArcToCubicBezier flag on, the Arc must already have been converted.
+                    // As a fallback, convert from an arc to a straight line.
                     ssvg::transformPoint(image_geometry.transformation.data(), &cmd.m_Data[5], &tr_data[5]);
                     const shapes::Point2d<F> prev_point = new_cbp.vertices.back();
                     const shapes::Point2d<F> next_point(
@@ -446,7 +444,10 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
     try
     {
         IGNORE_RETURN initialize_ssvg_lib();
-        SSVGImageEncapsulate ssvg_img(ssvg::imageLoad(svg_buffer.data(), ssvg::ImageLoadFlags::None));
+        constexpr ssvg::ImageLoadFlags::Type ssvg_load_flags =
+            ssvg::ImageLoadFlags::ConvertQuadToCubicBezier |
+            ssvg::ImageLoadFlags::ConvertArcToCubicBezier;
+        SSVGImageEncapsulate ssvg_img(ssvg::imageLoad(svg_buffer.data(), ssvg_load_flags));
         if (ssvg_img.ptr == nullptr)
         {
             err_handler(stdutils::io::Severity::ERR, "Library simple-svg failed to parse the image");
