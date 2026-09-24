@@ -70,17 +70,29 @@ TEST_CASE("Test vector norms", "[vect]")
     CHECK(isnull(o));
     CHECK(isfinite(o));
     CHECK(norm(o) == 0.f);
+    CHECK(norm_safe(o) == 0.f);
     CHECK(normalize(o) == false);
     CHECK(isfinite(o));
 
     Vect2d<float> a(3.f, 4.f);
 
     CHECK(norm(a) == 5.f);
+    CHECK(norm_safe(a) == 5.f);
     CHECK(normalize(a) == true);
     REQUIRE(isfinite(a));
     CHECK(a.x == 0.6f);
     CHECK(a.y == 0.8f);
     CHECK(norm(a) == 1.f);
+    CHECK(norm_safe(a) == 1.f);
+
+    Vect2d<float> b(1000.f, 1.f);
+
+    CHECK(norm(b)      == 1000.0005f);
+    CHECK(norm_safe(b) == 1000.0005f);
+    CHECK(normalize(b) == true);
+    REQUIRE(isfinite(b));
+    CHECK(std::abs(b.x - 1.f) < 1E-05f);
+    CHECK(b.y != 0.f);
 }
 
 } // namespace shapes

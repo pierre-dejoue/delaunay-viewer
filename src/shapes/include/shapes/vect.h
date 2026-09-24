@@ -192,6 +192,12 @@ constexpr F norm(const Vect2d<F>& v)
 }
 
 template <typename F>
+constexpr F norm_safe(const Vect2d<F>& v)
+{
+    return std::hypot(v.x, v.y);
+}
+
+template <typename F>
 constexpr F sq_norm(const Vect2d<F>& v)
 {
     return v.x * v.x + v.y * v.y;
@@ -207,6 +213,12 @@ template <typename F>
 constexpr F norm(const Vect3d<F>& v)
 {
     return std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+template <typename F>
+constexpr F norm_safe(const Vect3d<F>& v)
+{
+    return std::hypot(v.x, v.y, v.z);
 }
 
 template <typename F>
