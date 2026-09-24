@@ -5,7 +5,7 @@
 include(compiler_options)
 
 # Third parties
-include(simple-svg)
+include(simpler-svg)
 
 set(SSVG_INIT_SOURCES
     src/ssvg/ssvg_init.cpp
@@ -20,7 +20,7 @@ target_include_directories(ssvg_init
 
 target_link_libraries(ssvg_init
     PRIVATE
-    simple-svg
+    ssvg
 )
 
 # SVG module
@@ -53,7 +53,7 @@ target_link_libraries(svg
     shapes
     stdutils
     PRIVATE
-    simple-svg
+    ssvg
     ssvg_init
 )
 

@@ -32,7 +32,7 @@ struct SSVGImageEncapsulate
 };
 
 //
-// SVG standard format for transformation matrices is used as-is by simple-svg.
+// SVG standard format for transformation matrices is used as-is by simpler-svg.
 // The six float array { a, b, c, d, e, f } encodes the following transformation matrix:
 //
 //  ( a  c  e )
@@ -450,7 +450,7 @@ Paths<F> parse_svg_paths_gen(std::filesystem::path filepath, const stdutils::io:
         SSVGImageEncapsulate ssvg_img(ssvg::imageLoad(svg_buffer.data(), ssvg_load_flags));
         if (ssvg_img.ptr == nullptr)
         {
-            err_handler(stdutils::io::Severity::ERR, "Library simple-svg failed to parse the image");
+            err_handler(stdutils::io::Severity::ERR, "Library ssvg failed to parse the image");
             return Paths<F>();
         }
         const ssvg::ShapeAttributes* imageAttrs = ssvg::imageGetShapeAttributes(ssvg_img.ptr);
