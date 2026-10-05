@@ -29,13 +29,24 @@ In addition to the triangulation libraries themselves:
 
 ### Build
 
-With [CMake](https://cmake.org/download/). For example on Windows:
+With [CMake](https://cmake.org/download/).
+
+On Windows:
 
 ```
 mkdir ./build
 cd build
 cmake -G "Visual Studio 17 2022" ..
 cmake --build . --config Release
+```
+
+On Linux/macOS:
+
+```
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -S . -B build/release
+cmake --build build/release
+cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -S . -B build/debug
+cmake --build build/debug
 ```
 
 ### Install
@@ -46,7 +57,7 @@ Install in some dir:
 cmake --install . --config Release --prefix <some_dir>
 ```
 
-Or, package the library:
+Or, package the executable:
 
 ```
 cpack -G ZIP -C Release
