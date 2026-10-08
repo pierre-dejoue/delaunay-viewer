@@ -342,13 +342,14 @@ void ViewportWindow::visit(bool& can_be_erased, const TabList& tab_list, const S
                 // Zoom rectangle
                 if (m_zoom_selection_box.is_ongoing && m_zoom_selection_box.is_positive_box())
                 {
-                    constexpr float rounding = 0.f;
-                    constexpr float thickness = 0.5f;
+                    constexpr float ROUNDING = 0.f;
+                    constexpr float THICKNESS = 0.5f;
                     draw_list->AddRect(
                         to_imgui_vec2(m_zoom_selection_box.corner_0),
                         to_imgui_vec2(m_zoom_selection_box.corner_1),
-                        IM_COL32(120, 120, 120, 255), rounding,
-                        ImDrawFlags_None, thickness
+                        IM_COL32(120, 120, 120, 255),
+                        ROUNDING,
+                        THICKNESS
                     );
                 };
 
