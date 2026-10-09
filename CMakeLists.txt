@@ -38,6 +38,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+# Prevent a CMake Error on macos "Missing variable CMAKE_OBJC_COMPILE_OBJECT"
+if(APPLE)
+    enable_language(OBJC)
+endif()
+
 # Stdutils
 add_subdirectory(src/stdutils)
 
